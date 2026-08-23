@@ -62,7 +62,7 @@ export const CORE_SNIPPETS = {
   ],
 
   java: [
-    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'The entry point every Java program starts from.', code: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, KeyStroke");\n    }\n}` },
+    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'The entry point every Java program starts from.', code: `public class Main {\n    public static void main(String[] args) {\n        System.out.println("Hello, TypeForge");\n    }\n}` },
     { difficulty: 'easy', title: 'Reverse a string', topic: 'strings', intro: 'Uses StringBuilder because String itself is immutable.', code: `public static String reverse(String input) {\n    StringBuilder sb = new StringBuilder(input);\n    return sb.reverse().toString();\n}` },
     { difficulty: 'easy', title: 'Sum with enhanced for', topic: 'arrays', intro: 'Walks an array without ever touching an index.', code: `public static int sum(int[] values) {\n    int total = 0;\n    for (int value : values) {\n        total += value;\n    }\n    return total;\n}` },
 
@@ -80,7 +80,7 @@ export const CORE_SNIPPETS = {
   ],
 
   c: [
-    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'Includes the standard IO header and returns a clean exit code.', code: `#include <stdio.h>\n\nint main(void) {\n    printf("Hello, KeyStroke\\n");\n    return 0;\n}` },
+    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'Includes the standard IO header and returns a clean exit code.', code: `#include <stdio.h>\n\nint main(void) {\n    printf("Hello, TypeForge\\n");\n    return 0;\n}` },
     { difficulty: 'easy', title: 'Swap two integers', topic: 'pointers', intro: 'The first program that makes pointers click.', code: `void swap(int *a, int *b) {\n    int tmp = *a;\n    *a = *b;\n    *b = tmp;\n}` },
     { difficulty: 'easy', title: 'Factorial', topic: 'recursion', intro: 'A base case and a recursive step — nothing else.', code: `unsigned long factorial(unsigned n) {\n    if (n <= 1) {\n        return 1;\n    }\n    return n * factorial(n - 1);\n}` },
 
@@ -98,7 +98,7 @@ export const CORE_SNIPPETS = {
   ],
 
   cpp: [
-    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'Stream output instead of format strings.', code: `#include <iostream>\n\nint main() {\n    std::cout << "Hello, KeyStroke\\n";\n    return 0;\n}` },
+    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'Stream output instead of format strings.', code: `#include <iostream>\n\nint main() {\n    std::cout << "Hello, TypeForge\\n";\n    return 0;\n}` },
     { difficulty: 'easy', title: 'Print a vector', topic: 'iterators', intro: 'A range-based for loop over a standard container.', code: `void print(const std::vector<int>& v) {\n    for (const auto& item : v) {\n        std::cout << item << ' ';\n    }\n    std::cout << '\\n';\n}` },
     { difficulty: 'easy', title: 'Class with constructor', topic: 'classes', intro: 'Member initialiser list, const method, private state.', code: `class Counter {\npublic:\n    explicit Counter(int start) : value_(start) {}\n\n    void bump() { ++value_; }\n    int value() const { return value_; }\n\nprivate:\n    int value_;\n};` },
 

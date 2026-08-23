@@ -351,7 +351,7 @@ export default function CodeTyping() {
     <div className="space-y-3">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="eyebrow">Module 02</p>
+          <p className="eyebrow">Train</p>
           <h1 className="mt-0.5 text-3xl font-extrabold">Code typing</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
             Real snippets, real syntax, real punctuation. Indentation is handled for you — brackets are not.

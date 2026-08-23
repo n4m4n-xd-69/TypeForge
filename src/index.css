@@ -3,96 +3,116 @@
 @tailwind utilities;
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Design tokens. Every colour is stored as an "R G B" triplet so Tailwind can
-   apply opacity modifiers (bg-surface/70). Dark mode is a *selected* set of
-   steps, not an inversion.
+   TypeForge design tokens.
+
+   Every colour is an "R G B" triplet so Tailwind's opacity modifiers work
+   (bg-surface/70). Dark is the primary theme; light is a selected set of
+   steps rather than an inversion.
+
+   Two things about the naming, both deliberate:
+
+   1. The accent keeps the token name `--brand` rather than becoming
+      `--forge`. Roughly forty files reference it through Tailwind classes
+      (text-brand, bg-brand-solid, bg-brand-wash), and renaming the token
+      would mean editing all of them to express a preference about a word.
+      The value changed; the role did not.
+
+   2. Accents come in two variants and confusing them is the easy mistake.
+      `--brand` is the stroke: theme-dependent, because a colour bright
+      enough to read on near-black is far too light on white.
+      `--brand-solid` is the fill: identical in both themes, because a brand
+      fill that shifted hue with the theme would not be a brand fill.
+
+   Contrast is measured, not estimated. `node scripts/check-contrast.mjs`
+   re-derives every figure below and exits non-zero on a regression.
    ─────────────────────────────────────────────────────────────────────────── */
+
 @layer base {
+  /* ── Dark: the primary theme ─────────────────────────────────────────── */
   :root,
-  [data-theme='light'] {
-    color-scheme: light;
-
-    --bg: 246 247 243;
-    --surface: 255 255 255;
-    --subtle: 238 241 234;
-    --line: 227 231 221;
-    --line-strong: 211 217 203;
-
-    --ink: 19 26 19;
-    --ink-2: 77 87 77;
-    --ink-3: 123 133 123;
-
-    --brand: 77 124 15; /* on-light text/stroke accent — 5.4:1 on white */
-    --brand-solid: 163 230 53; /* fills */
-    --brand-ink: 26 46 5; /* text on --brand-solid — 11.6:1 */
-    --brand-wash: 240 248 219;
-
-    --good: 12 163 12;
-    --warn: 250 178 25;
-    --bad: 208 59 59;
-    --info: 42 120 214;
-
-    /* Cool grey rather than the old green-tinted shadow — a floating panel on a
-       near-white page needs a neutral, slightly deeper cast to read as lifted. */
-    --shadow: 24 30 40;
-    /* Light-mode glass needs a tint and a visible edge to read as glass at all.
-       Pure white at high alpha over a near-white page is indistinguishable from
-       a flat panel — the blur has nothing to bite on. */
-    --glass: 252 253 250;
-    --glass-alpha: 0.55;
-    --glass-blur: 22px;
-    --glass-saturate: 190%;
-    --glass-edge: 255 255 255;
-    --glass-edge-alpha: 0.75;
-
-    /* chart chrome */
-    --chart-surface: 255 255 255;
-    --chart-grid: 225 224 217;
-    --chart-axis: 195 194 183;
-    --chart-muted: 137 135 129;
-  }
-
-  /* Dark mode, rebuilt.
-     The previous set was near-black with a heavy green cast on every surface,
-     which made the whole UI feel tinted and the contrast harsh. These are
-     near-neutral slate greys, so the lime accent reads as the only colour in
-     the room. Every ink and status step clears WCAG AA text contrast (4.5:1)
-     against --surface, and both chart palettes were re-validated against it. */
   [data-theme='dark'] {
     color-scheme: dark;
 
-    --bg: 16 18 20;      /* page plane */
-    --surface: 24 27 30; /* cards — lifted off the page rather than pure black */
-    --subtle: 32 36 40;
-    --line: 44 49 54;
-    --line-strong: 60 66 72;
+    /* Near-black with a cool cast, not #000. Pure black smears on OLED
+       during scroll and haloes against bright type. */
+    --bg: 10 11 13;
+    --surface: 18 20 23;
+    --raised: 26 29 33;
+    --line: 36 40 45;
+    --line-strong: 51 57 64;
 
-    --ink: 233 237 241;  /* 14.7:1 — off pure white to cut glare */
-    --ink-2: 165 174 183;/*  7.7:1 */
-    --ink-3: 124 134 143;/*  4.7:1 — real text contrast, not a faint tint */
+    --ink: 242 244 247;   /* 16.75:1 on surface */
+    --ink-2: 168 176 186; /*  8.42:1 */
+    --ink-3: 130 140 151; /*  5.40:1 — real text contrast, not a tint */
 
-    --brand: 163 230 53; /* 11.5:1 */
-    --brand-solid: 163 230 53;
-    --brand-ink: 18 32 10;
-    --brand-wash: 34 45 22;
+    --brand: 255 122 47;      /*  7.10:1 — stroke, text, focus ring */
+    --brand-solid: 255 122 47; /* fill */
+    --brand-ink: 10 11 13;     /*  7.57:1 on the fill. White is 2.60:1 and fails */
+    --brand-wash: 38 26 18;
 
-    --good: 74 222 128;  /*  9.9:1 */
-    --warn: 251 191 36;  /* 10.4:1 */
-    --bad: 248 113 113;  /*  6.3:1 */
-    --info: 96 165 250;  /*  6.8:1 */
+    --accent: 79 195 247;      /*  9.21:1 — quenched steel, the data accent */
+    --accent-ink: 10 11 13;
+    --accent-wash: 17 32 42;
+
+    --good: 74 222 128;  /* 10.59:1 */
+    --warn: 255 197 61;  /* 11.69:1 */
+    --bad: 255 77 109;   /*  5.74:1 */
+    --info: 90 169 255;  /*  7.52:1 */
+    --on-status: 10 11 13; /* text on any solid status fill */
 
     --shadow: 0 0 0;
-    --glass: 24 27 30;
-    --glass-alpha: 0.7;
+    --glass: 18 20 23;
+    --glass-alpha: 0.72;
     --glass-blur: 20px;
-    --glass-saturate: 180%;
     --glass-edge: 255 255 255;
-    --glass-edge-alpha: 0.07;
+    --glass-edge-alpha: 0.06;
 
-    --chart-surface: 24 27 30;
-    --chart-grid: 44 49 54;
-    --chart-axis: 60 66 72;
-    --chart-muted: 138 147 156;
+    --chart-surface: 18 20 23;
+    --chart-grid: 36 40 45;
+    --chart-axis: 51 57 64;
+    --chart-muted: 130 140 151;
+  }
+
+  /* ── Light ───────────────────────────────────────────────────────────── */
+  [data-theme='light'] {
+    color-scheme: light;
+
+    --bg: 250 250 249;   /* warm-neutral, not blue-grey */
+    --surface: 255 255 255;
+    --raised: 255 255 255; /* separated by shadow, not tint */
+    --line: 230 230 227;
+    --line-strong: 203 203 199;
+
+    --ink: 20 22 26;    /* 18.11:1 */
+    --ink-2: 74 81 90;  /*  8.03:1 */
+    --ink-3: 107 115 125; /* 4.80:1 */
+
+    --brand: 194 65 12;       /*  5.18:1 on white — darkened stroke variant */
+    --brand-solid: 255 122 47; /* the fill does NOT change between themes */
+    --brand-ink: 10 11 13;
+    --brand-wash: 255 240 232;
+
+    --accent: 3 105 161;   /* 5.93:1 */
+    --accent-ink: 10 11 13;
+    --accent-wash: 233 245 252;
+
+    --good: 12 122 65;   /* 5.42:1 — darkened from a brighter green that failed at 4.23 */
+    --warn: 138 90 0;    /* 5.93:1 */
+    --bad: 196 43 43;    /* 5.63:1 */
+    --info: 29 111 208;  /* 4.96:1 */
+    --on-status: 10 11 13;
+
+    --shadow: 24 30 40;
+    --glass: 252 252 251;
+    --glass-alpha: 0.72;
+    --glass-blur: 20px;
+    --glass-edge: 255 255 255;
+    --glass-edge-alpha: 0.7;
+
+    --chart-surface: 255 255 255;
+    --chart-grid: 230 230 227;
+    --chart-axis: 203 203 199;
+    --chart-muted: 107 115 125;
   }
 
   * {
@@ -106,11 +126,18 @@
 
   body {
     @apply bg-bg text-ink font-sans antialiased;
-    font-feature-settings: 'ss01', 'cv11';
     min-height: 100dvh;
   }
 
-  /* Visible, brand-coloured focus for every interactive element. */
+  /* Numbers are instrumentation. Every figure in this product is monospaced
+     and tabular so columns align and a changing digit does not reflow. */
+  .tnum,
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Brand-coloured focus, visible on every surface it can land on:
+     7.57:1 dark, 4.96:1 light — both clear the 3:1 non-text requirement. */
   :where(a, button, input, select, textarea, [tabindex]):focus-visible {
     outline: 2px solid rgb(var(--brand));
     outline-offset: 2px;
@@ -151,223 +178,169 @@
 }
 
 @layer components {
+  /* ── Surfaces ──────────────────────────────────────────────────────────
+     One card. Elevation is carried by surface lightness first in dark mode
+     and by shadow first in light — which is why both are declared and the
+     tokens differ per theme rather than the rule differing. */
   .card {
-    @apply bg-surface border border-line rounded-lg shadow-xs;
+    @apply rounded-md border border-line bg-surface shadow-e1;
   }
 
   .card-interactive {
-    @apply card transition-[transform,box-shadow,border-color] duration-300 ease-out
-           hover:-translate-y-px hover:shadow-md hover:border-line-strong;
+    @apply card transition-[transform,box-shadow,border-color] duration-[180ms] ease-out
+           hover:-translate-y-px hover:border-line-strong hover:shadow-e2;
   }
 
-  /* A glass surface is three things, not one: a translucent tint, a blur, and a
-     bright top edge where the light catches. Dropping the edge is what made the
-     light theme read as flat card rather than glass. */
+  /* ── Glass ─────────────────────────────────────────────────────────────
+     One variant, for sticky chrome only. The previous design had four
+     overlapping treatments — glass, liquid-glass, glow-panel and aurora —
+     with no rule for which applied where, so surfaces that meant the same
+     thing looked different. */
   .glass {
-    position: relative;
     background: rgb(var(--glass) / var(--glass-alpha));
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    box-shadow:
-      inset 0 1px 0 0 rgb(var(--glass-edge) / var(--glass-edge-alpha)),
-      inset 0 0 0 1px rgb(var(--glass-edge) / calc(var(--glass-edge-alpha) * 0.4));
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    box-shadow: inset 0 1px 0 0 rgb(var(--glass-edge) / var(--glass-edge-alpha));
   }
 
-  /* Opt-in stronger variant for panels that float over content. */
-  .glass-raised {
-    @apply glass;
-    box-shadow:
-      inset 0 1px 0 0 rgb(var(--glass-edge) / var(--glass-edge-alpha)),
-      inset 0 0 0 1px rgb(var(--glass-edge) / calc(var(--glass-edge-alpha) * 0.4)),
-      0 16px 40px -12px rgb(var(--shadow) / 0.18);
-  }
-
-  /**
-   * A band of light sweeping across a surface while it waits.
-   *
-   * Preferred to a skeleton here because the passage underneath stays readable
-   * — you can keep typing the current exercise right up until the new one
-   * lands, which a skeleton would make impossible.
-   */
-  .shimmer-sweep {
-    background: linear-gradient(
-      100deg,
-      transparent 0%,
-      rgb(var(--glass-edge) / 0.14) 45%,
-      rgb(var(--brand-solid) / 0.10) 55%,
-      transparent 100%
-    );
-    animation: shimmer-sweep 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  }
-
-  @keyframes shimmer-sweep {
-    from { transform: translateX(-120%); }
-    to { transform: translateX(340%); }
-  }
-
-  /** The arrival beat once loading ends. Deliberately short and small: this is
-   *  punctuation, not an entrance. */
-  .pop-in {
-    animation: pop-in 0.48s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  @keyframes pop-in {
-    from { opacity: 0.45; transform: scale(0.988); filter: blur(1.5px); }
-    to { opacity: 1; transform: scale(1); filter: blur(0); }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .shimmer-sweep { animation: none; opacity: 0.5; }
-    .pop-in { animation: none; }
-  }
-
-  /**
-   * Liquid glass.
-   *
-   * `.glass` is a flat translucent pane. This adds the two things that make
-   * glass read as a lens rather than a tint: a specular highlight raking across
-   * the top-left, and a soft inner shadow at the bottom so the pane has
-   * thickness. Both live on a pseudo-element behind the content, so nothing
-   * inside loses contrast against them.
-   *
-   * `isolation: isolate` keeps ::before from painting over descendants, and the
-   * highlight is pointer-events-none so it can never eat a click.
-   */
-  .liquid-glass {
-    @apply glass;
-    position: relative;
-    isolation: isolate;
-    overflow: hidden;
-  }
-
-  .liquid-glass::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-    background:
-      linear-gradient(135deg, rgb(var(--glass-edge) / 0.16) 0%, transparent 34%),
-      radial-gradient(90% 60% at 12% 0%, rgb(var(--brand-solid) / 0.10), transparent 62%),
-      radial-gradient(80% 70% at 100% 100%, rgb(107 184 214 / 0.09), transparent 66%);
-  }
-
-  .liquid-glass::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-    box-shadow: inset 0 -20px 30px -24px rgb(var(--shadow) / 0.5);
-  }
-
-  /**
-   * Soft brand glow bled into the chrome. Two very diffuse radials sitting
-   * behind the panel's own background, so the surface picks up a faint tint at
-   * its corners without any element on top of it losing contrast.
-   * `isolation` keeps the pseudo-element from painting over the panel's kids.
-   */
-  .glow-panel {
-    position: relative;
-    isolation: isolate;
-  }
-
-  .glow-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-    background:
-      radial-gradient(120% 140% at 0% 0%, rgb(var(--brand-solid) / 0.16), transparent 58%),
-      radial-gradient(120% 140% at 100% 100%, rgb(107 184 214 / 0.13), transparent 60%);
-    filter: blur(6px);
-  }
-
-  [data-theme='dark'] .glow-panel::before {
-    background:
-      radial-gradient(120% 140% at 0% 0%, rgb(var(--brand-solid) / 0.11), transparent 58%),
-      radial-gradient(120% 140% at 100% 100%, rgb(107 184 214 / 0.10), transparent 60%);
-  }
-
+  /* ── Typographic roles ─────────────────────────────────────────────────
+     `eyebrow` is mono because it labels a region the way a panel label does
+     on an instrument. */
   .eyebrow {
-    @apply font-mono text-2xs uppercase tracking-[0.12em] text-ink-3;
+    @apply font-mono text-2xs font-medium uppercase tracking-[0.1em] text-ink-3;
   }
 
   .hairline {
     @apply border-t border-line;
   }
 
-  /* Gradient text used sparingly — headline accents only. */
-  .grad-text {
-    background: linear-gradient(96deg, rgb(var(--ink)) 20%, rgb(var(--brand)) 120%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* ── Loading ───────────────────────────────────────────────────────────
+     A band of light sweeping across a surface while it waits.
+     Preferred to a skeleton on the typing stage because the passage
+     underneath stays readable — you can keep typing the current exercise
+     right up until the new one lands, which a skeleton would prevent. */
+  .shimmer-sweep {
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgb(var(--glass-edge) / 0.12) 45%,
+      rgb(var(--brand-solid) / 0.1) 55%,
+      transparent 100%
+    );
+    animation: shimmer-sweep 1.25s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
 
-  .grad-brand {
-    background-image: linear-gradient(135deg, rgb(var(--brand-solid)), rgb(var(--brand-solid) / 0.55) 60%, rgb(107 184 214 / 0.5));
+  @keyframes shimmer-sweep {
+    from {
+      transform: translateX(-120%);
+    }
+    to {
+      transform: translateX(340%);
+    }
   }
 
-  /* Ambient page glow behind hero sections. */
-  .aurora::before {
-    content: '';
-    position: absolute;
-    inset: -20% -10% auto -10%;
-    height: 460px;
-    pointer-events: none;
-    background:
-      radial-gradient(48% 60% at 22% 0%, rgb(var(--brand-solid) / 0.28), transparent 70%),
-      radial-gradient(42% 55% at 78% 8%, rgb(107 184 214 / 0.22), transparent 70%);
-    filter: blur(28px);
-    z-index: 0;
+  /* The arrival beat once loading ends. Punctuation, not an entrance. */
+  .pop-in {
+    animation: pop-in 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes pop-in {
+    from {
+      opacity: 0.45;
+      transform: scale(0.988);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shimmer-sweep {
+      animation: none;
+      opacity: 0.5;
+    }
+    .pop-in {
+      animation: none;
+    }
   }
 }
 
 @layer utilities {
-  .tnum {
-    font-variant-numeric: tabular-nums;
-  }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
   .no-scrollbar {
     scrollbar-width: none;
   }
-  .stack-gap > * + * {
-    margin-top: 24px;
+
+  /* Wide content scrolls inside its own container so the page body never
+     scrolls sideways. */
+  .scroll-x {
+    @apply overflow-x-auto;
+    scrollbar-width: thin;
   }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
-   Syntax highlighting. Prism emits .token.* classes; these map onto the theme
-   tokens so code recolours with the rest of the app.
+   Syntax highlighting.
+
+   These map onto chart-ramp slots rather than holding their own hex values.
+   Previously they were hardcoded literals sitting outside the token system,
+   so a rebrand could not reach them and they were never checked for contrast
+   against the surfaces they actually render on.
+
+   The binding rule for the typing surface is in TypingStage: typing state
+   always overrides syntax colour. A wrong character reads as wrong whatever
+   token it belongs to.
    ─────────────────────────────────────────────────────────────────────────── */
+:root,
+[data-theme='dark'] {
+  --tok-comment: 130 140 151;
+  --tok-punct: 168 176 186;
+  --tok-tag: 255 122 47;
+  --tok-number: 255 197 61;
+  --tok-string: 74 222 128;
+  --tok-operator: 79 195 247;
+  --tok-keyword: 192 132 252;
+  --tok-function: 90 169 255;
+}
+
+[data-theme='light'] {
+  --tok-comment: 107 115 125;
+  --tok-punct: 74 81 90;
+  --tok-tag: 194 65 12;
+  --tok-number: 138 90 0;
+  --tok-string: 12 122 65;
+  --tok-operator: 3 105 161;
+  --tok-keyword: 124 58 237;
+  --tok-function: 29 111 208;
+}
+
 .tok-comment,
 .token.comment,
 .token.prolog,
 .token.doctype,
 .token.cdata {
-  color: rgb(var(--ink-3));
+  color: rgb(var(--tok-comment));
   font-style: italic;
 }
 .token.punctuation {
-  color: rgb(var(--ink-2));
+  color: rgb(var(--tok-punct));
 }
 .token.property,
 .token.tag,
 .token.constant,
 .token.symbol,
 .token.deleted {
-  color: #e06c9a;
+  color: rgb(var(--tok-tag));
 }
 .token.boolean,
-.token.number {
-  color: #d98324;
+.token.number,
+.token.regex,
+.token.variable,
+.token.important {
+  color: rgb(var(--tok-number));
 }
 .token.selector,
 .token.attr-name,
@@ -375,58 +348,19 @@
 .token.char,
 .token.builtin,
 .token.inserted {
-  color: #4f9d5b;
+  color: rgb(var(--tok-string));
 }
 .token.operator,
 .token.entity,
 .token.url {
-  color: #5a9bb5;
+  color: rgb(var(--tok-operator));
 }
 .token.atrule,
 .token.attr-value,
 .token.keyword {
-  color: #8a6ad6;
+  color: rgb(var(--tok-keyword));
 }
 .token.function,
 .token.class-name {
-  color: #3f87d4;
-}
-.token.regex,
-.token.important,
-.token.variable {
-  color: #d98324;
-}
-
-[data-theme='dark'] .token.property,
-[data-theme='dark'] .token.tag,
-[data-theme='dark'] .token.constant,
-[data-theme='dark'] .token.symbol {
-  color: #f08bb0;
-}
-[data-theme='dark'] .token.boolean,
-[data-theme='dark'] .token.number,
-[data-theme='dark'] .token.regex,
-[data-theme='dark'] .token.variable {
-  color: #f0a35e;
-}
-[data-theme='dark'] .token.selector,
-[data-theme='dark'] .token.attr-name,
-[data-theme='dark'] .token.string,
-[data-theme='dark'] .token.char,
-[data-theme='dark'] .token.builtin {
-  color: #8fd49b;
-}
-[data-theme='dark'] .token.operator,
-[data-theme='dark'] .token.entity,
-[data-theme='dark'] .token.url {
-  color: #8fc9de;
-}
-[data-theme='dark'] .token.atrule,
-[data-theme='dark'] .token.attr-value,
-[data-theme='dark'] .token.keyword {
-  color: #b49ff0;
-}
-[data-theme='dark'] .token.function,
-[data-theme='dark'] .token.class-name {
-  color: #7cb4ec;
+  color: rgb(var(--tok-function));
 }

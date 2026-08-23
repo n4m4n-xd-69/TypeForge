@@ -36,7 +36,7 @@ export default function ChatFab() {
 
   const weak = weakestKeys(state.keyStats, 5).map((k) => keyLabel(k.key));
   const system = [
-    'You are the coach inside KeyStroke, a typing and code-typing platform. Friendly and direct.',
+    'You are the coach inside TypeForge, a typing and code-typing platform. Friendly and direct.',
     'Answer in under 130 words. No preamble. Never use markdown tables.',
     '',
     'About this user — use it to make advice specific, but do not recite it back:',
@@ -105,7 +105,7 @@ export default function ChatFab() {
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.98 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className={cx(
-              'liquid-glass fixed bottom-[76px] right-2 z-[46] flex w-[min(380px,calc(100vw-16px))] flex-col',
+              'glass fixed bottom-[76px] right-2 z-[46] flex w-[min(380px,calc(100vw-16px))] flex-col',
               'rounded-2xl border border-line shadow-2xl',
               'h-[min(560px,calc(100dvh-140px))]',
             )}
@@ -225,7 +225,7 @@ export default function ChatFab() {
         whileHover={reduce ? undefined : { scale: 1.06, rotate: -6 }}
         whileTap={{ scale: 0.94 }}
         className={cx(
-          'liquid-glass fixed bottom-2 right-2 z-[46] grid h-[52px] w-[52px] place-items-center',
+          'glass fixed bottom-2 right-2 z-[46] grid h-[52px] w-[52px] place-items-center',
           'rounded-full border border-line shadow-xl',
           // Clear of the mobile tab bar, which owns the bottom strip under lg.
           'mb-9 lg:mb-0',

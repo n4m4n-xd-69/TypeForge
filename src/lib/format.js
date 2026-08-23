@@ -1,6 +1,20 @@
-import clsx from 'clsx';
-
-export const cx = clsx;
+/**
+ * Class-name joiner.
+ *
+ * This was `export const cx = clsx` — a dependency, a build edge and an
+ * indirection for one aliasing line. Every call site in this codebase passes
+ * strings and conditionals, never the objects or nested arrays clsx also
+ * handles, so the full implementation was never reached.
+ */
+export function cx(...parts) {
+  let out = '';
+  for (const part of parts) {
+    if (!part) continue;
+    const value = typeof part === 'string' ? part : Array.isArray(part) ? cx(...part) : '';
+    if (value) out += out ? ` ${value}` : value;
+  }
+  return out;
+}
 
 export function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n));

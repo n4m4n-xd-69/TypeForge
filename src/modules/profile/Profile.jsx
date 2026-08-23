@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   ArrowRight, Check, EyeOff, Flame, Gauge, LogOut, Mail, ShieldCheck, Trash2,
-  Trophy, Upload, User,
+  Trophy, Upload,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import { Card, Chip, ProgressBar } from '../../components/ui/Primitives.jsx';
@@ -88,7 +88,7 @@ export default function Profile() {
         <p className="eyebrow">Account</p>
         <h1 className="mt-0.5 text-3xl font-extrabold">Your profile</h1>
         <p className="mt-0.5 max-w-[54ch] text-sm text-ink-3">
-          How you appear across KeyStroke, and where your progress is kept.
+          How you appear across TypeForge, and where your progress is kept.
         </p>
       </header>
 
@@ -98,7 +98,7 @@ export default function Profile() {
           picker — the taller half — sets the height the other fills. */}
       <Reveal>
         <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="liquid-glass overflow-hidden rounded-lg border border-line">
+          <div className="glass overflow-hidden rounded-lg border border-line">
             <div className="flex items-center gap-2 p-2.5">
               <div className="relative shrink-0">
                 <Avatar value={avatar} name={name} size={72} ring />
@@ -255,7 +255,7 @@ export default function Profile() {
               {guest ? (
                 <>
                   <p className="mt-1.5 max-w-[60ch] text-sm leading-relaxed text-ink-2">
-                    This account lives in this browser. Clear your site data, or open KeyStroke anywhere
+                    This account lives in this browser. Clear your site data, or open TypeForge anywhere
                     else, and there is no way back to it. Attaching an email or a Google account keeps the
                     same profile — nothing is lost or restarted.
                   </p>

@@ -374,7 +374,7 @@ export default function Practice() {
     <div className="space-y-3">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="eyebrow">Module 01</p>
+          <p className="eyebrow">Train</p>
           <h1 className="mt-0.5 text-3xl font-extrabold">Typing practice</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
             Pick a shape, then stop thinking about it. Accuracy first — speed is what accuracy turns into.

@@ -1,12 +1,33 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="KeyStroke — practise typing, drill real code, and race in multiplayer battles. Track WPM, accuracy and consistency with a streak that keeps you honest." />
-    <meta name="theme-color" content="#f6f7f3" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0b0d0a" media="(prefers-color-scheme: dark)" />
-    <title>KeyStroke — type faster, code sharper</title>
+    <title>TypeForge — type faster, prove it</title>
+    <meta
+      name="description"
+      content="A typing-performance platform for people who type for a living. Drill prose and real code, see which keys cost you, and race other people on a clock nobody can cheat."
+    />
+    <meta name="theme-color" content="#0a0b0d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+
+    <!-- Open Graph / Twitter. The image is generated from the mark by
+         `node scripts/build-icons.mjs`, so it cannot drift from the logo. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TypeForge" />
+    <meta property="og:title" content="TypeForge — type faster, prove it" />
+    <meta
+      property="og:description"
+      content="Drill prose and real code, see which keys cost you, and race other people on a clock nobody can cheat."
+    />
+    <meta property="og:image" content="/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TypeForge — type faster, prove it" />
+    <meta
+      name="twitter:description"
+      content="Drill prose and real code, see which keys cost you, and race other people on a clock nobody can cheat."
+    />
+    <meta name="twitter:image" content="/og.png" />
 
     <!--
       Every icon below is generated from src/components/brand/Logo.jsx by
@@ -23,21 +44,33 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
 
     <script>
-      // Resolve the theme before first paint so there is never a flash of the wrong mode.
+      /**
+       * Resolve the theme before first paint so there is never a flash of the
+       * wrong mode.
+       *
+       * Reads the TypeForge key first and falls back to the KeyStroke one.
+       * The fallback is not optional: the storage migration runs inside the
+       * React bundle, which has not executed yet at this point, so on the
+       * first load after upgrading an existing user's only saved preference
+       * is still under the old namespace. Without this line they get one
+       * frame of the wrong theme on exactly the load where the product is
+       * trying to make its best impression.
+       */
       (function () {
         try {
-          var saved = localStorage.getItem('keystroke.theme');
+          var saved =
+            localStorage.getItem('typeforge.theme') || localStorage.getItem('keystroke.theme');
           var mode =
             saved && saved !== 'system'
               ? saved
-              : window.matchMedia('(prefers-color-scheme: dark)').matches
-                ? 'dark'
-                : 'light';
+              : window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark';
           document.documentElement.dataset.theme = mode;
         } catch (e) {}
       })();

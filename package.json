@@ -1,17 +1,17 @@
 {
-  "name": "keystroke",
+  "name": "typeforge",
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "KeyStroke — a premium typing, code-typing and multiplayer battle platform.",
+  "description": "TypeForge \u2014 a typing-performance platform for people who type for a living.",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "node scripts/build-icons.mjs && vite build",
+    "preview": "vite preview",
+    "icons": "node scripts/build-icons.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
-    "clsx": "^2.1.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.469.0",
     "prismjs": "^1.30.0",

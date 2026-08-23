@@ -21,7 +21,7 @@ import {
 } from '../../lib/chatStore.js';
 
 const BASE_SYSTEM =
-  'You are the coach inside KeyStroke, a typing and code-typing platform. Answer in a friendly, ' +
+  'You are the coach inside TypeForge, a typing and code-typing platform. Answer in a friendly, ' +
   'direct voice. Prefer short paragraphs and concrete examples. When the question is about code, ' +
   'show a small runnable snippet in a fenced block. Keep answers under 250 words unless asked to ' +
   'go deeper. Use markdown headings only when an answer genuinely has sections. ' +
@@ -229,7 +229,7 @@ export default function AIChat() {
   return (
     <div className="flex h-[calc(100dvh-150px)] min-h-[460px] gap-2">
       {/* ── Thread rail ─────────────────────────────────────────────── */}
-      <aside className="liquid-glass hidden w-[230px] shrink-0 flex-col rounded-lg border border-line lg:flex">
+      <aside className="glass hidden w-[230px] shrink-0 flex-col rounded-lg border border-line lg:flex">
         <div className="shrink-0 space-y-1 border-b border-line/70 p-1.5">
           <Button size="sm" variant="brand" icon={Plus} className="w-full" onClick={startNew}>
             New chat
@@ -265,7 +265,7 @@ export default function AIChat() {
       </aside>
 
       {/* ── Conversation ────────────────────────────────────────────── */}
-      <div className="liquid-glass relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line">
+      <div className="glass relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line">
         <header className="flex shrink-0 items-center gap-1 border-b border-line/70 px-2 py-1.5">
           <span className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-brand-wash text-brand">
             <MessageSquare size={14} strokeWidth={2.4} aria-hidden />

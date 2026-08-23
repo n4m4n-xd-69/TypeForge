@@ -54,7 +54,7 @@ export default function Landing() {
       <section className="grid gap-2 md:grid-cols-2">
         <ActionCard
           to="/practice"
-          eyebrow="Module 01"
+          eyebrow="Prose"
           title="Start typing"
           blurb="Time, words, quotes, drills and zen. Live WPM, accuracy and a keyboard that shows you the next key."
           icon={Keyboard}
@@ -63,7 +63,7 @@ export default function Landing() {
         />
         <ActionCard
           to="/code"
-          eyebrow="Module 02"
+          eyebrow="Code"
           title="Code typing"
           blurb="Real snippets with syntax highlighting in eleven languages, plus an AI panel that explains what you just typed."
           icon={Braces}
@@ -218,13 +218,13 @@ function Hero({ name, stats, onStart, onCode }) {
        centred with `top-1/2` inside an `overflow-hidden` card, so whenever it
        was taller than the hero its lower half was simply cut off. As a grid
        column it defines its own row height and can never clip. */
-    <section className="aurora relative overflow-hidden rounded-xl border border-line bg-surface px-2.5 py-4 sm:px-5 sm:py-6">
+    <section className="relative overflow-hidden rounded-xl border border-line bg-surface px-2.5 py-4 sm:px-5 sm:py-6">
       <div className="relative grid items-center gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 max-w-[720px]">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface/80 px-1 py-px text-2xs font-extrabold uppercase tracking-[0.1em] text-brand">
             <Sparkles size={11} aria-hidden />
-            {fresh ? 'Welcome to KeyStroke' : longDate()}
+            {fresh ? 'Welcome to TypeForge' : longDate()}
           </span>
 
           <h1 className="mt-1.5 text-4xl font-extrabold leading-[1.05] tracking-[-0.035em] sm:text-5xl">

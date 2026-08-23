@@ -5,7 +5,7 @@
 
 export const EXTRA_SNIPPETS = {
   go: [
-    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'Package, import, func main — the whole ceremony.', code: `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, KeyStroke")\n}` },
+    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'Package, import, func main — the whole ceremony.', code: `package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("Hello, TypeForge")\n}` },
     { difficulty: 'easy', title: 'Range over a slice', topic: 'slices', intro: 'Discards the index with the blank identifier.', code: `func total(nums []int) int {\n\tsum := 0\n\tfor _, n := range nums {\n\t\tsum += n\n\t}\n\treturn sum\n}` },
 
     { difficulty: 'normal', title: 'Error wrapping', topic: 'errors', intro: 'Adds context with %w so callers can still unwrap the cause.', code: `func load(path string) ([]byte, error) {\n\tb, err := os.ReadFile(path)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf("load %s: %w", path, err)\n\t}\n\treturn b, nil\n}` },
@@ -19,7 +19,7 @@ export const EXTRA_SNIPPETS = {
   ],
 
   rust: [
-    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'println! is a macro, which is why it has the bang.', code: `fn main() {\n    println!("Hello, KeyStroke");\n}` },
+    { difficulty: 'easy', title: 'Hello, world', topic: 'program structure', intro: 'println! is a macro, which is why it has the bang.', code: `fn main() {\n    println!("Hello, TypeForge");\n}` },
     { difficulty: 'easy', title: 'Option handling', topic: 'options', intro: 'Returns a borrowed slice that might not exist.', code: `fn first_word(s: &str) -> Option<&str> {\n    s.split_whitespace().next()\n}` },
 
     { difficulty: 'normal', title: 'Result with ?', topic: 'errors', intro: 'The question mark propagates the error without a match block.', code: `fn parse_port(raw: &str) -> Result<u16, ParseIntError> {\n    let port = raw.trim().parse::<u16>()?;\n    Ok(port)\n}` },

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Settings2 } from 'lucide-react';
-import { cx } from '../../lib/format.js';
 
 /**
  * Full-screen orientation overlay, in the same register as the first-run name

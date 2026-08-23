@@ -73,7 +73,7 @@ export const PROVIDERS = {
     ],
     thinkingModels: [],
     referer: env.VITE_SITE_URL || 'http://localhost:5173',
-    title: 'KeyStroke',
+    title: 'TypeForge',
   },
 };
 

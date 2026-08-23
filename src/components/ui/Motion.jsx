@@ -104,42 +104,7 @@ export function Floating({ children, amplitude = 8, duration = 7, delay = 0, cla
   );
 }
 
-/** Interactive card wrapper: reveals on scroll, lifts on hover, dips on press. */
-export function LiftCard({ children, delay = 0, className, ...rest }) {
-  const reduce = useReducedMotionSafe();
-
-  return (
-    <motion.div
-      className={className}
-      variants={fadeUp(reduce)}
-      initial="hidden"
-      whileInView="show"
-      viewport={REVEAL_VIEWPORT}
-      transition={{ delay: reduce ? 0 : delay }}
-      {...hoverLift(reduce)}
-      {...rest}
-    >
-      {children}
-    </motion.div>
-  );
-}
 
 /* Counting numbers are handled by `Counter.jsx`, which already ramps with rAF
    and snaps under reduced motion — no motion-library equivalent needed here. */
 
-/** Shared page-level entrance, for the top of a route. */
-export function PageIntro({ children, className, ...rest }) {
-  const reduce = useReducedMotionSafe();
-
-  return (
-    <motion.div
-      className={className}
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: DUR.base, ease: EASE }}
-      {...rest}
-    >
-      {children}
-    </motion.div>
-  );
-}

@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  BadgeInfo, Braces, ChevronRight, Command, Flame, Home, Keyboard,
+  Braces, ChevronRight, Command, Flame, Home, Keyboard,
   LineChart, Swords, Trophy,
 } from 'lucide-react';
 import { cx } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
 import { levelTitle } from '../../lib/gamification.js';
-import { useReducedMotionSafe } from '../../lib/motion.js';
 import Logo from '../brand/Logo.jsx';
 import Avatar from '../ui/Avatar.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
@@ -17,33 +16,41 @@ import ChatFab from './ChatFab.jsx';
 import AccountMenu from '../../modules/auth/AccountMenu.jsx';
 import AuthModal from '../../modules/auth/AuthModal.jsx';
 
-/* Grouped like the reference: what you do, then what you've done.
+/**
+ * Navigation, grouped by what you are doing rather than by feature.
  *
- * Battlefield takes the slot Chat used to hold rather than adding a ninth item.
- * The mobile tab bar below renders NAV with `flex-1` per entry, so a ninth would
- * have given every tab 40px at 360px wide — and Chat was the one entry already
- * reachable from everywhere else: ChatFab floats the same coach on every route,
- * and the full /chat page is now in the command palette. The route itself is
- * untouched; only its place in the nav moved. */
+ * Two constraints shaped this. The mobile tab bar renders each entry with
+ * `flex-1`, so at 360px a ninth item would give every tab 40px — eight is a
+ * hard ceiling. And the previous seven-item list had "Progress" and "Rewards"
+ * adjacent while describing overlapping ideas, which meant the answer to
+ * "where do I see how I'm doing" was two places.
+ *
+ * Five stay, leaving three slots of headroom for future modes. `Train` and
+ * `Compete` are groups whose first item is their destination, so nothing
+ * sits behind a hub screen — the mode switcher lives inside the typing
+ * surface, where the user already is.
+ *
+ * /chat and /about are deliberately out: the coach floats on every route via
+ * ChatFab, and both are in the command palette.
+ */
 export const NAV_GROUPS = [
   {
-    label: 'Practice',
+    label: 'Train',
     items: [
       { to: '/', label: 'Home', icon: Home, end: true },
       { to: '/practice', label: 'Typing', icon: Keyboard },
       { to: '/code', label: 'Code', icon: Braces },
-      { to: '/battle', label: 'Battle', icon: Swords },
     ],
   },
   {
-    label: 'Insight',
+    label: 'Compete',
     items: [
+      { to: '/battle', label: 'Battle', icon: Swords },
       { to: '/dashboard', label: 'Progress', icon: LineChart },
+      /* Rewards stays until Progress absorbs it. Dropping it now to hit a
+         five-item target would leave a live route reachable only from the
+         command palette, which trades discoverability for a number. */
       { to: '/achievements', label: 'Rewards', icon: Trophy },
-      // BadgeInfo rather than Info: the bare outline circle read as a passive
-      // status glyph next to solid-weight neighbours, so it looked like a
-      // label rather than a destination.
-      { to: '/about', label: 'About', icon: BadgeInfo },
     ],
   },
 ];
@@ -134,12 +141,12 @@ export default function AppShell({ children }) {
       <aside
         style={{ width: open ? RAIL_EXPANDED : RAIL_COLLAPSED, top: RAIL_TOP }}
         className={cx(
-          'glow-panel fixed bottom-2 left-2 z-30 hidden flex-col overflow-hidden lg:flex',
-          'rounded-xl border border-line bg-surface',
+          'fixed bottom-2 left-2 z-30 hidden flex-col overflow-hidden lg:flex',
+          'rounded-lg border border-line bg-surface',
           // One property animating, one easing, GPU-hinted — this is what makes
           // the expand read as smooth rather than stepped.
           'transition-[width,box-shadow] duration-[340ms] ease-[cubic-bezier(0.32,0.72,0,1)] will-change-[width]',
-          open ? 'shadow-xl' : 'shadow-md',
+          open ? 'shadow-e4' : 'shadow-e2',
         )}
         aria-label="Primary navigation"
       >
@@ -272,8 +279,7 @@ export default function AppShell({ children }) {
       {/* ── Floating top bar — full width, above the rail ────────────── */}
       {/* `overflow-hidden` is what keeps the tagline's entrance inside the bar
           rather than bleeding above or below it. */}
-      <header className="glass glow-panel sticky top-2 z-40 mx-2 mt-2 flex h-[60px] items-center gap-1.5 overflow-hidden rounded-xl border border-line px-2 shadow-md">
-        <Tagline />
+      <header className="glass sticky top-2 z-40 mx-2 mt-2 flex h-[56px] items-center gap-1.5 rounded-lg border border-line px-2 shadow-e2">
         {/* The mark comes from Logo.jsx, which owns the one shape the favicon,
             app icons and boot screen all derive from. This used to be a
             hardcoded <span>k</span>, so editing Logo.jsx changed nothing on
@@ -281,10 +287,13 @@ export default function AppShell({ children }) {
             what was committed. */}
         <NavLink
           to="/"
-          className="group relative z-10 flex shrink-0 items-center gap-1 text-xl font-extrabold tracking-[-0.04em]"
+          aria-label="TypeForge — home"
+          className="flex shrink-0 items-center gap-1 rounded-sm"
         >
-          <Logo size={32} className="shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:rotate-[-16deg]" />
-          <span className="whitespace-nowrap">KeyStroke</span>
+          <Logo size={28} className="shrink-0" />
+          <span className="whitespace-nowrap font-display text-xl font-bold tracking-[-0.03em]">
+            TypeForge
+          </span>
         </NavLink>
 
         <div className="ml-auto flex items-center gap-1">
@@ -373,68 +382,6 @@ export default function AppShell({ children }) {
           owning a modal of its own. */}
       <AuthModal />
     </div>
-  );
-}
-
-/** Visible for this long, then away for this long, on repeat. */
-const TAGLINE_SHOW_MS = 15_000;
-const TAGLINE_HIDE_MS = 30_000;
-
-/**
- * The tagline, centred in the top bar on load and gone five seconds later.
- *
- * Absolutely positioned and `inset-0` inside the bar so it is centred against
- * the bar itself rather than against whatever happens to sit between the
- * wordmark and the controls — those change width per route, and a flex-centred
- * element would drift with them. `overflow-hidden` on the header keeps the
- * entrance from painting outside the bar.
- *
- * `pointer-events-none` because it sits over the header: it must never
- * intercept a click aimed at the wordmark or the controls beneath it. It is
- * also `aria-hidden` — a decorative flourish that a screen reader would
- * otherwise announce on every load.
- */
-function Tagline() {
-  const reduce = useReducedMotionSafe();
-  const [show, setShow] = useState(true);
-
-  /**
-   * Alternates on its own timer rather than one interval, so the visible and
-   * hidden spans can differ. The timeout is keyed to `show`, which means each
-   * phase schedules only the next one — no drift, and nothing to reconcile if a
-   * render lands mid-cycle.
-   */
-  useEffect(() => {
-    const t = setTimeout(() => setShow((v) => !v), show ? TAGLINE_SHOW_MS : TAGLINE_HIDE_MS);
-    return () => clearTimeout(t);
-  }, [show]);
-
-  return (
-    <AnimatePresence>
-      {show ? (
-        <motion.div
-          key="tagline"
-          aria-hidden
-          // Rises from the bar's lower edge, settles dead centre, leaves through
-          // the top. The blur is what sells it as depth rather than a slide: it
-          // reads as the words resolving into focus as they arrive, and the
-          // header's overflow clip means both ends happen out of sight.
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26, filter: 'blur(6px)', scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }}
-          exit={reduce ? { opacity: 0 } : { opacity: 0, y: -26, filter: 'blur(6px)', scale: 0.97 }}
-          transition={{
-            duration: reduce ? 0.2 : 0.85,
-            ease: [0.22, 1, 0.36, 1],
-            filter: { duration: reduce ? 0.2 : 0.6 },
-          }}
-          className="pointer-events-none absolute inset-0 hidden items-center justify-center sm:flex"
-        >
-          <span className="whitespace-nowrap text-sm font-bold tracking-[0.01em] text-ink-3">
-            type faster, <span className="text-brand">code sharper</span>
-          </span>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
   );
 }
 

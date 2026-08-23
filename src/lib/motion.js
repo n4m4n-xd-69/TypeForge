@@ -17,14 +17,27 @@ import { useReducedMotion } from 'framer-motion';
  * The curve below is the one already used by the app shell and theme
  * transitions, so new motion feels like it belongs to the same object.
  */
-export const EASE = [0.16, 1, 0.3, 1];
-/** For things that should overshoot slightly — toggles, pressed states. */
-export const EASE_SPRING = [0.34, 1.56, 0.64, 1];
+/**
+ * The house curve: decelerate, never overshoot. Matches `ease-out` in
+ * tailwind.config.js so a CSS transition and a framer transition on the same
+ * element agree.
+ */
+export const EASE = [0.2, 0, 0, 1];
 
+/**
+ * Durations, in seconds, mirroring the CSS `duration-*` tokens.
+ *
+ * Exit is deliberately faster than enter everywhere it is used. Something
+ * arriving should be legible; something leaving is already decided, and
+ * making the user wait for it to finish is the most common way an interface
+ * starts feeling slow.
+ */
 export const DUR = {
-  fast: 0.18,
-  base: 0.32,
-  slow: 0.5,
+  instant: 0.08,
+  fast: 0.12,
+  base: 0.18,
+  slow: 0.28,
+  deliberate: 0.42,
 };
 
 /**
@@ -40,17 +53,6 @@ export function useReducedMotionSafe() {
 export const fadeUp = (reduce, distance = 14) => ({
   hidden: { opacity: 0, y: reduce ? 0 : distance },
   show: { opacity: 1, y: 0, transition: { duration: DUR.base, ease: EASE } },
-});
-
-export const fadeIn = (reduce) => ({
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: reduce ? DUR.fast : DUR.base, ease: EASE } },
-});
-
-/** For things that should feel like they *arrive* — badges, stat tiles. */
-export const scaleIn = (reduce) => ({
-  hidden: { opacity: 0, scale: reduce ? 1 : 0.94 },
-  show: { opacity: 1, scale: 1, transition: { duration: DUR.base, ease: EASE } },
 });
 
 /**
@@ -73,20 +75,17 @@ export const staggerContainer = (reduce, step = 0.045, delay = 0) => ({
 /** Shared `whileInView` config — reveal once, slightly before the edge. */
 export const REVEAL_VIEWPORT = { once: true, margin: '0px 0px -12% 0px' };
 
-/** Hover/press feedback for interactive cards. Skipped under reduced motion. */
+/**
+ * Hover/press feedback for interactive cards. Skipped under reduced motion.
+ *
+ * The lift is 1px, down from 3px. A card that jumps announces itself; a card
+ * that shifts by a hairline reads as responsive without competing with
+ * whatever the user is actually looking at.
+ */
 export const hoverLift = (reduce) =>
   reduce
     ? {}
     : {
-        whileHover: { y: -3, transition: { duration: DUR.fast, ease: EASE } },
-        whileTap: { scale: 0.985, transition: { duration: 0.1 } },
-      };
-
-/** Same idea, for small controls where a lift would look wrong. */
-export const hoverPop = (reduce) =>
-  reduce
-    ? {}
-    : {
-        whileHover: { scale: 1.04, transition: { duration: DUR.fast, ease: EASE } },
-        whileTap: { scale: 0.96, transition: { duration: 0.1 } },
+        whileHover: { y: -1, transition: { duration: DUR.fast, ease: EASE } },
+        whileTap: { scale: 0.99, transition: { duration: DUR.instant } },
       };

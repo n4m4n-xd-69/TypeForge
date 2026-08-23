@@ -1,35 +1,60 @@
 /**
- * The KeyStroke mark.
+ * The TypeForge mark.
  *
- * Geometry is a vectorisation of the original raster artwork: a rounded
- * tile carrying the folded "K". Both the tile radius and the glyph were
- * measured off the original rather than eyeballed — the tile is a plain
- * circular round-rect at 21.6% of its side, and the glyph is a 14-edge
- * polygon with true circular corners, matching the source to 99.8% IoU.
+ * A caret struck through a bar — the two things the product is about, drawn
+ * as one shape. The upward chevron is the caret and the motion it implies;
+ * the bar beneath it is the baseline that caret runs along, cut short on the
+ * right so the form reads as advancing rather than closed.
+ *
+ * Geometry notes, because they are load-bearing rather than taste:
+ *
+ *   The chevron is built from two strokes meeting at a mitre rather than a
+ *   single polyline with a join, so the apex stays sharp at 16px where a
+ *   round join would blunt it into a dot.
+ *
+ *   Everything is expressed in a 0-100 box and scaled by the viewBox, so a
+ *   favicon and a 96px hero mark are the same shape at different sizes
+ *   rather than two drawings that drifted apart.
  *
  * Everything that draws the logo — header, boot screen, favicon, app icons —
- * comes from the constants below, so there is exactly one shape to change.
+ * derives from the constants below, so there is exactly one shape to change.
  */
 
 /** Corner radius of the tile, as a percentage of its side. */
-export const LOGO_TILE_RADIUS = 21.6;
-
-/** The "K", in the tile's own 0–100 coordinate space. */
-export const LOGO_GLYPH_PATH =
-  'M40.213 22.28A2.033 2.033 0 0 1 42.246 24.313L42.246 36.084L32.952 45.962L32.952 49.156' +
-  'L55.912 25.267A3.216 3.216 0 0 1 58.231 24.28L76.468 24.28A0.483 0.483 0 0 1 76.822 25.093' +
-  'L52.917 50.735L77.275 76.549A0.694 0.694 0 0 1 76.77 77.72L58.337 77.72' +
-  'A2.783 2.783 0 0 1 56.174 76.688L43.749 61.335A0.511 0.511 0 0 0 42.84 61.656L42.84 65.781' +
-  'A3.2 3.2 0 0 1 41.948 67.998L33.542 76.744A3.178 3.178 0 0 1 31.251 77.72L26.48 77.72' +
-  'A3.944 3.944 0 0 1 22.535 73.776L22.535 26.146A3.866 3.866 0 0 1 26.402 22.28L40.213 22.28Z';
+export const LOGO_TILE_RADIUS = 22;
 
 /**
- * Brand colours are literals, not theme tokens. `--brand-solid` happens to be
- * this exact green today, but the logo should not change if that token is ever
- * retuned for contrast — a mark that shifts with the palette is not a mark.
+ * The block caret, leaning into its own direction of travel.
+ *
+ * Two earlier passes drew a chevron above a bar. Both read as the eject
+ * glyph, and no amount of adjusting the proportions fixed it — a chevron
+ * over a detached bar *is* that symbol, so the concept was wrong rather
+ * than the measurements. This is the other thing a caret can be: the solid
+ * block a terminal or an editor parks under the next character.
+ *
+ * The lean is 14°, forward. Upright it is a cursor; leaning it is a cursor
+ * with momentum, which is the whole product in one property. The trailing
+ * block behind it is the same shape at 40% height, reading as the position
+ * just left behind.
+ *
+ * Solid forms rather than strokes: at 16px a stroked outline closes up into
+ * a smudge, while a filled parallelogram holds its silhouette all the way
+ * down to a favicon.
  */
-export const LOGO_GREEN = '#a3e635';
-export const LOGO_INK = '#1c2327';
+export const LOGO_CARET_PATH = 'M45 16 L73 16 L59 84 L31 84 Z';
+
+/** The trail — where the caret was a moment ago. */
+export const LOGO_BAR_PATH = 'M23 55 L35 55 L29 84 L17 84 Z';
+
+/**
+ * Brand colours are literals, not theme tokens.
+ *
+ * `--brand-solid` happens to be this exact orange today, but the mark must
+ * not change if that token is ever retuned for contrast. A logo that shifts
+ * with the palette is not a logo.
+ */
+export const LOGO_FORGE = '#FF7A2F';
+export const LOGO_INK = '#0A0B0D';
 
 /**
  * House tilt, in degrees. Negative is anticlockwise.
@@ -44,7 +69,7 @@ export const LOGO_INK = '#1c2327';
  * NOT take this: the tile *is* the canvas there, so a tilt would leave the
  * corners empty and every OS mask would crop it wrong.
  */
-export const LOGO_TILT = -10;
+export const LOGO_TILT = 0;
 
 function tiltStyle(tilt, style) {
   if (!tilt) return style;
@@ -52,7 +77,7 @@ function tiltStyle(tilt, style) {
 }
 
 /**
- * The full mark: green tile, dark glyph.
+ * The full mark: forge tile, dark glyph.
  *
  * Pass `title` when the logo is the only thing identifying a link or control;
  * leave it off when adjacent text already names it, and the svg is hidden from
@@ -77,8 +102,30 @@ export default function Logo({ size = 32, title, className, tilt = LOGO_TILT, st
       {...rest}
     >
       {labelled ? <title>{title}</title> : null}
-      <rect width="100" height="100" rx={LOGO_TILE_RADIUS} fill={LOGO_GREEN} />
-      <path d={LOGO_GLYPH_PATH} fill={LOGO_INK} />
+      <rect width="100" height="100" rx={LOGO_TILE_RADIUS} fill={LOGO_FORGE} />
+      <path d={LOGO_CARET_PATH} fill={LOGO_INK} />
+      <path d={LOGO_BAR_PATH} fill={LOGO_INK} />
     </svg>
+  );
+}
+
+/**
+ * Wordmark plus mark, as one unit.
+ *
+ * The gap and the optical alignment between the two live here rather than at
+ * each call site, because they were drifting: the header, the boot screen and
+ * the landing hero each had their own spacing and none of them matched.
+ */
+export function Wordmark({ size = 28, className, ...rest }) {
+  return (
+    <span className={className} {...rest}>
+      <Logo size={size} className="shrink-0" />
+      <span
+        className="font-display font-bold tracking-[-0.03em]"
+        style={{ fontSize: size * 0.72 }}
+      >
+        TypeForge
+      </span>
+    </span>
   );
 }

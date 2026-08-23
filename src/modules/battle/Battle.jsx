@@ -48,7 +48,7 @@ export default function Battle() {
         <Card className="p-3">
           <p className="text-sm leading-relaxed text-ink-3">
             Battlefield needs the cloud, and this build has no Supabase keys configured. Everything else
-            in KeyStroke keeps working on this device.
+            in TypeForge keeps working on this device.
           </p>
         </Card>
       </Shell>

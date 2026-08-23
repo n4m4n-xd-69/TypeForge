@@ -63,7 +63,7 @@ export default function Onboarding({ open, onClose, onStart }) {
   return (
     <Modal open={open} onClose={skip} size="md" dismissable>
       <div className="relative overflow-hidden">
-        <div className="aurora relative px-3 pb-2 pt-4">
+        <div className="relative px-3 pb-2 pt-4">
           <div className="relative">
             <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface px-1 py-px text-2xs font-extrabold uppercase tracking-[0.1em] text-brand">
               <Sparkles size={11} aria-hidden /> Welcome

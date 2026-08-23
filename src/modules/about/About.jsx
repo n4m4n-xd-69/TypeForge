@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ArrowRight, BookOpen, Braces, Check, Command, Copy, Heart, Instagram, Keyboard,
+  ArrowRight, Braces, Check, Command, Copy, Heart, Instagram, Keyboard,
   LifeBuoy, Mail, Send, Sparkles, Swords, Trophy,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
@@ -32,10 +32,10 @@ export default function About() {
     <div className="space-y-3">
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="eyebrow">Module 06</p>
+          <p className="eyebrow">About</p>
           <h1 className="mt-0.5 text-3xl font-extrabold">About</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
-            What KeyStroke is, how to get the most out of it, and where to find us.
+            What TypeForge is, how to get the most out of it, and where to find us.
           </p>
         </div>
         <Segmented options={SECTIONS} value={section} onChange={setSection} label="About section" />
@@ -70,15 +70,15 @@ function AboutTab() {
   return (
     <div className="space-y-2.5">
       <Reveal>
-        <div className="liquid-glass overflow-hidden rounded-lg border border-line">
+        <div className="glass overflow-hidden rounded-lg border border-line">
           <div className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:p-4">
             <Logo size={64} className="shrink-0 drop-shadow-md" />
             <div className="min-w-0">
-              <h2 className="text-2xl font-extrabold tracking-[-0.02em]">KeyStroke</h2>
+              <h2 className="text-2xl font-extrabold tracking-[-0.02em]">TypeForge</h2>
               <p className="mt-0.5 max-w-[60ch] text-sm leading-relaxed text-ink-2">
                 A typing trainer built for people who write code. Most typing sites drill prose and stop
                 there — which is fine until the day your job is brackets, semicolons and indentation.
-                KeyStroke drills all three, with real-time multiplayer battles and AI assistance.
+                TypeForge drills all three, with real-time multiplayer battles and AI assistance.
               </p>
             </div>
           </div>
@@ -113,7 +113,7 @@ function AboutTab() {
           },
         ].map((c) => (
           <StaggerItem key={c.title}>
-            <div className="liquid-glass h-full rounded-lg border border-line p-2.5">
+            <div className="glass h-full rounded-lg border border-line p-2.5">
               <span className="grid h-[30px] w-[30px] place-items-center rounded-[10px] bg-brand-wash text-brand">
                 <c.icon size={16} strokeWidth={2.2} aria-hidden />
               </span>
@@ -125,7 +125,7 @@ function AboutTab() {
       </Stagger>
 
       <Reveal delay={0.05}>
-        <div className="liquid-glass flex flex-wrap items-center gap-2 rounded-lg border border-line p-2.5">
+        <div className="glass flex flex-wrap items-center gap-2 rounded-lg border border-line p-2.5">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-extrabold">Everything works offline</p>
             <p className="text-xs leading-relaxed text-ink-3">
@@ -190,7 +190,7 @@ function GuideTab() {
     <Stagger className="grid gap-2 lg:grid-cols-2">
       {GUIDE.map((g) => (
         <StaggerItem key={g.title}>
-          <div className="liquid-glass h-full rounded-lg border border-line p-2.5">
+          <div className="glass h-full rounded-lg border border-line p-2.5">
             <div className="flex items-center gap-1">
               <span className="grid h-[28px] w-[28px] place-items-center rounded-[9px] bg-brand-wash text-brand">
                 <g.icon size={15} strokeWidth={2.2} aria-hidden />
@@ -217,7 +217,7 @@ function GuideTab() {
 /* ── Ask for help ──────────────────────────────────────────────────────── */
 
 const HELP_SYSTEM = [
-  'You are the help assistant inside KeyStroke, a typing and code-typing app.',
+  'You are the help assistant inside TypeForge, a typing and code-typing app.',
   'Answer questions about how to use the app, typing technique, and code practice.',
   'Be brief and concrete — under 140 words. Never invent features; if you are unsure whether',
   'something exists, say so and suggest the closest thing that does.',
@@ -260,7 +260,7 @@ function HelpTab() {
   };
 
   return (
-    <div className="liquid-glass flex h-[calc(100dvh-260px)] min-h-[380px] flex-col overflow-hidden rounded-lg border border-line">
+    <div className="glass flex h-[calc(100dvh-260px)] min-h-[380px] flex-col overflow-hidden rounded-lg border border-line">
       <header className="flex shrink-0 items-center gap-1 border-b border-line px-2 py-1.5">
         <span className="grid h-[26px] w-[26px] place-items-center rounded-[8px] bg-brand-wash text-brand">
           <LifeBuoy size={14} strokeWidth={2.4} aria-hidden />
@@ -333,7 +333,7 @@ function HelpTab() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={!ready}
-          placeholder={ready ? 'Ask anything about KeyStroke…' : 'AI is not configured'}
+          placeholder={ready ? 'Ask anything about TypeForge…' : 'AI is not configured'}
           aria-label="Ask the help assistant"
           className="h-[36px] min-w-0 flex-1 rounded-sm bg-subtle/60 px-1.5 text-sm outline-none placeholder:text-ink-3 focus:bg-subtle disabled:opacity-50"
         />
@@ -358,7 +358,7 @@ function CardIcon({ icon: Icon }) {
    to correct when they change.
 
    These are the project's accounts, not a person's. Everything public about
-   KeyStroke goes through the brand — a maintainer's own handles are not a
+   TypeForge goes through the brand — a maintainer's own handles are not a
    contact channel for it. */
 const INSTAGRAM = 'https://www.instagram.com/keystroke.ai/';
 const EMAIL = 'keystroke-ai@proton.me';
@@ -382,7 +382,7 @@ function FollowTab() {
             href={INSTAGRAM}
             target="_blank"
             rel="noreferrer noopener"
-            className="liquid-glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong"
+            className="glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong"
           >
             <CardIcon icon={Instagram} />
             <div className="min-w-0 flex-1">
@@ -405,12 +405,12 @@ function FollowTab() {
             leave the address with nothing to do and no feedback. So the address
             itself stays a real mailto link and the copy sits beside it. */}
         <StaggerItem>
-          <div className="liquid-glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong">
+          <div className="glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong">
             <CardIcon icon={Mail} />
             <div className="min-w-0 flex-1">
               <p className="text-sm font-extrabold">Email</p>
               <a
-                href={`mailto:${EMAIL}?subject=KeyStroke%20feedback`}
+                href={`mailto:${EMAIL}?subject=TypeForge%20feedback`}
                 className="block truncate font-mono text-2xs text-brand hover:underline"
               >
                 {EMAIL}
@@ -438,7 +438,7 @@ function FollowTab() {
       </Stagger>
 
       <Reveal delay={0.05}>
-        <div className="liquid-glass rounded-lg border border-line p-3 text-center">
+        <div className="glass rounded-lg border border-line p-3 text-center">
           <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-full bg-brand-wash">
             <Sparkles size={18} className="text-brand" aria-hidden />
           </span>
