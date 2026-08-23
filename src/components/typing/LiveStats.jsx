@@ -45,7 +45,7 @@ export default function LiveStats({ live, limitSeconds, wordTarget, className, c
             >
               {render(c)}
             </dd>
-            <dt className="text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">{c.short}</dt>
+            <dt className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">{c.short}</dt>
           </div>
         ))}
       </dl>
@@ -77,7 +77,7 @@ export default function LiveStats({ live, limitSeconds, wordTarget, className, c
           </dd>
           <dt
             className={cx(
-              'font-extrabold uppercase tracking-[0.09em] text-ink-2',
+              'font-bold uppercase tracking-[0.09em] text-ink-2',
               c.lead ? 'mt-1 text-xs' : 'mt-0.5 text-2xs',
             )}
           >

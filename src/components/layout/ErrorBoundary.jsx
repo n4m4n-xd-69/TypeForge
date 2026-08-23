@@ -23,7 +23,7 @@ export default class ErrorBoundary extends Component {
       <div className="grid min-h-dvh place-items-center p-3">
         <div className="max-w-[440px] rounded-lg border border-line bg-surface p-3 text-center shadow-md">
           <p className="font-mono text-3xl">⌘</p>
-          <h1 className="mt-1 text-xl font-extrabold">Something broke mid-keystroke</h1>
+          <h1 className="mt-1 text-xl font-bold">Something broke mid-keystroke</h1>
           <p className="mt-1 text-sm text-ink-3">
             Your progress is saved locally and is unaffected. Reloading usually clears it.
           </p>

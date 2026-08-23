@@ -91,7 +91,7 @@ export default function Modal({ open, onClose, title, description, children, foo
             {title ? (
               <header className="flex items-start justify-between gap-2 border-b border-line px-3 py-2.5">
                 <div>
-                  <h2 className="text-xl font-extrabold">{title}</h2>
+                  <h2 className="text-xl font-bold">{title}</h2>
                   {description ? <p className="mt-px text-sm text-ink-3">{description}</p> : null}
                 </div>
                 {dismissable ? <IconButton label="Close" icon={X} onClick={onClose} /> : null}

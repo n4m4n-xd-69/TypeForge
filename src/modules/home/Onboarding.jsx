@@ -65,10 +65,10 @@ export default function Onboarding({ open, onClose, onStart }) {
       <div className="relative overflow-hidden">
         <div className="relative px-3 pb-2 pt-4">
           <div className="relative">
-            <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface px-1 py-px text-2xs font-extrabold uppercase tracking-[0.1em] text-brand">
+            <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface px-1 py-px text-2xs font-bold uppercase tracking-[0.1em] text-brand">
               <Sparkles size={11} aria-hidden /> Welcome
             </span>
-            <h2 className="mt-1 text-3xl font-extrabold tracking-[-0.03em]">
+            <h2 className="mt-1 text-3xl font-bold tracking-[-0.03em]">
               Let's set up your <span className="text-brand">practice</span>.
             </h2>
             <p className="mt-0.5 text-sm text-ink-3">Three quick questions. You can change all of them later.</p>
@@ -88,7 +88,7 @@ export default function Onboarding({ open, onClose, onStart }) {
           <motion.div key={step} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.22 }}>
             {step === 0 ? (
               <div>
-                <label htmlFor="ob-name" className="text-sm font-extrabold">
+                <label htmlFor="ob-name" className="text-sm font-bold">
                   What should we call you?
                 </label>
                 <input
@@ -115,7 +115,7 @@ export default function Onboarding({ open, onClose, onStart }) {
                     <p className="flex items-start gap-1 text-xs leading-relaxed text-ink-2">
                       <ShieldCheck size={14} strokeWidth={2.2} className="mt-px shrink-0 text-brand" aria-hidden />
                       <span>
-                        <strong className="font-extrabold text-ink">Want it on your phone too?</strong>{' '}
+                        <strong className="font-bold text-ink">Want it on your phone too?</strong>{' '}
                         Add an email or continue with Google, and your streak, XP and stats follow you
                         anywhere. You can also do this later.
                       </span>
@@ -157,7 +157,7 @@ export default function Onboarding({ open, onClose, onStart }) {
 
             {step === 1 ? (
               <div>
-                <p className="text-sm font-extrabold">How much do you want to practise a day?</p>
+                <p className="text-sm font-bold">How much do you want to practise a day?</p>
                 <div className="mt-1.5">
                   <Segmented options={GOALS} value={goal} onChange={setGoal} label="Daily goal" />
                 </div>
@@ -169,7 +169,7 @@ export default function Onboarding({ open, onClose, onStart }) {
 
             {step === 2 ? (
               <div>
-                <p className="text-sm font-extrabold">What are you here for first?</p>
+                <p className="text-sm font-bold">What are you here for first?</p>
                 <div className="mt-1.5 grid gap-1">
                   {FOCUS.map((f) => (
                     <button
@@ -190,7 +190,7 @@ export default function Onboarding({ open, onClose, onStart }) {
                         <f.icon size={17} strokeWidth={2.2} />
                       </span>
                       <span>
-                        <span className="block text-sm font-extrabold">{f.label}</span>
+                        <span className="block text-sm font-bold">{f.label}</span>
                         <span className="block text-xs text-ink-3">{f.blurb}</span>
                       </span>
                     </button>

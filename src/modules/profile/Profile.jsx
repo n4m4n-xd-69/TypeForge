@@ -86,7 +86,7 @@ export default function Profile() {
     <div className="space-y-3">
       <header>
         <p className="eyebrow">Account</p>
-        <h1 className="mt-0.5 text-3xl font-extrabold">Your profile</h1>
+        <h1 className="mt-0.5 text-3xl font-bold">Your profile</h1>
         <p className="mt-0.5 max-w-[54ch] text-sm text-ink-3">
           How you appear across TypeForge, and where your progress is kept.
         </p>
@@ -124,7 +124,7 @@ export default function Profile() {
               <div className="min-w-0 flex-1">
                 <label
                   htmlFor="profile-display-name"
-                  className="text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3"
+                  className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3"
                 >
                   Display name
                 </label>
@@ -171,7 +171,7 @@ export default function Profile() {
           <Card className="p-2.5">
             <div className="flex flex-wrap items-center justify-between gap-1">
               <div className="min-w-0">
-                <h2 className="text-sm font-extrabold">Pick an avatar</h2>
+                <h2 className="text-sm font-bold">Pick an avatar</h2>
                 <p className="text-2xs text-ink-3">
                   {PRESET_AVATARS.length} to choose from, or upload a photo.
                 </p>
@@ -221,7 +221,7 @@ export default function Profile() {
       {/* ── Account ─────────────────────────────────────────────────────── */}
       <Reveal delay={0.08}>
         <Card className="p-2.5 sm:p-3">
-          <h2 className="text-base font-extrabold">Account</h2>
+          <h2 className="text-base font-bold">Account</h2>
 
           {!cloudEnabled ? (
             <p className="mt-1 text-sm leading-relaxed text-ink-3">
@@ -302,7 +302,7 @@ export default function Profile() {
             <EyeOff size={17} strokeWidth={2.2} aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold">Hide me from the leaderboard</p>
+            <p className="text-sm font-bold">Hide me from the leaderboard</p>
             <p className="text-xs leading-relaxed text-ink-3">
               Your XP still counts and your stats still work — you simply stop appearing on the public
               board. The board only ever shows a name, an avatar and a total.
@@ -335,7 +335,7 @@ export default function Profile() {
       <Reveal delay={0.16}>
         <Card className="flex flex-wrap items-center gap-2 p-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold">See where you stand</p>
+            <p className="text-sm font-bold">See where you stand</p>
             <p className="text-xs text-ink-3">Ranked by total XP, updated as you earn it.</p>
           </div>
           <Button as={Link} to="/achievements" variant="secondary" iconRight={ArrowRight}>
@@ -350,7 +350,7 @@ export default function Profile() {
 function MiniStat({ icon: Icon, label, value, sub }) {
   return (
     <div className="bg-surface px-1.5 py-1">
-      <p className="flex items-center gap-0.5 text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">
+      <p className="flex items-center gap-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">
         <Icon size={11} strokeWidth={2.4} aria-hidden /> {label}
       </p>
       <p className="mt-0.5 font-mono text-lg font-medium leading-none tnum">{value}</p>

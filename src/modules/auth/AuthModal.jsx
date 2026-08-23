@@ -81,7 +81,7 @@ export default function AuthModal() {
       <form onSubmit={handleSubmit} className="px-3 py-2.5">
         {view === 'sign-up' ? (
           <div>
-            <label htmlFor="auth-name" className="text-sm font-extrabold">
+            <label htmlFor="auth-name" className="text-sm font-bold">
               Name
             </label>
             <input
@@ -97,7 +97,7 @@ export default function AuthModal() {
         ) : null}
 
         <div className={view === 'sign-up' ? 'mt-2' : ''}>
-          <label htmlFor="auth-email" className="text-sm font-extrabold">
+          <label htmlFor="auth-email" className="text-sm font-bold">
             Email
           </label>
           <input
@@ -115,7 +115,7 @@ export default function AuthModal() {
 
         {view !== 'reset' ? (
           <div className="mt-2">
-            <label htmlFor="auth-password" className="text-sm font-extrabold">
+            <label htmlFor="auth-password" className="text-sm font-bold">
               Password
             </label>
             <input

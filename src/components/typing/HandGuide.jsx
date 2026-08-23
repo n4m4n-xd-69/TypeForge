@@ -81,7 +81,7 @@ export default function HandGuide({ show, onDismiss, autoHideMs = 10_000, remain
             <Hands />
 
             <div className="max-w-[46ch] text-center">
-              <p className="text-lg font-extrabold tracking-[-0.01em]">Rest your fingers on the home row</p>
+              <p className="text-lg font-bold tracking-[-0.01em]">Rest your fingers on the home row</p>
               <p className="mt-px text-sm text-ink-2">
                 Index fingers find the bumps on <Key>F</Key> and <Key>J</Key>. Every other key is reached from
                 here without looking — that's the whole technique.
@@ -102,7 +102,7 @@ export default function HandGuide({ show, onDismiss, autoHideMs = 10_000, remain
               → <span className="font-bold text-ink-2">Hand guide</span>.
             </motion.p>
 
-            <span className="flex items-center gap-1 rounded-full border border-line bg-surface/80 px-1.5 py-0.5 text-2xs font-extrabold uppercase tracking-[0.1em] text-ink-3">
+            <span className="flex items-center gap-1 rounded-full border border-line bg-surface/80 px-1.5 py-0.5 text-2xs font-bold uppercase tracking-[0.1em] text-ink-3">
               <span className="relative flex h-1 w-1">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-solid opacity-60" />
                 <span className="relative inline-flex h-1 w-1 rounded-full bg-brand-solid" />
@@ -189,7 +189,7 @@ function Hand({ side, keys }) {
               }}
               title={`${k.finger} → ${k.key}`}
             >
-              <span className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-brand/45 bg-brand-wash text-xs font-extrabold text-brand">
+              <span className="grid h-[30px] w-[30px] place-items-center rounded-[8px] border border-brand/45 bg-brand-wash text-xs font-bold text-brand">
                 {k.key}
               </span>
               <span

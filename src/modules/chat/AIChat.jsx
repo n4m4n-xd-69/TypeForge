@@ -271,7 +271,7 @@ export default function AIChat() {
             <MessageSquare size={14} strokeWidth={2.4} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-extrabold leading-tight">{active?.title ?? 'New chat'}</p>
+            <p className="truncate text-sm font-bold leading-tight">{active?.title ?? 'New chat'}</p>
             <p className="truncate text-2xs text-ink-3">
               {stats.sessionCount
                 ? `Level ${stats.level.level} · ${Math.round(stats.wpm)} WPM · ${Math.round(stats.accuracy)}%`
@@ -523,7 +523,7 @@ function EmptyState({ ready, onPick, reduce, starters }) {
       <span className="mx-auto grid h-[46px] w-[46px] place-items-center rounded-lg bg-brand-wash text-brand">
         <MessageSquare size={22} aria-hidden />
       </span>
-      <h2 className="mt-1.5 text-lg font-extrabold">
+      <h2 className="mt-1.5 text-lg font-bold">
         {ready ? 'What are we working on?' : 'AI is not configured'}
       </h2>
       <p className="mx-auto mt-0.5 max-w-[46ch] text-sm text-ink-3">

@@ -325,6 +325,12 @@ export default function Practice() {
       <>
         {/* Above the floating rail (z-30) and top bar (z-40), below modals (z-50). */}
         <div className="fixed inset-0 z-[45] flex flex-col bg-bg">
+          {/* Focus mode covers the header, and it is on by default — which
+              left this route with no heading at all, so a screen reader had
+              nothing to orient by on the app's most-used screen. The heading
+              is hidden rather than absent: sighted users get the stage, and
+              the document keeps its structure. */}
+          <h1 className="sr-only">Typing practice</h1>
           <div className="shrink-0 border-b border-line px-2 py-1.5">{controls}</div>
 
           <div className="flex min-h-0 flex-1 gap-2 p-2">
@@ -375,7 +381,7 @@ export default function Practice() {
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Train</p>
-          <h1 className="mt-0.5 text-3xl font-extrabold">Typing practice</h1>
+          <h1 className="mt-0.5 text-3xl font-bold">Typing practice</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
             Pick a shape, then stop thinking about it. Accuracy first — speed is what accuracy turns into.
           </p>

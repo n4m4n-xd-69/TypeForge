@@ -288,7 +288,7 @@ export default function AppShell({ children }) {
               <Avatar value={state.profile.avatar} name={state.profile.name} size={32} />
             </IconBox>
             <RailLabel open={open} className="min-w-0 flex-1 pr-1">
-              <span className="block truncate text-xs font-extrabold">{state.profile.name || 'Your space'}</span>
+              <span className="block truncate text-xs font-bold">{state.profile.name || 'Your space'}</span>
               <span className="block truncate text-2xs font-bold uppercase tracking-[0.08em] text-brand">
                 Lv {stats.level.level} · {levelTitle(stats.level.level)}
               </span>
@@ -315,7 +315,9 @@ export default function AppShell({ children }) {
         <NavLink
           to="/"
           aria-label="TypeForge — home"
-          className="flex shrink-0 items-center gap-1 rounded-sm"
+          /* Fills the header's height rather than hugging the wordmark, so the
+             target clears 44px without the lockup moving. */
+          className="flex h-full shrink-0 items-center gap-1 rounded-sm pr-1"
         >
           <Logo size={28} className="shrink-0" />
           <span className="whitespace-nowrap font-display text-xl font-bold tracking-[-0.03em]">
@@ -460,7 +462,7 @@ function SectionLabel({ open, divider, children }) {
       {open ? (
         <span
           style={{ transitionDelay: '90ms' }}
-          className="truncate text-2xs font-extrabold uppercase tracking-[0.12em] text-ink-3 opacity-100 transition-opacity duration-200"
+          className="truncate text-2xs font-bold uppercase tracking-[0.12em] text-ink-3 opacity-100 transition-opacity duration-200"
         >
           {children}
         </span>
@@ -475,7 +477,7 @@ function StreakPill({ count }) {
   return (
     <div
       className={cx(
-        'flex h-[36px] items-center gap-0.5 rounded-full px-1.5 text-sm font-extrabold',
+        'flex h-[36px] items-center gap-0.5 rounded-full px-1.5 text-sm font-bold',
         count > 0 ? 'bg-brand-wash text-brand' : 'text-ink-3',
       )}
       title={count > 0 ? `${count}-day streak` : 'Practise today to start a streak'}

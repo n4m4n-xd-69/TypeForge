@@ -143,7 +143,7 @@ function Inline({ text }) {
         // the inner string strictly shorter.
         if (p.type === 'strong') {
           return (
-            <strong key={i} className="font-extrabold text-ink">
+            <strong key={i} className="font-bold text-ink">
               <Inline text={p.value} />
             </strong>
           );

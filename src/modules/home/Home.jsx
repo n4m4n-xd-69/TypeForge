@@ -80,11 +80,11 @@ export default function Home() {
             <ProgressRing value={goalProgress} size={112} stroke={11}>
               <div>
                 <p className="font-mono text-2xl font-medium leading-none tnum">{stats.todayMinutes}</p>
-                <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">min</p>
+                <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">min</p>
               </div>
             </ProgressRing>
             <div className="min-w-0">
-              <p className="text-sm font-extrabold">
+              <p className="text-sm font-bold">
                 {goalProgress >= 1
                   ? 'Daily goal met.'
                   : `${Math.max(0, stats.goalMinutes - stats.todayMinutes)} min to go`}
@@ -109,7 +109,7 @@ export default function Home() {
             height={180}
             table={<DataTable columns={['Day', 'Minutes']} rows={week.map((w) => [w.label, w.value])} />}
             action={
-              <Link to="/dashboard" className="text-xs font-extrabold text-brand hover:underline">
+              <Link to="/dashboard" className="text-xs font-bold text-brand hover:underline">
                 Full report →
               </Link>
             }
@@ -145,7 +145,7 @@ export default function Home() {
             title="Recent activity"
             hint={stats.sessionCount ? `${stats.sessionCount} sessions` : 'Nothing yet'}
             action={
-              <Link to="/dashboard" className="text-xs font-extrabold text-brand hover:underline">
+              <Link to="/dashboard" className="text-xs font-bold text-brand hover:underline">
                 See all →
               </Link>
             }
@@ -190,7 +190,7 @@ export default function Home() {
             title="Recent badges"
             hint={`${stats.unlockedCount} of ${ACHIEVEMENTS.length} unlocked`}
             action={
-              <Link to="/achievements" className="text-xs font-extrabold text-brand hover:underline">
+              <Link to="/achievements" className="text-xs font-bold text-brand hover:underline">
                 All rewards →
               </Link>
             }
@@ -222,7 +222,7 @@ function Hero({ name, stats, onStart, onCode }) {
       <div className="relative grid items-center gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 max-w-[720px]">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface/80 px-1 py-px text-2xs font-extrabold uppercase tracking-[0.1em] text-brand">
+          <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface/80 px-1 py-px text-2xs font-bold uppercase tracking-[0.1em] text-brand">
             <Sparkles size={11} aria-hidden />
             {fresh ? 'Welcome to TypeForge' : longDate()}
           </span>
@@ -283,7 +283,7 @@ function Hero({ name, stats, onStart, onCode }) {
             <p className="eyebrow">Level {stats.level.level}</p>
             <p className="font-mono text-2xs text-ink-3 tnum">{stats.xp.toLocaleString()} XP</p>
           </div>
-          <p className="mt-0.5 text-xl font-extrabold leading-tight">{levelTitle(stats.level.level)}</p>
+          <p className="mt-0.5 text-xl font-bold leading-tight">{levelTitle(stats.level.level)}</p>
           <ProgressBar value={stats.level.progress} className="mt-1.5" label="Level progress" />
           <p className="mt-0.5 text-2xs text-ink-3">{stats.level.toNext} XP to next level</p>
           <div className="mt-2 grid grid-cols-2 gap-1 border-t border-line pt-1.5">
@@ -321,7 +321,7 @@ function ActionCard({ to, eyebrow, title, blurb, icon: Icon, accent, stat }) {
           </span>
           <div className="min-w-0">
             <p className="eyebrow">{eyebrow}</p>
-            <h2 className="mt-px flex items-center gap-0.5 text-xl font-extrabold">
+            <h2 className="mt-px flex items-center gap-0.5 text-xl font-bold">
               {title}
               <ArrowRight
                 size={17}
@@ -345,7 +345,7 @@ function StatCard({ icon: Icon, label, value, suffix = '', hint, trail }) {
     <Card className="p-2">
       <div className="flex items-center gap-1">
         <Icon size={14} className="text-ink-3" aria-hidden />
-        <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label}</p>
+        <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
       </div>
       <div className="mt-1 flex items-end justify-between gap-1">
         <p className="font-mono text-2xl font-medium leading-none tnum">
@@ -395,7 +395,7 @@ function ChallengeCard({ challenge }) {
             <Icon size={18} strokeWidth={2.2} aria-hidden />
           </span>
           <div>
-            <h2 className="text-lg font-extrabold">{challenge.title}</h2>
+            <h2 className="text-lg font-bold">{challenge.title}</h2>
             <p className="mt-px text-sm leading-relaxed text-ink-3">{challenge.blurb}</p>
           </div>
         </div>
@@ -433,7 +433,7 @@ function InsightCard({ stats }) {
         <span className="grid h-[28px] w-[28px] place-items-center rounded-[9px] bg-brand-wash text-brand">
           <Sparkles size={15} strokeWidth={2.4} aria-hidden />
         </span>
-        <h2 className="text-lg font-extrabold">Coach's read</h2>
+        <h2 className="text-lg font-bold">Coach's read</h2>
         {insight?.source === 'offline' ? <Chip tone="warn" className="ml-auto">offline</Chip> : null}
       </div>
       {insight ? (
@@ -486,7 +486,7 @@ function BadgeStrip({ achievements }) {
           >
             <Award size={15} className="shrink-0" style={{ color: tier.ring }} aria-hidden />
             <span className="min-w-0">
-              <span className="block truncate text-xs font-extrabold">{a.name}</span>
+              <span className="block truncate text-xs font-bold">{a.name}</span>
               <span className="block truncate text-2xs text-ink-3">{a.hint}</span>
             </span>
           </li>

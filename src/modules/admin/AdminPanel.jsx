@@ -94,7 +94,7 @@ export default function AdminPanel() {
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Operator view</p>
-          <h1 className="mt-0.5 text-3xl font-extrabold">Admin</h1>
+          <h1 className="mt-0.5 text-3xl font-bold">Admin</h1>
         </div>
         <Segmented options={TABS} value={tab} onChange={setTab} label="Admin tab" />
       </header>
@@ -211,7 +211,7 @@ function Kpi({ icon: Icon, label, value, hint, prefix = '', decimals = 0 }) {
         <span className="grid h-[28px] w-[28px] place-items-center rounded-[9px] bg-subtle text-ink-2">
           <Icon size={15} strokeWidth={2.2} aria-hidden />
         </span>
-        <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label}</p>
+        <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
       </div>
       <p className="mt-1.5 font-mono text-3xl font-medium leading-none tnum">
         <Counter value={value} decimals={decimals} prefix={prefix} />

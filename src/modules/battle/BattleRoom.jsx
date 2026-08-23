@@ -144,7 +144,7 @@ function Invite({ pin }) {
         <span className="mx-auto grid h-[40px] w-[40px] place-items-center rounded-[13px] bg-brand-wash text-brand">
           <Users size={20} strokeWidth={2.2} aria-hidden />
         </span>
-        <h1 className="mt-1.5 text-xl font-extrabold">You have been invited</h1>
+        <h1 className="mt-1.5 text-xl font-bold">You have been invited</h1>
         <p className="mt-0.5 text-sm text-ink-3">
           Battlefield <span className="font-mono font-bold tracking-[0.12em] text-ink">{pin?.toUpperCase()}</span>
         </p>
@@ -264,7 +264,7 @@ function Lobby({ battle, busy, setBusy, onLeave, isAdmin, connected, roster, me 
         <Reveal delay={0.06}>
           <Card className="p-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-extrabold">Who is here</h2>
+              <h2 className="text-base font-bold">Who is here</h2>
               <Chip tone={roster.length >= 2 ? 'good' : 'neutral'}>{roster.length} in</Chip>
             </div>
 

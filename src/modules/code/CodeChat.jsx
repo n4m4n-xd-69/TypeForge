@@ -129,7 +129,7 @@ export default function CodeChat({ code, language, languageName, embedded = fals
             <Sparkles size={14} strokeWidth={2.4} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-sm font-extrabold leading-tight">Ask about this code</p>
+            <p className="truncate text-sm font-bold leading-tight">Ask about this code</p>
             <p className="truncate text-2xs text-ink-3">{languageName}</p>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-0.5">
@@ -298,7 +298,7 @@ function Empty({ ready, reduce, openers, onPick }) {
           <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-lg bg-brand-wash text-brand">
             <Sparkles size={18} aria-hidden />
           </span>
-          <p className="mt-1.5 text-sm font-extrabold">
+          <p className="mt-1.5 text-sm font-bold">
             {ready ? 'Ask about this snippet' : 'AI is not configured'}
           </p>
           <p className="mx-auto mt-0.5 max-w-[34ch] text-xs leading-relaxed text-ink-3">

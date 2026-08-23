@@ -10,7 +10,7 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label={`Switch to ${isDark ? 'light' : 'dark'} theme`}
       title={preference === 'system' ? 'Following your system theme' : `${isDark ? 'Dark' : 'Light'} theme`}
-      className="relative grid h-[36px] w-[36px] place-items-center overflow-hidden rounded-sm text-ink-2 transition-colors hover:bg-subtle hover:text-ink"
+      className="relative grid h-[36px] w-[36px] place-items-center overflow-hidden rounded-sm text-ink-2 transition-colors hover:bg-subtle hover:text-ink [@media(pointer:coarse)]:h-[44px] [@media(pointer:coarse)]:w-[44px]"
     >
       <AnimatePresence mode="wait" initial={false}>
         <motion.span

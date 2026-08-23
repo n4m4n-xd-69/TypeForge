@@ -100,7 +100,7 @@ export default function UsersTab({ adminId }) {
                   <th key={c.key} scope="col" className="px-1 py-1 text-left">
                     <button
                       onClick={() => toggleSort(c.key)}
-                      className="flex items-center gap-0.5 text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3 hover:text-ink"
+                      className="flex items-center gap-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3 hover:text-ink"
                     >
                       {c.label}
                       {sort.key === c.key ? (
@@ -291,7 +291,7 @@ function UserDetailModal({ userId, summary, adminId, onClose }) {
 function Stat({ label, value }) {
   return (
     <Card className="p-1.5">
-      <p className="text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">{label}</p>
+      <p className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">{label}</p>
       <p className="mt-0.5 font-mono text-xl font-bold tnum">{value}</p>
     </Card>
   );

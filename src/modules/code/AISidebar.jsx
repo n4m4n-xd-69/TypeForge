@@ -80,7 +80,7 @@ export default function AISidebar({
           <Sparkles size={14} strokeWidth={2.4} aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold leading-tight">AI code visualiser</p>
+          <p className="truncate text-sm font-bold leading-tight">AI code visualiser</p>
           <p className="truncate text-2xs text-ink-3">{languageName}</p>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
@@ -119,7 +119,7 @@ export default function AISidebar({
             onClick={() => setTab(t.id)}
             aria-current={tab === t.id}
             className={cx(
-              'relative flex flex-1 items-center justify-center gap-0.5 rounded-xs px-0.5 py-1 text-2xs font-extrabold uppercase tracking-[0.05em] transition-colors',
+              'relative flex flex-1 items-center justify-center gap-0.5 rounded-xs px-0.5 py-1 text-2xs font-bold uppercase tracking-[0.05em] transition-colors',
               tab === t.id ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
             )}
           >
@@ -234,7 +234,7 @@ function FlowTab({ analysis, language }) {
                 aria-hidden
               />
               <div className="flex items-center gap-1">
-                <p className="text-sm font-extrabold">{s.step}</p>
+                <p className="text-sm font-bold">{s.step}</p>
                 <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">{kind.label}</span>
                 {s.branch ? <Chip tone="outline">{s.branch}</Chip> : null}
               </div>
@@ -244,7 +244,7 @@ function FlowTab({ analysis, language }) {
                   makes a loop click. */}
               {s.example ? (
                 <div className="mt-1 flex items-start gap-1 rounded-sm border border-line bg-subtle/50 px-1 py-0.5">
-                  <span className="mt-px shrink-0 text-2xs font-extrabold uppercase tracking-[0.07em] text-ink-3">
+                  <span className="mt-px shrink-0 text-2xs font-bold uppercase tracking-[0.07em] text-ink-3">
                     e.g.
                   </span>
                   <Markdown text={s.example} language={language} compact className="min-w-0 flex-1 text-xs" />
@@ -278,7 +278,7 @@ function ComplexityTab({ analysis, language }) {
       {items.map(({ label, data }) => (
         <div key={label} className="rounded-md border border-line p-1.5">
           <div className="flex items-baseline justify-between">
-            <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label} complexity</p>
+            <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label} complexity</p>
             <p className="font-mono text-xl font-medium text-brand">{data?.value ?? '—'}</p>
           </div>
           <Markdown text={data?.why ?? ''} language={language} compact className="mt-0.5" />
@@ -305,7 +305,7 @@ function ReviewTab({ analysis, language, optimised, optimising, error, onOptimis
       {optimised ? (
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-1">
           <div className="flex items-center justify-between gap-1">
-            <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">Rewritten</p>
+            <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">Rewritten</p>
             <Button size="sm" variant="ghost" icon={Wand2} onClick={onOptimise} disabled={optimising}>
               Again
             </Button>
@@ -345,7 +345,7 @@ function ReviewTab({ analysis, language, optimised, optimising, error, onOptimis
         <div className="flex items-start gap-1 rounded-sm border border-warn/50 bg-warn/10 px-1.5 py-1">
           <AlertTriangle size={13} className="mt-px shrink-0 text-warn" aria-hidden />
           <div>
-            <p className="text-2xs font-extrabold">{error.label}</p>
+            <p className="text-2xs font-bold">{error.label}</p>
             <p className="text-2xs leading-relaxed text-ink-2">{error.detail}</p>
           </div>
         </div>
@@ -366,7 +366,7 @@ function ReviewTab({ analysis, language, optimised, optimising, error, onOptimis
 function Block({ title, children }) {
   return (
     <section>
-      <h3 className="mb-1 text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{title}</h3>
+      <h3 className="mb-1 text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{title}</h3>
       {children}
     </section>
   );

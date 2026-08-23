@@ -64,7 +64,7 @@ export default function ResultsView({ battle, onLeave }) {
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Battlefield {room.pin}</p>
-          <h1 className="mt-0.5 text-3xl font-extrabold">
+          <h1 className="mt-0.5 text-3xl font-bold">
             {mine ? headline(mine.rank) : loadingResults ? 'Settling the match…' : 'Match over'}
           </h1>
           {mine ? (
@@ -96,11 +96,11 @@ export default function ResultsView({ battle, onLeave }) {
                 >
                   <span className="text-4xl" aria-hidden>{MEDALS[i]}</span>
                   <Avatar value={r.avatar} name={r.display_name} size={48} className="mt-1" ring={i === 0} />
-                  <p className="mt-1 truncate text-sm font-extrabold">{r.display_name || 'Player'}</p>
+                  <p className="mt-1 truncate text-sm font-bold">{r.display_name || 'Player'}</p>
                   <p className="mt-1 font-mono text-3xl font-medium tnum text-brand">
                     <Counter value={Math.round(r.wpm ?? 0)} />
                   </p>
-                  <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">wpm</p>
+                  <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">wpm</p>
                   <p className="mt-1 text-xs text-ink-3">
                     {r.mistakes} mistakes · {Math.round(r.accuracy ?? 0)}%
                   </p>
@@ -115,12 +115,12 @@ export default function ResultsView({ battle, onLeave }) {
       <Reveal delay={0.1}>
         <Card className="overflow-hidden">
           <div className="border-b border-line px-2.5 py-1.5">
-            <h2 className="text-sm font-extrabold">Final ranking</h2>
+            <h2 className="text-sm font-bold">Final ranking</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-line text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">
+                <tr className="border-b border-line text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">
                   <Th className="w-[46px]">#</Th>
                   <Th>Player</Th>
                   <Th align="right">Mistakes</Th>
@@ -238,7 +238,7 @@ function whyWon(results, mine) {
 function Stat({ label, value, suffix }) {
   return (
     <Card className="p-2.5">
-      <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label}</p>
+      <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
       <p className="mt-0.5 font-mono text-2xl font-medium tnum">
         <Counter value={value} />
         <span className="text-sm text-ink-3">{suffix}</span>

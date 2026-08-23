@@ -193,7 +193,7 @@ export default function CodeTyping() {
   const toolbar = (
     <div className="flex flex-wrap items-center gap-1">
             <span
-              className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] font-mono text-2xs font-extrabold text-white"
+              className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] font-mono text-2xs font-bold text-white"
               style={{ background: language.hue }}
               aria-hidden
             >
@@ -329,6 +329,9 @@ export default function CodeTyping() {
       <>
         {/* Above the rail (z-30) and top bar (z-40), below modals (z-50). */}
         <div className="fixed inset-0 z-[45] flex flex-col bg-bg">
+          {/* Same reason as Practice: focus mode hides the header, so without
+              this the route has no heading for a screen reader to land on. */}
+          <h1 className="sr-only">Code typing</h1>
           <div className="shrink-0 border-b border-line px-2 py-1.5">{toolbar}</div>
           <div className="flex min-h-0 flex-1 gap-2 p-2">
             {/* overflow-hidden, not auto: TypingStage already scrolls itself by
@@ -352,7 +355,7 @@ export default function CodeTyping() {
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Train</p>
-          <h1 className="mt-0.5 text-3xl font-extrabold">Code typing</h1>
+          <h1 className="mt-0.5 text-3xl font-bold">Code typing</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
             Real snippets, real syntax, real punctuation. Indentation is handled for you — brackets are not.
           </p>
@@ -396,7 +399,7 @@ function SnippetIntro({ snippet, difficulty, typed, language, analysis, loading,
   return (
     <div className="border-b border-line bg-gradient-to-b from-subtle/40 to-transparent px-2.5 py-2 sm:px-4">
       <div className="flex flex-wrap items-center gap-1">
-        <h2 className="text-lg font-extrabold tracking-[-0.01em]">{snippet.title}</h2>
+        <h2 className="text-lg font-bold tracking-[-0.01em]">{snippet.title}</h2>
         <Chip tone="brand">{snippet.topic ?? 'snippet'}</Chip>
         <Chip tone="outline">{difficulty}</Chip>
 
@@ -409,7 +412,7 @@ function SnippetIntro({ snippet, difficulty, typed, language, analysis, loading,
             onClick={onToggle}
             aria-expanded={open}
             title={open ? 'Hide the briefing' : 'Show the briefing'}
-            className="flex items-center gap-0.5 rounded-xs px-1 py-0.5 text-2xs font-extrabold uppercase tracking-[0.07em] text-ink-3 transition-colors hover:bg-subtle hover:text-ink-2"
+            className="flex items-center gap-0.5 rounded-xs px-1 py-0.5 text-2xs font-bold uppercase tracking-[0.07em] text-ink-3 transition-colors hover:bg-subtle hover:text-ink-2"
           >
             {open ? 'Hide' : 'About'}
             <ChevronDown
@@ -492,11 +495,11 @@ function Examples({ items, language }) {
 
   return (
     <div className="mt-2">
-      <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">Worked examples</p>
+      <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">Worked examples</p>
       <div className="mt-1 grid gap-1 md:grid-cols-2 xl:grid-cols-3">
         {items.slice(0, 3).map((ex, i) => (
           <div key={i} className="rounded-md border border-line bg-surface/60 p-1.5">
-            <p className="text-xs font-extrabold">{ex.title}</p>
+            <p className="text-xs font-bold">{ex.title}</p>
             <div className="mt-1 space-y-0.5 font-mono text-2xs leading-relaxed">
               <p className="truncate text-ink-2" title={ex.input}>
                 <span className="text-ink-3">in </span>

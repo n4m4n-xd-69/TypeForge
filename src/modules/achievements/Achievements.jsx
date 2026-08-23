@@ -87,7 +87,7 @@ export default function Achievements() {
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">Rewards</p>
-          <h1 className="mt-0.5 text-3xl font-extrabold">Level up</h1>
+          <h1 className="mt-0.5 text-3xl font-bold">Level up</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
             XP comes from finishing runs, and accuracy is the multiplier. Mashing keys will not level you.
           </p>
@@ -105,10 +105,10 @@ export default function Achievements() {
             <ProgressRing value={stats.level.progress} size={140} stroke={12}>
               <div>
                 <p className="font-mono text-4xl font-medium leading-none tnum">{stats.level.level}</p>
-                <p className="mt-0.5 text-2xs font-extrabold uppercase tracking-[0.1em] text-ink-3">level</p>
+                <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.1em] text-ink-3">level</p>
               </div>
             </ProgressRing>
-            <p className="mt-2 text-xl font-extrabold">{levelTitle(stats.level.level)}</p>
+            <p className="mt-2 text-xl font-bold">{levelTitle(stats.level.level)}</p>
             <p className="text-sm text-ink-3">
               <Counter value={stats.xp} /> XP · {stats.level.toNext} to next
             </p>
@@ -168,7 +168,7 @@ export default function Achievements() {
                     size={26}
                     className={cx(row.you && 'ring-2 ring-brand ring-offset-1 ring-offset-surface')}
                   />
-                  <span className={cx('text-sm', row.you ? 'font-extrabold' : 'font-semibold text-ink-2')}>
+                  <span className={cx('text-sm', row.you ? 'font-bold' : 'font-semibold text-ink-2')}>
                     {row.name}
                     {row.you ? ' (you)' : ''}
                   </span>
@@ -230,7 +230,7 @@ function AchievementCard({ achievement, unlockedAt, delay }) {
 
         <div className="min-w-0">
           <div className="flex items-center gap-0.5">
-            <p className="truncate text-sm font-extrabold">{achievement.name}</p>
+            <p className="truncate text-sm font-bold">{achievement.name}</p>
             <Chip
               className="shrink-0"
               style={unlocked ? { color: tier.ring, background: tier.wash } : undefined}

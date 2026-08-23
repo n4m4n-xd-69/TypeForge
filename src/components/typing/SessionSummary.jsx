@@ -79,7 +79,7 @@ export default function SessionSummary({ open, result, award, freshAchievements 
         {/* XP strip */}
         <div className="mx-3 mb-2 flex flex-wrap items-center gap-1.5 rounded-md border border-line bg-brand-wash/60 px-2 py-1.5">
           <Sparkles size={16} className="text-brand" aria-hidden />
-          <p className="text-sm font-extrabold">
+          <p className="text-sm font-bold">
             +<Counter value={award?.xp ?? 0} /> XP
           </p>
           {result.isPB ? (
@@ -103,7 +103,7 @@ export default function SessionSummary({ open, result, award, freshAchievements 
                 className="flex items-center gap-1.5 rounded-md border px-2 py-1.5"
                 style={{ borderColor: TIER_STYLES[a.tier].ring, background: TIER_STYLES[a.tier].wash }}
               >
-                <span className="text-2xs font-extrabold uppercase tracking-[0.1em]" style={{ color: TIER_STYLES[a.tier].ring }}>
+                <span className="text-2xs font-bold uppercase tracking-[0.1em]" style={{ color: TIER_STYLES[a.tier].ring }}>
                   {a.tier}
                 </span>
                 <p className="text-sm font-bold">{a.name}</p>
@@ -115,7 +115,7 @@ export default function SessionSummary({ open, result, award, freshAchievements 
 
         <div className="grid gap-2 border-t border-line p-3 sm:grid-cols-2">
           <div>
-            <h3 className="mb-1 text-sm font-extrabold">Keys that cost you</h3>
+            <h3 className="mb-1 text-sm font-bold">Keys that cost you</h3>
             {weak.length ? (
               <ul className="flex flex-wrap gap-0.5">
                 {weak.map((k) => (
@@ -135,7 +135,7 @@ export default function SessionSummary({ open, result, award, freshAchievements 
           </div>
 
           <div>
-            <h3 className="mb-1 text-sm font-extrabold">Recent WPM</h3>
+            <h3 className="mb-1 text-sm font-bold">Recent WPM</h3>
             {history.length > 1 ? (
               <div className="flex items-end gap-1.5">
                 <Sparkline values={history} width={160} height={40} />
@@ -159,7 +159,7 @@ function Metric({ label, value, suffix = '', accent = false }) {
         <Counter value={value} />
         {suffix}
       </p>
-      <p className="mt-0.5 text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label}</p>
+      <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
     </div>
   );
 }

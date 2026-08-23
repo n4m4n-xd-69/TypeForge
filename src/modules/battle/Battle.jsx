@@ -113,7 +113,7 @@ export default function Battle() {
                 <Swords size={18} strokeWidth={2.2} aria-hidden />
               </span>
               <div>
-                <h2 className="text-base font-extrabold">Open a Battlefield</h2>
+                <h2 className="text-base font-bold">Open a Battlefield</h2>
                 <p className="text-xs text-ink-3">You host. Share the code and start when everyone is in.</p>
               </div>
             </div>
@@ -163,7 +163,7 @@ export default function Battle() {
                 <LogIn size={18} strokeWidth={2.2} aria-hidden />
               </span>
               <div>
-                <h2 className="text-base font-extrabold">Join with a code</h2>
+                <h2 className="text-base font-bold">Join with a code</h2>
                 <p className="text-xs text-ink-3">Six characters from whoever is hosting.</p>
               </div>
             </div>
@@ -204,7 +204,7 @@ function Shell({ children }) {
     <div className="space-y-3">
       <header>
         <p className="eyebrow">Multiplayer</p>
-        <h1 className="mt-0.5 flex items-center gap-1 text-3xl font-extrabold">
+        <h1 className="mt-0.5 flex items-center gap-1 text-3xl font-bold">
           Battlefield
           <Chip tone="brand">Live</Chip>
         </h1>
@@ -233,7 +233,7 @@ function Feature({ icon: Icon, title, body }) {
       <span className="grid h-[28px] w-[28px] place-items-center rounded-[9px] bg-subtle text-ink-2">
         <Icon size={15} strokeWidth={2.2} aria-hidden />
       </span>
-      <p className="mt-1.5 text-sm font-extrabold">{title}</p>
+      <p className="mt-1.5 text-sm font-bold">{title}</p>
       <p className="mt-0.5 text-xs leading-relaxed text-ink-3">{body}</p>
     </Card>
   );

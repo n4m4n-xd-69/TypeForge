@@ -185,7 +185,7 @@ export default function AiUsageTab() {
 function MiniStat({ label, value, hint }) {
   return (
     <Card className="p-2">
-      <p className="text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label}</p>
+      <p className="text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
       <p className="mt-1 font-mono text-2xl font-bold tnum">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-ink-3">{hint}</p> : null}
     </Card>

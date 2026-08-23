@@ -33,7 +33,7 @@ export default function About() {
       <header className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="eyebrow">About</p>
-          <h1 className="mt-0.5 text-3xl font-extrabold">About</h1>
+          <h1 className="mt-0.5 text-3xl font-bold">About</h1>
           <p className="mt-0.5 max-w-[52ch] text-sm text-ink-3">
             What TypeForge is, how to get the most out of it, and where to find us.
           </p>
@@ -74,7 +74,7 @@ function AboutTab() {
           <div className="flex flex-col items-start gap-2 p-3 sm:flex-row sm:items-center sm:p-4">
             <Logo size={64} className="shrink-0 drop-shadow-md" />
             <div className="min-w-0">
-              <h2 className="text-2xl font-extrabold tracking-[-0.02em]">TypeForge</h2>
+              <h2 className="text-2xl font-bold tracking-[-0.02em]">TypeForge</h2>
               <p className="mt-0.5 max-w-[60ch] text-sm leading-relaxed text-ink-2">
                 A typing trainer built for people who write code. Most typing sites drill prose and stop
                 there — which is fine until the day your job is brackets, semicolons and indentation.
@@ -87,7 +87,7 @@ function AboutTab() {
             {facts.map((f) => (
               <StaggerItem key={f.label} className="bg-surface/60 px-2 py-2 text-center backdrop-blur-sm">
                 <p className="font-mono text-2xl font-medium tnum">{f.value}</p>
-                <p className="mt-0.5 text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">{f.label}</p>
+                <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">{f.label}</p>
               </StaggerItem>
             ))}
           </Stagger>
@@ -117,7 +117,7 @@ function AboutTab() {
               <span className="grid h-[30px] w-[30px] place-items-center rounded-[10px] bg-brand-wash text-brand">
                 <c.icon size={16} strokeWidth={2.2} aria-hidden />
               </span>
-              <h3 className="mt-1.5 text-base font-extrabold">{c.title}</h3>
+              <h3 className="mt-1.5 text-base font-bold">{c.title}</h3>
               <p className="mt-0.5 text-sm leading-relaxed text-ink-2">{c.body}</p>
             </div>
           </StaggerItem>
@@ -127,7 +127,7 @@ function AboutTab() {
       <Reveal delay={0.05}>
         <div className="glass flex flex-wrap items-center gap-2 rounded-lg border border-line p-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold">Everything works offline</p>
+            <p className="text-sm font-bold">Everything works offline</p>
             <p className="text-xs leading-relaxed text-ink-3">
               Your progress lives on this device by default. Sign in only if you want it on more than one.
             </p>
@@ -195,7 +195,7 @@ function GuideTab() {
               <span className="grid h-[28px] w-[28px] place-items-center rounded-[9px] bg-brand-wash text-brand">
                 <g.icon size={15} strokeWidth={2.2} aria-hidden />
               </span>
-              <h3 className="text-base font-extrabold">{g.title}</h3>
+              <h3 className="text-base font-bold">{g.title}</h3>
             </div>
             <ol className="mt-1.5 space-y-1">
               {g.steps.map((s, i) => (
@@ -265,14 +265,14 @@ function HelpTab() {
         <span className="grid h-[26px] w-[26px] place-items-center rounded-[8px] bg-brand-wash text-brand">
           <LifeBuoy size={14} strokeWidth={2.4} aria-hidden />
         </span>
-        <p className="text-sm font-extrabold">Help assistant</p>
+        <p className="text-sm font-bold">Help assistant</p>
         {!ready ? <Chip tone="warn" className="ml-auto">no key</Chip> : null}
       </header>
 
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2.5 py-2">
         {messages.length === 0 && !busy ? (
           <div className="py-3 text-center">
-            <p className="text-sm font-extrabold">{ready ? 'What can I help with?' : 'AI is not configured'}</p>
+            <p className="text-sm font-bold">{ready ? 'What can I help with?' : 'AI is not configured'}</p>
             <p className="mx-auto mt-0.5 max-w-[44ch] text-xs leading-relaxed text-ink-3">
               {ready
                 ? 'Ask about any part of the app, or about getting faster.'
@@ -386,12 +386,12 @@ function FollowTab() {
           >
             <CardIcon icon={Instagram} />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-extrabold">Instagram</p>
+              <p className="text-sm font-bold">Instagram</p>
               <p className="truncate font-mono text-2xs text-brand">@keystroke.ai</p>
               <p className="mt-0.5 text-xs leading-relaxed text-ink-3">
                 Progress notes, new features, and the occasional typing-speed brag.
               </p>
-              <p className="mt-1 flex items-center gap-0.5 text-xs font-extrabold text-brand">
+              <p className="mt-1 flex items-center gap-0.5 text-xs font-bold text-brand">
                 Follow us <ArrowRight size={13} strokeWidth={2.4} aria-hidden />
               </p>
             </div>
@@ -408,7 +408,7 @@ function FollowTab() {
           <div className="glass flex h-full items-start gap-1.5 rounded-lg border border-line p-2.5 transition-transform duration-200 hover:-translate-y-px hover:border-line-strong">
             <CardIcon icon={Mail} />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-extrabold">Email</p>
+              <p className="text-sm font-bold">Email</p>
               <a
                 href={`mailto:${EMAIL}?subject=TypeForge%20feedback`}
                 className="block truncate font-mono text-2xs text-brand hover:underline"
@@ -423,7 +423,7 @@ function FollowTab() {
                 onClick={() => copy(EMAIL)}
                 title={`Copy ${EMAIL}`}
                 className={cx(
-                  'mt-1 flex items-center gap-0.5 text-xs font-extrabold transition-colors',
+                  'mt-1 flex items-center gap-0.5 text-xs font-bold transition-colors',
                   copied ? 'text-good' : 'text-brand hover:underline',
                 )}
               >
@@ -442,7 +442,7 @@ function FollowTab() {
           <span className="mx-auto grid h-[38px] w-[38px] place-items-center rounded-full bg-brand-wash">
             <Sparkles size={18} className="text-brand" aria-hidden />
           </span>
-          <p className="mt-1.5 text-base font-extrabold">Tell us what&apos;s missing</p>
+          <p className="mt-1.5 text-base font-bold">Tell us what&apos;s missing</p>
           <p className="mx-auto mt-0.5 max-w-[52ch] text-sm leading-relaxed text-ink-2">
             A language you want, a feature request, a drill that would help, or
             something that&apos;s simply broken — open an issue. It genuinely gets read, and most of

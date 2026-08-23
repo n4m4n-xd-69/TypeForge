@@ -240,7 +240,7 @@ export function Heatmap({ days }) {
         >
           <ChevronLeft size={15} strokeWidth={2.4} aria-hidden />
         </button>
-        <p className="text-sm font-extrabold tabular-nums">{label}</p>
+        <p className="text-sm font-bold tabular-nums">{label}</p>
         <button
           type="button"
           onClick={() => setOffset((o) => Math.min(0, o + 1))}

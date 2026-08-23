@@ -8,13 +8,38 @@ import { cx } from '../../lib/format.js';
  */
 export default function Segmented({ options, value, onChange, size = 'md', className, label }) {
   const layoutId = useId();
-  const pad = size === 'sm' ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-1 text-sm';
+
+  /**
+   * Heights are set explicitly rather than left to padding.
+   *
+   * The small variant was rendering at 24px tall, and it is the mode switcher
+   * on both Practice and Battle — the most-tapped control on either screen.
+   * The coarse-pointer floor lifts every segment to 44px on touch without
+   * changing the density on a desktop, the same rule Button uses.
+   */
+  const pad =
+    size === 'sm'
+      ? 'h-[28px] px-1.5 text-xs'
+      : 'h-[34px] px-2 text-sm';
 
   return (
     <div
       role="radiogroup"
       aria-label={label}
-      className={cx('inline-flex items-center gap-px rounded-sm bg-subtle p-px', className)}
+      /**
+       * Scrolls rather than clipping.
+       *
+       * As a bare inline-flex this overflowed its column at 375px: the six
+       * practice modes ran past the edge and Custom and Zen were simply
+       * unreachable on a phone. `max-w-full` plus an x-scroll keeps every
+       * option in the control instead of pushing two of them out of the
+       * product, and the segments stay `shrink-0` so they scroll at full size
+       * rather than compressing into unreadable slivers.
+       */
+      className={cx(
+        'flex max-w-full items-center gap-px overflow-x-auto rounded-sm bg-subtle p-px no-scrollbar',
+        className,
+      )}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -26,7 +51,9 @@ export default function Segmented({ options, value, onChange, size = 'md', class
             onClick={() => onChange(opt.value)}
             title={opt.hint}
             className={cx(
-              'relative rounded-[8px] font-bold transition-colors duration-200',
+              'relative inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[8px] font-semibold',
+              'transition-colors duration-fast',
+              '[@media(pointer:coarse)]:min-h-[44px]',
               pad,
               active ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
             )}

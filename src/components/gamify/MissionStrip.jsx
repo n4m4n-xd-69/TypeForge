@@ -13,7 +13,7 @@ export default function MissionStrip({ missions, compact = false, className }) {
     return (
       <div className={cx('flex items-center gap-1 rounded-full border border-line bg-surface px-1.5 py-1', className)}>
         <Target size={14} className="text-brand" aria-hidden />
-        <span className="text-xs font-extrabold">
+        <span className="text-xs font-bold">
           {done}/{missions.length} daily missions
         </span>
         <div className="flex gap-px" aria-hidden>
@@ -63,7 +63,7 @@ export default function MissionStrip({ missions, compact = false, className }) {
             </div>
           </div>
 
-          <span className="shrink-0 text-2xs font-extrabold uppercase tracking-[0.08em] text-ink-3">+{m.xp} XP</span>
+          <span className="shrink-0 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">+{m.xp} XP</span>
         </motion.li>
       ))}
     </ul>

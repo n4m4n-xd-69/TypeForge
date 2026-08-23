@@ -117,7 +117,7 @@ export default function ChatFab() {
                 <Cat size={16} strokeWidth={2.2} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-extrabold leading-tight">Coach</p>
+                <p className="truncate text-sm font-bold leading-tight">Coach</p>
                 <p className="truncate text-2xs text-ink-3">
                   {stats.sessionCount ? `${Math.round(stats.wpm)} WPM · ${Math.round(stats.accuracy)}%` : 'Ask me anything'}
                 </p>

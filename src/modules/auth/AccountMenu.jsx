@@ -276,7 +276,7 @@ function RenameModal({ open, onClose }) {
   return (
     <Modal open={open} onClose={onClose} title="Your name" size="sm">
       <form onSubmit={save} className="px-3 py-2.5">
-        <label htmlFor="profile-name" className="text-sm font-extrabold">
+        <label htmlFor="profile-name" className="text-sm font-bold">
           What should we call you?
         </label>
         <input

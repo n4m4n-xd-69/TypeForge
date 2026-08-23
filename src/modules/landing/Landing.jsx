@@ -27,9 +27,18 @@ const DEMO_SECONDS = 30;
 export default function Landing() {
   const navigate = useNavigate();
 
-  /* One passage, fixed for the life of the page. Regenerating on re-render
-     would swap the text out from under someone mid-word. */
-  const passage = useMemo(() => randomWords(70, 'normal'), []);
+  /**
+   * One passage, fixed for the life of the page — regenerating on re-render
+   * would swap the text out from under someone mid-word.
+   *
+   * The whole thing is rendered, so the length is the length. An earlier
+   * version generated seventy words and displayed the first 168 characters,
+   * which meant a fast typist ran off the end of what was on screen and the
+   * progress bar read 42% with the visible text finished. Forty-five words is
+   * about thirty seconds at 90 wpm; anyone quicker finishes early and gets
+   * their result, which is a perfectly good outcome for a demo.
+   */
+  const passage = useMemo(() => randomWords(45, 'normal'), []);
   const [finished, setFinished] = useState(null);
 
   const onFinish = useCallback((run) => setFinished(run), []);
@@ -68,13 +77,13 @@ function Nav() {
       <div className="flex items-center gap-1.5">
         <Link
           to="/about"
-          className="hidden rounded-sm px-1.5 py-1 text-sm font-medium text-ink-2 transition-colors duration-fast hover:text-ink sm:block"
+          className="hidden min-h-[44px] items-center rounded-sm px-1.5 text-sm font-medium text-ink-2 transition-colors duration-fast hover:text-ink sm:flex"
         >
           About
         </Link>
         <Link
           to="/practice"
-          className="rounded-sm bg-brand-solid px-2 py-1 text-sm font-semibold text-brand-ink shadow-e1 transition-[filter] duration-fast hover:brightness-[1.08]"
+          className="inline-flex min-h-[44px] items-center rounded-sm bg-brand-solid px-2 text-sm font-semibold text-brand-ink shadow-e1 transition-[filter] duration-fast hover:brightness-[1.08]"
         >
           Start typing
         </Link>
@@ -130,6 +139,22 @@ function TypingDemo({ engine, passage, finished, onContinue }) {
 
   const focus = useCallback(() => boxRef.current?.focus(), []);
 
+  /**
+   * Tab passes straight through here.
+   *
+   * The engine treats it as indentation, which is right on a code snippet and
+   * wrong on a marketing page: someone tabbing through the page to reach the
+   * CTA would silently start a run and put a space in it. Prose needs no
+   * indentation, so the demo declines the key entirely and lets focus move.
+   */
+  const handleKeyDown = useCallback(
+    (event) => {
+      if (event.key === 'Tab') return;
+      onKeyDown(event);
+    },
+    [onKeyDown],
+  );
+
   if (finished) return <DemoResult result={finished} onContinue={onContinue} />;
 
   return (
@@ -143,16 +168,22 @@ function TypingDemo({ engine, passage, finished, onContinue }) {
         ref={boxRef}
         tabIndex={0}
         role="textbox"
-        aria-label="Typing demo. Type the text shown to begin."
-        onKeyDown={onKeyDown}
-        onMouseDown={(e) => {
+        aria-label="Typing demo"
+        aria-describedby="demo-hint"
+        aria-readonly="false"
+        aria-multiline="true"
+        onKeyDown={handleKeyDown}
+        onPointerDown={(e) => {
+          /* pointerdown rather than mousedown so a touch reaches it too, and
+             preventDefault so the browser does not assign focus itself and
+             then take it back on the synthesised click. */
           e.preventDefault();
           focus();
         }}
         className="cursor-text px-2.5 py-3 outline-none sm:px-4"
       >
         <p className="max-w-[62ch] whitespace-pre-wrap break-words font-mono text-type-s sm:text-type-m">
-          {[...passage].slice(0, 168).map((ch, i) => (
+          {[...passage].map((ch, i) => (
             <Char key={i} ch={ch} state={states[i]} />
           ))}
         </p>
@@ -160,8 +191,12 @@ function TypingDemo({ engine, passage, finished, onContinue }) {
         {/* In the flow rather than floating over the passage. Absolutely
             positioning it inside the box put it on top of the last line, so
             the prompt telling you to start obscured the thing you start on. */}
-        <p className="mt-2 h-[20px] text-xs font-medium text-ink-3">
-          {status === 'idle' ? 'Press any key to start' : status === 'running' ? 'Keep going' : ''}
+        <p id="demo-hint" className="mt-2 h-[20px] text-xs font-medium text-ink-3">
+          {status === 'idle'
+            ? 'Press any key to start. Shift+Tab to leave.'
+            : status === 'running'
+              ? 'Keep going'
+              : ''}
         </p>
       </div>
 
@@ -268,7 +303,7 @@ function DemoResult({ result, onContinue }) {
 
         <button
           onClick={onContinue}
-          className="mt-2.5 rounded-sm bg-brand-solid px-2.5 py-1.5 text-sm font-semibold text-brand-ink shadow-e1 transition-[filter] duration-fast hover:brightness-[1.08]"
+          className="mt-2.5 inline-flex min-h-[44px] items-center rounded-sm bg-brand-solid px-2.5 text-sm font-semibold text-brand-ink shadow-e1 transition-[filter] duration-fast hover:brightness-[1.08]"
         >
           Keep going →
         </button>
@@ -369,10 +404,10 @@ function Footer() {
         <span className="font-display font-bold text-ink-2">TypeForge</span>
       </span>
       <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-3">
-        <Link to="/practice" className="transition-colors duration-fast hover:text-ink-2">Typing</Link>
-        <Link to="/code" className="transition-colors duration-fast hover:text-ink-2">Code</Link>
-        <Link to="/battle" className="transition-colors duration-fast hover:text-ink-2">Battle</Link>
-        <Link to="/about" className="transition-colors duration-fast hover:text-ink-2">About</Link>
+        <Link to="/practice" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">Typing</Link>
+        <Link to="/code" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">Code</Link>
+        <Link to="/battle" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">Battle</Link>
+        <Link to="/about" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">About</Link>
       </nav>
     </footer>
   );

@@ -213,7 +213,19 @@ export default function useTypingEngine({
         return;
       }
 
+      /**
+       * Tab is indentation, not focus navigation — code snippets need it, and
+       * a stage that let it move focus would be unusable for the language
+       * half of the product.
+       *
+       * Shift+Tab is deliberately NOT consumed. Without it this is a keyboard
+       * trap: a keyboard-only user can reach the stage and then has no way
+       * out of it, which fails WCAG 2.1.2. Indentation never needs the
+       * backwards direction, so surrendering it costs nothing and restores
+       * the exit.
+       */
       if (key === 'Tab') {
+        if (event.shiftKey) return;
         event.preventDefault();
         if (status === 'idle') start();
         push('\t' === target[typedRef.current.length] ? '\t' : ' ');

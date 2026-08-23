@@ -71,7 +71,7 @@ export default function IntroPanel({ snippet, difficulty, language, analysis, lo
           </span>
 
           <span className="min-w-0 flex-1">
-            <span id="intro-title" className="block truncate text-base font-extrabold tracking-[-0.01em]">
+            <span id="intro-title" className="block truncate text-base font-bold tracking-[-0.01em]">
               {snippet.title}
             </span>
             {/* The one-line summary. Clamped closed, full open — so the row
@@ -170,7 +170,7 @@ export default function IntroPanel({ snippet, difficulty, language, analysis, lo
 function Field({ label, children }) {
   return (
     <div>
-      <p className="mb-0.5 text-2xs font-extrabold uppercase tracking-[0.09em] text-ink-3">{label}</p>
+      <p className="mb-0.5 text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
       {children}
     </div>
   );

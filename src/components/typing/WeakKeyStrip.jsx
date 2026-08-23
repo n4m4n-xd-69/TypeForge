@@ -33,7 +33,7 @@ export default function WeakKeyStrip({ keyStats, className, limit = 6 }) {
         className,
       )}
     >
-      <span className="flex items-center gap-0.5 text-2xs font-extrabold uppercase tracking-[0.07em] text-bad/90">
+      <span className="flex items-center gap-0.5 text-2xs font-bold uppercase tracking-[0.07em] text-bad/90">
         <AlertTriangle size={11} strokeWidth={2.6} aria-hidden />
         You miss these most
       </span>
