@@ -34,8 +34,6 @@ export const CHROME = {
   dark: { grid: '#2c2c2a', axis: '#383835', muted: '#898781', surface: '#141715' },
 };
 
-export const STATUS = { good: '#0ca30c', warning: '#fab219', serious: '#ec835a', critical: '#d03b3b' };
-
 export function chartTokens(isDark) {
   const mode = isDark ? 'dark' : 'light';
   return {

@@ -163,7 +163,7 @@ export async function optimiseCode(code, language, { signal } = {}) {
 /* ── Chat with visible thinking ────────────────────────────────────────── */
 
 /**
- * Streaming chat for the code panel and the lesson tutor.
+ * Streaming chat for the code panel and coach surfaces.
  *
  * `onThinking` receives the model's reasoning as it arrives (thinking-capable
  * models only); `onToken` receives the answer. The caller shows a trimmed live
@@ -322,19 +322,6 @@ export async function coachInsight(stats, { signal } = {}) {
       }
     },
     (value) => value.source === 'ai',
-  );
-}
-
-export async function tutorAnswer(question, context, { signal } = {}) {
-  return chat(
-    [
-      {
-        role: 'system',
-        content: 'You are a patient programming tutor. Answer in under 120 words. Use a short code block only when it clarifies. No preamble.',
-      },
-      { role: 'user', content: `Lesson: ${context}\n\nQuestion: ${question}` },
-    ],
-    { maxTokens: 500, temperature: 0.5, signal, surface: 'tutor' },
   );
 }
 

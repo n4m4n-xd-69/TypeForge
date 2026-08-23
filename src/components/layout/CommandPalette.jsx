@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Braces, GraduationCap, Home, Keyboard, LineChart, MessageSquare, Moon, Search, Sun,
+  Braces, Home, Keyboard, LineChart, MessageSquare, Moon, Search, Sun,
   Swords, Trophy, Zap,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
@@ -23,7 +23,6 @@ export default function CommandPalette({ open, onClose }) {
       { id: 'home', label: 'Go to Home', icon: Home, group: 'Navigate', run: () => navigate('/') },
       { id: 'practice', label: 'Start typing practice', icon: Keyboard, group: 'Navigate', run: () => navigate('/practice') },
       { id: 'code', label: 'Start code typing', icon: Braces, group: 'Navigate', run: () => navigate('/code') },
-      { id: 'learn', label: 'Open Learn & Practise', icon: GraduationCap, group: 'Navigate', run: () => navigate('/learn') },
       { id: 'battle', label: 'Open Battlefield — multiplayer', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
       // Chat gave up its nav slot to Battlefield. The floating coach reaches the
       // same model from every route, but the full page owns the thread history

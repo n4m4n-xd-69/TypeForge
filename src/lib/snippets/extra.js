@@ -1,6 +1,6 @@
 /**
- * Snippet library — the four languages that have no authored learning path in
- * n4m4n. Code typing still supports them fully; two entries per difficulty.
+ * Snippet library — supplemental snippets for Go, Rust, Kotlin, and Swift.
+ * Code typing supports them fully; two entries per difficulty.
  */
 
 export const EXTRA_SNIPPETS = {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Braces, GraduationCap, Keyboard, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Braces, Keyboard, Mail, ShieldCheck, Sparkles, Swords } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -18,7 +18,7 @@ const GOALS = [
 const FOCUS = [
   { id: 'speed', label: 'Type faster', icon: Keyboard, blurb: 'Prose, quotes and timed sprints.' },
   { id: 'code', label: 'Type code', icon: Braces, blurb: 'Real snippets in eleven languages.' },
-  { id: 'learn', label: 'Learn to code', icon: GraduationCap, blurb: 'Concepts, practice, quizzes.' },
+  { id: 'battle', label: 'Battle players', icon: Swords, blurb: 'Real-time multiplayer race.' },
 ];
 
 /**

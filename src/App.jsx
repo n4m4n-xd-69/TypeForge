@@ -8,8 +8,6 @@ import { Card, Skeleton } from './components/ui/Primitives.jsx';
 const Landing = lazy(() => import('./modules/landing/Landing.jsx'));
 const Practice = lazy(() => import('./modules/practice/Practice.jsx'));
 const CodeTyping = lazy(() => import('./modules/code/CodeTyping.jsx'));
-const Learn = lazy(() => import('./modules/learn/Learn.jsx'));
-const LessonView = lazy(() => import('./modules/learn/LessonView.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
 const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
 const AIChat = lazy(() => import('./modules/chat/AIChat.jsx'));
@@ -27,9 +25,6 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/code" element={<CodeTyping />} />
-          <Route path="/learn" element={<Learn />} />
-          <Route path="/learn/:langId" element={<Learn />} />
-          <Route path="/learn/:langId/:conceptId" element={<LessonView />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/chat" element={<AIChat />} />

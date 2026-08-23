@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight, BookOpen, Braces, Check, Command, Copy, Heart, Instagram, Keyboard,
-  LifeBuoy, Mail, Send, Sparkles, Trophy,
+  LifeBuoy, Mail, Send, Sparkles, Swords, Trophy,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -13,7 +13,6 @@ import { Reveal, Stagger, StaggerItem } from '../../components/ui/Motion.jsx';
 import { aiConfigured } from '../../lib/ai.js';
 import { useScrollAnchor, useStreamingChat } from '../../lib/useStreamingChat.js';
 import { useReducedMotionSafe } from '../../lib/motion.js';
-import { curriculumTotals } from '../../lib/curriculum.js';
 import { LANGUAGES, snippetCount } from '../../lib/content.js';
 import { ACHIEVEMENTS } from '../../lib/gamification.js';
 import { cx } from '../../lib/format.js';
@@ -56,7 +55,6 @@ function AboutTab() {
   /* Counted from the real corpus rather than typed into copy, so the numbers
      cannot quietly go stale as content is added. */
   const facts = useMemo(() => {
-    const totals = curriculumTotals();
     const snippets = LANGUAGES.reduce(
       (a, l) => a + ['easy', 'normal', 'hard', 'expert'].reduce((b, d) => b + snippetCount(l.id, d), 0),
       0,
@@ -64,8 +62,8 @@ function AboutTab() {
     return [
       { value: LANGUAGES.length, label: 'Languages' },
       { value: snippets, label: 'Code snippets' },
-      { value: totals.modules, label: 'Lesson modules' },
       { value: ACHIEVEMENTS.length, label: 'Achievements' },
+      { value: '100%', label: 'Free & offline' },
     ];
   }, []);
 
@@ -80,7 +78,7 @@ function AboutTab() {
               <p className="mt-0.5 max-w-[60ch] text-sm leading-relaxed text-ink-2">
                 A typing trainer built for people who write code. Most typing sites drill prose and stop
                 there — which is fine until the day your job is brackets, semicolons and indentation.
-                KeyStroke drills all three, then teaches the concepts underneath them.
+                KeyStroke drills all three, with real-time multiplayer battles and AI assistance.
               </p>
             </div>
           </div>
@@ -167,13 +165,12 @@ const GUIDE = [
     ],
   },
   {
-    icon: BookOpen,
-    title: 'Learn',
+    icon: Swords,
+    title: 'Battlefield',
     steps: [
-      'Seven language paths, each split into Beginner, Intermediate and Advanced.',
-      'Every module has a **Learn** section, a **Practice** task to build yourself, and a **Self-check**.',
-      'Mark only the questions you genuinely got — an honest self-assessment is the whole exercise.',
-      'A module unlocks the one after it, so the order is the curriculum.',
+      'Create a private or public match or join with a 4-digit PIN.',
+      'Race against players in real-time on identical passages with live progress markers.',
+      'Earn placement XP and unlock battle-exclusive achievements.',
     ],
   },
   {
@@ -220,17 +217,17 @@ function GuideTab() {
 /* ── Ask for help ──────────────────────────────────────────────────────── */
 
 const HELP_SYSTEM = [
-  'You are the help assistant inside KeyStroke, a typing and learn-to-code app.',
-  'Answer questions about how to use the app, and about typing technique and learning to code.',
+  'You are the help assistant inside KeyStroke, a typing and code-typing app.',
+  'Answer questions about how to use the app, typing technique, and code practice.',
   'Be brief and concrete — under 140 words. Never invent features; if you are unsure whether',
   'something exists, say so and suggest the closest thing that does.',
   '',
   'What exists: Typing practice (Time, Words, Quote, Drill, Custom, Zen modes; difficulty easy to',
   'expert; live WPM, accuracy, consistency; a keyboard visualiser; per-key weak-spot tracking).',
   'Code typing (11 languages, 4 difficulties, AI-generated snippets, auto-indent, a side panel with',
-  'Explain/Flow/Cost/Review/Chat, full-screen mode). Learn (7 language paths, 102 modules, each with',
-  'a lesson, a practice task and a self-check). Progress dashboard, achievements, XP, levels, daily',
-  'missions and streaks. Everything works offline; progress is stored on the device.',
+  'Explain/Flow/Cost/Review/Chat, full-screen mode). Battlefield (real-time multiplayer typing race).',
+  'Progress dashboard, achievements, XP, levels, daily missions and streaks. Everything works offline;',
+  'progress is stored on the device.',
   'Formatting: never use markdown tables.',
 ].join('\n');
 
@@ -392,7 +389,7 @@ function FollowTab() {
               <p className="text-sm font-extrabold">Instagram</p>
               <p className="truncate font-mono text-2xs text-brand">@keystroke.ai</p>
               <p className="mt-0.5 text-xs leading-relaxed text-ink-3">
-                Progress notes, new lessons, and the occasional typing-speed brag.
+                Progress notes, new features, and the occasional typing-speed brag.
               </p>
               <p className="mt-1 flex items-center gap-0.5 text-xs font-extrabold text-brand">
                 Follow us <ArrowRight size={13} strokeWidth={2.4} aria-hidden />
@@ -447,7 +444,7 @@ function FollowTab() {
           </span>
           <p className="mt-1.5 text-base font-extrabold">Tell us what&apos;s missing</p>
           <p className="mx-auto mt-0.5 max-w-[52ch] text-sm leading-relaxed text-ink-2">
-            A language you want, a lesson that doesn&apos;t exist yet, a drill that would help, or
+            A language you want, a feature request, a drill that would help, or
             something that&apos;s simply broken — open an issue. It genuinely gets read, and most of
             what&apos;s here started as someone asking for it.
           </p>

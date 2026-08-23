@@ -48,18 +48,16 @@ export async function fetchAiUsage({ limit = 1000, userId } = {}) {
 }
 
 export async function fetchUserDetail(userId) {
-  if (!supabase) return { sessions: [], keyStats: [], learn: [], problems: [] };
-  const [sessionsRes, keyStatsRes, learnRes, problemsRes] = await Promise.all([
+  if (!supabase) return { sessions: [], keyStats: [], problems: [] };
+  const [sessionsRes, keyStatsRes, problemsRes] = await Promise.all([
     supabase.from('sessions').select('*').eq('user_id', userId).order('ts', { ascending: false }).limit(100),
     supabase.from('key_stats').select('*').eq('user_id', userId),
-    supabase.from('learn_progress').select('*').eq('user_id', userId),
     supabase.from('problem_progress').select('*').eq('user_id', userId),
   ]);
-  for (const r of [sessionsRes, keyStatsRes, learnRes, problemsRes]) if (r.error) throw r.error;
+  for (const r of [sessionsRes, keyStatsRes, problemsRes]) if (r.error) throw r.error;
   return {
     sessions: sessionsRes.data ?? [],
     keyStats: keyStatsRes.data ?? [],
-    learn: learnRes.data ?? [],
     problems: problemsRes.data ?? [],
   };
 }

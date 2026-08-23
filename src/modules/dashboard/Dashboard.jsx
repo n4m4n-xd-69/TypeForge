@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Activity, Award, Braces, CalendarDays, Flame, Gauge, GraduationCap, Sparkles, Target, TrendingDown, TrendingUp, Zap,
+  Activity, Award, Braces, CalendarDays, Flame, Gauge, Sparkles, Target, TrendingDown, TrendingUp, Zap,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -58,7 +58,7 @@ export default function Dashboard() {
       { skill: 'Accuracy', value: Math.min(100, stats.accuracy) },
       { skill: 'Consistency', value: Math.min(100, stats.consistency) },
       { skill: 'Code', value: Math.min(100, (codeRuns / 25) * 100) },
-      { skill: 'Learning', value: Math.min(100, (stats.lessonsDone / 24) * 100) },
+      { skill: 'Endurance', value: Math.min(100, (stats.totalSeconds / 1800) * 100) },
       { skill: 'Habit', value: Math.min(100, (stats.streak / 21) * 100) },
     ];
   }, [stats]);
@@ -163,7 +163,6 @@ export default function Dashboard() {
             <Best label="Best accuracy" value={`${Math.round(stats.bestAccuracy)}%`} icon={Target} />
             <Best label="Longest streak" value={`${stats.bestStreak} days`} icon={Flame} />
             <Best label="Time practised" value={humanDuration(stats.totalSeconds)} icon={CalendarDays} />
-            <Best label="Lessons completed" value={stats.lessonsDone} icon={GraduationCap} />
             <Best label="Badges unlocked" value={stats.unlockedCount} icon={Award} />
           </ul>
         </Card>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  BadgeInfo, Braces, ChevronRight, Command, Flame, GraduationCap, Home, Keyboard,
+  BadgeInfo, Braces, ChevronRight, Command, Flame, Home, Keyboard,
   LineChart, Swords, Trophy,
 } from 'lucide-react';
 import { cx } from '../../lib/format.js';
@@ -32,7 +32,6 @@ export const NAV_GROUPS = [
       { to: '/', label: 'Home', icon: Home, end: true },
       { to: '/practice', label: 'Typing', icon: Keyboard },
       { to: '/code', label: 'Code', icon: Braces },
-      { to: '/learn', label: 'Learn', icon: GraduationCap },
       { to: '/battle', label: 'Battle', icon: Swords },
     ],
   },

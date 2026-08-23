@@ -57,9 +57,6 @@ export function xpForSession({ wpm, accuracy, durationSec, kind = 'text', diffic
   return Math.max(5, Math.round(base * accuracyFactor * kindFactor * diffFactor));
 }
 
-export const LESSON_XP = 60;
-export const QUIZ_XP = 25;
-
 /* ── Streaks ───────────────────────────────────────────────────────────── */
 
 export function dayKey(date = new Date()) {
@@ -103,8 +100,6 @@ export const ACHIEVEMENTS = [
   { id: 'streak-30', name: 'Unbroken', hint: 'A 30-day streak', icon: 'Flame', tier: 'legend', test: (s) => (s.streak.best || 0) >= 30 },
   { id: 'code-10', name: 'Syntax Native', hint: 'Type 10 code snippets', icon: 'Braces', tier: 'silver', test: (s) => s.sessions.filter((x) => x.kind === 'code').length >= 10 },
   { id: 'polyglot', name: 'Polyglot', hint: 'Code-type in 5 languages', icon: 'Languages', tier: 'gold', test: (s) => new Set(s.sessions.filter((x) => x.kind === 'code').map((x) => x.lang)).size >= 5 },
-  { id: 'lesson-5', name: 'Student', hint: 'Complete 5 lessons', icon: 'GraduationCap', tier: 'bronze', test: (s) => s.lessonCount >= 5 },
-  { id: 'lesson-25', name: 'Scholar', hint: 'Complete 25 lessons', icon: 'BookOpen', tier: 'gold', test: (s) => s.lessonCount >= 25 },
   { id: 'level-10', name: 'Double Digits', hint: 'Reach level 10', icon: 'Trophy', tier: 'gold', test: (s) => s.level >= 10 },
   { id: 'marathon', name: 'Marathon', hint: 'Practise for 60 minutes total', icon: 'Timer', tier: 'silver', test: (s) => s.totalSeconds >= 3600 },
   { id: 'night-owl', name: 'Night Owl', hint: 'Finish a session after midnight', icon: 'Moon', tier: 'bronze', test: (s) => s.sessions.some((x) => new Date(x.ts).getHours() < 5) },
@@ -128,7 +123,6 @@ const MISSION_POOL = [
   { id: 'minutes-10', label: 'Practise for 10 minutes', goal: 600, xp: 50, metric: 'seconds', unit: 'sec' },
   { id: 'acc-96', label: 'Land a run above 96% accuracy', goal: 1, xp: 45, metric: 'accurateRuns' },
   { id: 'code-2', label: 'Type 2 code snippets', goal: 2, xp: 55, metric: 'codeRuns' },
-  { id: 'lesson-1', label: 'Complete a lesson', goal: 1, xp: 60, metric: 'lessons' },
   { id: 'pb', label: 'Beat your personal best WPM', goal: 1, xp: 80, metric: 'personalBests' },
   { id: 'chars-800', label: 'Type 800 characters', goal: 800, xp: 45, metric: 'chars' },
 ];
@@ -157,7 +151,7 @@ export function missionProgress(mission, today) {
  *  because the mission metrics above are exactly these keys. */
 export const EMPTY_DAY = {
   sessions: 0, seconds: 0, chars: 0, codeRuns: 0,
-  accurateRuns: 0, lessons: 0, personalBests: 0, xp: 0,
+  accurateRuns: 0, personalBests: 0, xp: 0,
 };
 
 /**

@@ -3,7 +3,7 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "KeyStroke — a premium typing, code-typing and learn-to-code platform.",
+  "description": "KeyStroke — a premium typing, code-typing and multiplayer battle platform.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -27,5 +27,8 @@
     "sharp": "^0.35.3",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
   }
 }

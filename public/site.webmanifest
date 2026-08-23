@@ -1,7 +1,7 @@
 {
   "name": "KeyStroke \u2014 type faster, code sharper",
   "short_name": "KeyStroke",
-  "description": "Practise typing, drill real code, and learn to program. Track WPM, accuracy and consistency with a streak that keeps you honest.",
+  "description": "Practise typing, drill real code, and race in multiplayer battles. Track WPM, accuracy and consistency with a streak that keeps you honest.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

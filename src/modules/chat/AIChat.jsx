@@ -21,14 +21,14 @@ import {
 } from '../../lib/chatStore.js';
 
 const BASE_SYSTEM =
-  'You are the coach inside KeyStroke, a typing and learn-to-code app. Answer in a friendly, ' +
+  'You are the coach inside KeyStroke, a typing and code-typing platform. Answer in a friendly, ' +
   'direct voice. Prefer short paragraphs and concrete examples. When the question is about code, ' +
   'show a small runnable snippet in a fenced block. Keep answers under 250 words unless asked to ' +
   'go deeper. Use markdown headings only when an answer genuinely has sections. ' +
   'Never use markdown tables — the renderer here does not support them.';
 
 /**
- * Suggestions that track where the learner actually is.
+ * Suggestions that track where the user actually is.
  *
  * A fixed starter list goes stale the moment someone improves: "where do I
  * start" is the wrong question at level 8. These are banded by level and seeded
@@ -103,9 +103,9 @@ export default function AIChat() {
       [
         BASE_SYSTEM,
         '',
-        'About this learner:',
+        'About this user:',
         `- Averages ${Math.round(stats.wpm)} WPM at ${Math.round(stats.accuracy)}% accuracy over ${stats.sessionCount} sessions.`,
-        `- Level ${stats.level.level}, ${stats.streak}-day streak, ${stats.lessonsDone} lessons completed.`,
+        `- Level ${stats.level.level}, ${stats.streak}-day streak.`,
         weak.length ? `- Weakest keys: ${weak.join(', ')}.` : null,
         state.settings.lastLanguage ? `- Currently practising ${state.settings.lastLanguage}.` : null,
       ]
@@ -113,7 +113,7 @@ export default function AIChat() {
         .join('\n'),
     [
       stats.wpm, stats.accuracy, stats.sessionCount, stats.level.level, stats.streak,
-      stats.lessonsDone, weak, state.settings.lastLanguage,
+      weak, state.settings.lastLanguage,
     ],
   );
 

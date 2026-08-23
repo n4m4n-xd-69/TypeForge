@@ -217,11 +217,14 @@ function UserDetailModal({ userId, summary, adminId, onClose }) {
                 <p className="text-sm text-ink-3">Not enough key data yet.</p>
               )}
 
-              <p className="mb-1 mt-2.5 text-sm font-bold">Learn progress</p>
-              <p className="text-sm text-ink-3">
-                {detail.learn.filter((l) => l.passed).length} of {detail.learn.length} modules passed
-                {detail.problems.length ? ` · ${detail.problems.filter((p) => p.status === 'solved').length} problems solved` : ''}
-              </p>
+              {detail.problems?.length ? (
+                <>
+                  <p className="mb-1 mt-2.5 text-sm font-bold">Code problems</p>
+                  <p className="text-sm text-ink-3">
+                    {detail.problems.filter((p) => p.status === 'solved').length} of {detail.problems.length} solved
+                  </p>
+                </>
+              ) : null}
             </div>
 
             <div>

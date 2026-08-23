@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Activity, BookOpen, Braces, Crosshair, Crown, Flame, Gauge, GraduationCap, Languages,
+  Activity, Braces, Crosshair, Crown, Flame, Gauge, Languages,
   Lock, Medal, Moon, Rocket, Sparkles, Swords, Target, Timer, Trophy, Wind, Zap,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
@@ -18,7 +18,7 @@ import { supabase } from '../../lib/supabase.js';
 /* Explicit map rather than `import * as Icons` — a namespace import of
    lucide-react drags every icon in the library into this chunk. */
 const BADGE_ICONS = {
-  Activity, BookOpen, Braces, Crosshair, Crown, Flame, Gauge, GraduationCap, Languages,
+  Activity, Braces, Crosshair, Crown, Flame, Gauge, Languages,
   Moon, Rocket, Sparkles, Swords, Target, Timer, Trophy, Wind, Zap,
 };
 

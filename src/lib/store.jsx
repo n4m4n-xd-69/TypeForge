@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import {
   ACHIEVEMENTS, advanceStreak, bumpDaily, dayKey, levelFromXP, liveStreak,
-  missionsForDay, missionProgress, xpForSession, LESSON_XP, QUIZ_XP,
+  missionsForDay, missionProgress, xpForSession,
 } from './gamification.js';
 import { useAuth } from './auth.jsx';
 import { useCloudSync } from './sync.js';
@@ -21,7 +21,6 @@ const EMPTY = {
   // `local[id]` — an absent key threw the moment cloud sync touched a fresh
   // profile. Present and empty is the correct shape.
   problems: {},
-  learn: { completed: [], quizzes: {} },
   daily: {}, // dayKey -> counters used by missions + the heatmap
   settings: {
     theme: 'system',
@@ -56,7 +55,6 @@ function load() {
       ...EMPTY, ...parsed,
       profile: { ...EMPTY.profile, ...parsed.profile },
       settings: { ...EMPTY.settings, ...parsed.settings },
-      learn: { ...EMPTY.learn, ...parsed.learn },
       // Saved before `problems` existed, so a spread alone leaves it undefined.
       problems: parsed.problems ?? EMPTY.problems,
     };
@@ -71,7 +69,6 @@ function evaluateAchievements(state) {
     sessions: state.sessions,
     streak: state.streak,
     level: levelFromXP(state.xp).level,
-    lessonCount: state.learn.completed.length,
     totalSeconds: state.sessions.reduce((a, s) => a + s.durationSec, 0),
     battles: state.sessions.filter((s) => s.mode === 'battle').length,
     // `rank` is stamped on by `battleRank` once the room settles, which is the
@@ -133,35 +130,6 @@ function reducer(state, action) {
       };
       const { unlocked, fresh } = evaluateAchievements(next);
       return { ...next, achievements: unlocked, _fresh: fresh, _lastAward: { xp, isPB } };
-    }
-
-    case 'lesson': {
-      if (state.learn.completed.includes(action.lessonId)) return state;
-      const today = dayKey();
-      const next = {
-        ...state,
-        xp: state.xp + LESSON_XP,
-        learn: { ...state.learn, completed: [...state.learn.completed, action.lessonId] },
-        streak: advanceStreak(state.streak, today),
-        daily: bumpDaily(state.daily, today, { lessons: 1, xp: LESSON_XP }),
-      };
-      const { unlocked, fresh } = evaluateAchievements(next);
-      return { ...next, achievements: unlocked, _fresh: fresh, _lastAward: { xp: LESSON_XP } };
-    }
-
-    case 'quiz': {
-      const prior = state.learn.quizzes[action.lessonId];
-      const gain = prior?.passed ? 0 : action.passed ? QUIZ_XP : 0;
-      return {
-        ...state,
-        xp: state.xp + gain,
-        learn: {
-          ...state.learn,
-          quizzes: { ...state.learn.quizzes, [action.lessonId]: { passed: action.passed, score: action.score } },
-        },
-        daily: gain ? bumpDaily(state.daily, dayKey(), { xp: gain }) : state.daily,
-        _lastAward: gain ? { xp: gain } : null,
-      };
     }
 
     /**
@@ -240,8 +208,6 @@ export function StoreProvider({ children }) {
     () => ({
       recordSession: (session) => dispatch({ type: 'session', session }),
       recordBattleRank: (rank) => dispatch({ type: 'battleRank', rank }),
-      completeLesson: (lessonId) => dispatch({ type: 'lesson', lessonId }),
-      recordQuiz: (lessonId, passed, score) => dispatch({ type: 'quiz', lessonId, passed, score }),
       setSetting: (key, value) => dispatch({ type: 'setting', key, value }),
       updateProfile: (patch) => dispatch({ type: 'profile', patch }),
       clearFresh: () => dispatch({ type: 'clearFresh' }),
@@ -302,12 +268,11 @@ export function useStats() {
       goalMinutes: state.profile.goalMinutes,
       missions,
       missionsDone: missions.filter((m) => m.done).length,
-      lessonsDone: state.learn.completed.length,
       unlockedCount: Object.keys(state.achievements).length,
       keyStats: state.keyStats,
       daily: state.daily,
       sessions,
-      isNew: sessions.length === 0 && state.learn.completed.length === 0,
+      isNew: sessions.length === 0,
     };
   }, [state]);
 }

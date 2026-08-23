@@ -36,12 +36,12 @@ export default function ChatFab() {
 
   const weak = weakestKeys(state.keyStats, 5).map((k) => keyLabel(k.key));
   const system = [
-    'You are the coach inside KeyStroke, a typing and learn-to-code app. Friendly and direct.',
+    'You are the coach inside KeyStroke, a typing and code-typing platform. Friendly and direct.',
     'Answer in under 130 words. No preamble. Never use markdown tables.',
     '',
-    'About this learner — use it to make advice specific, but do not recite it back:',
+    'About this user — use it to make advice specific, but do not recite it back:',
     `- Averages ${Math.round(stats.wpm)} WPM at ${Math.round(stats.accuracy)}% accuracy over ${stats.sessionCount} sessions.`,
-    `- Level ${stats.level.level}, ${stats.streak}-day streak, ${stats.lessonsDone} lessons done.`,
+    `- Level ${stats.level.level}, ${stats.streak}-day streak.`,
     weak.length ? `- Weakest keys: ${weak.join(', ')}.` : '- No per-key weak spots recorded yet.',
     state.settings.lastLanguage ? `- Practising ${state.settings.lastLanguage} in code typing.` : null,
   ]

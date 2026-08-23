@@ -28,7 +28,6 @@ concepts underneath them.**
 ![Status](https://img.shields.io/badge/status-active-a3e635?style=flat-square)
 ![Offline](https://img.shields.io/badge/works-offline-a3e635?style=flat-square)
 ![Languages](https://img.shields.io/badge/code%20snippets-11%20languages-8a6ad6?style=flat-square)
-![Lessons](https://img.shields.io/badge/lessons-24%20modules-6bb8d6?style=flat-square)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey?style=flat-square)
 
 <br />
@@ -51,7 +50,7 @@ never touch them.
 |---|---|
 | **Train the hands** | Prose, quotes, drills and timed sprints with live WPM, accuracy and consistency |
 | **Train the syntax** | Real snippets in 11 languages with syntax highlighting and auto-indent |
-| **Train the mind** | A 24-module Python curriculum with graded quizzes and an AI tutor |
+| **Test your speed** | Real-time multiplayer Battlefield races with matchmaking and custom PIN rooms |
 
 Progress lives on your device by default — **no account required, works fully offline**.
 Sign in only when you want it on more than one machine.
@@ -97,27 +96,6 @@ cannot answer.
 | **Cost** | Time and space complexity, and what would change them |
 | **Review** | Common mistakes, improvements, and a rewrite on request |
 | **Chat** | Free-form, with openers generated from the snippet itself |
-
-### 📚 Learn track
-
-A full **Python mastery path** — currently the only path open, while the rest are rewritten
-to the same standard.
-
-```
-24 modules  ·  216 self-check questions  ·  96 graded MCQs  ·  3 checkpoint projects
-```
-
-Every module runs **Learn → Practice → Self-check**:
-
-- **Learn** — the concept, with its misconceptions named explicitly
-- **Practice** — four multiple-choice questions graded instantly, most of them
-  *"what does this print?"*, plus a build-it-yourself task
-- **Self-check** — open questions you mark honestly
-
-Coverage runs from the toolchain and the numeric tower through binding and mutability,
-collections and their complexities, the iteration protocol, exceptions, the object model,
-typing, generators, decorators, concurrency, testing, profiling, packaging, CPython
-internals and production concerns.
 
 ### 📊 Analytics dashboard
 
@@ -172,24 +150,6 @@ all generated for the snippet in front of you.</sub>
 
 <br /><br />
 
-### Learn
-
-<img src="assets/screenshots/learn.png" alt="Learn section showing the Python mastery path" width="92%" />
-
-<sub>The Python path, open. The remaining languages stay visible so the roadmap reads, but
-they are locked until rewritten to the same depth.</sub>
-
-<br /><br />
-
-### Graded quiz
-
-<img src="assets/screenshots/lesson-quiz.png" alt="A graded multiple-choice question with immediate feedback" width="92%" />
-
-<sub>Immediate grading. The correct answer is always revealed — being told only "wrong"
-leaves you no better informed.</sub>
-
-<br /><br />
-
 ### Dashboard
 
 <img src="assets/screenshots/dashboard.png" alt="Analytics dashboard with WPM growth and accuracy trend" width="92%" />
@@ -214,16 +174,13 @@ leaves you no better informed.</sub>
 flowchart LR
     A([Landing]) --> B[Practice]
     A --> C[Code typing]
-    A --> D[Learn]
+    A --> D[Battlefield]
 
     B --> E{Run finished}
     C --> E
+    D --> E
     E --> F[Session summary<br/>WPM · accuracy · grade]
     F --> G[(Local state)]
-
-    D --> H[Module]
-    H --> H1[Learn] --> H2[Practice quiz] --> H3[Self-check]
-    H3 --> G
 
     G --> I[Dashboard]
     G --> J[Rewards]
@@ -238,9 +195,8 @@ flowchart LR
 ```
 
 **How it flows.** Everything starts at the landing page, which reads your current state and
-points at the shortest useful next action. Practice and Code both end in a scored session
-that writes to local state. Learn moves through its three steps per module and writes the
-same way. Dashboard and Rewards are pure readers of that state — they compute, never store.
+points at the shortest useful next action. Practice, Code, and Battlefield all end in a scored session
+that writes to local state. Dashboard and Rewards are pure readers of that state — they compute, never store.
 Cloud sync mirrors it when you are signed in, and is a no-op when you are not.
 
 ---
@@ -252,7 +208,7 @@ flowchart TD
     subgraph UI[Surfaces]
         P[Practice]
         C[Code]
-        L[Learn]
+        B[Battlefield]
         D[Dashboard]
         R[Rewards]
         CH[Chat]
@@ -261,7 +217,6 @@ flowchart TD
     subgraph Core[Engine and domain]
         TE[Typing engine]
         GM[Gamification]
-        CU[Curriculum]
     end
 
     subgraph Services[Services]
@@ -272,15 +227,13 @@ flowchart TD
 
     P --> TE
     C --> TE
+    B --> TE
     TE --> ST
-    L --> CU
-    CU --> ST
     ST --> GM
     GM --> R
     ST --> D
     P --> AI
     C --> AI
-    L --> AI
     CH --> AI
     ST -.-> SY
 
@@ -292,7 +245,6 @@ flowchart TD
 |:--|:--|
 | **Typing engine** | Keystrokes on `keydown`, not through an `<input>` — so Enter, Tab and Backspace behave predictably and code can auto-consume indentation. Counters live in refs; only what renders lives in state. |
 | **Gamification** | Pure functions over saved state, so XP, level and streak recompute identically on any device. |
-| **Curriculum** | Authored markdown in `content/learn/` compiled to a validated bundle. Validation is strict on purpose: silent tolerance of a thin module is how a corpus ends up uneven. |
 | **AI integration** | Provider priority with **hedged failover** — the next attempt starts while the previous is still running, so a slow model costs a hedge delay rather than a full timeout. Every helper degrades to a local reading instead of throwing. |
 | **Charts** | Recharts, one measure per chart. Two measures of different scale get two charts, because a second y-axis is a lie about shared scale. |
 | **Theming** | Light / dark / system, resolved before first paint so there is never a flash of the wrong mode. |
@@ -344,7 +296,6 @@ cp .env.example .env.local
 ### Regenerating generated assets
 
 ```bash
-node scripts/build-learn.mjs    # content/learn/*.md -> src/lib/paths.generated.js
 node scripts/build-icons.mjs    # Logo.jsx -> favicon, PWA icons
 ```
 
@@ -355,10 +306,7 @@ node scripts/build-icons.mjs    # Logo.jsx -> favicon, PWA icons
 ```
 Key-Stroke/
 ├── assets/                    # Banner and screenshots for this README
-├── content/learn/             # Authored curriculum source (markdown)
-│   └── python.md              #   24 modules · 216 questions · 96 MCQs
 ├── scripts/
-│   ├── build-learn.mjs        # Compiles and validates the curriculum
 │   └── build-icons.mjs        # Derives every icon from one logo shape
 ├── supabase/migrations/       # Schema and row-level security
 ├── src/
@@ -374,10 +322,9 @@ Key-Stroke/
 │   │   ├── store.jsx          # Reducer + localStorage persistence
 │   │   ├── sync.js            # Cloud mirror (no-ops when signed out)
 │   │   ├── typing.js          # WPM, accuracy, consistency, key mapping
-│   │   ├── gamification.js    # XP, levels, streaks, badges, missions
-│   │   └── curriculum.js      # Path shaping and progress
+│   │   └── gamification.js    # XP, levels, streaks, badges, missions
 │   └── modules/
-│       ├── practice/  code/  learn/  dashboard/
+│       ├── practice/  code/  battle/  dashboard/
 │       └── achievements/  chat/  about/  auth/  admin/
 └── vite.config.js
 ```
@@ -446,25 +393,7 @@ worse than showing nothing.
 
 ## 🤝 Contributing
 
-Contributions are welcome — especially new language paths for the Learn track.
-
-```bash
-# 1 · Fork, then branch
-git checkout -b feature/your-idea
-
-# 2 · Make the change, then verify
-npm run build
-
-# 3 · Commit and push
-git commit -m "Add ..."
-git push origin feature/your-idea
-```
-
-Then open a pull request describing **what changed and why**.
-
-**Adding a language path?** Write `content/learn/<language>.md` following the format in
-`python.md`, run `node scripts/build-learn.mjs` — validation is strict and will tell you
-exactly what is missing — then add the id to `AVAILABLE_PATH_IDS` in `src/lib/curriculum.js`.
+Contributions and ideas are welcome. Open an issue or pull request describing **what changed and why**.
 
 ---
 

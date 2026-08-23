@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, Award, Braces, CalendarCheck, Flame, GraduationCap, Keyboard, Sparkles, Target, Trophy, Zap,
+  ArrowRight, Award, Braces, CalendarCheck, Flame, Keyboard, Sparkles, Target, Trophy, Zap,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Counter from '../../components/ui/Counter.jsx';
@@ -132,11 +132,10 @@ export default function Landing() {
         <StatCard icon={Trophy} label="Level" value={stats.level.level} hint={levelTitle(stats.level.level)} />
       </section>
 
-      {/* Challenge + insight + learn */}
-      <section className="grid gap-2.5 lg:grid-cols-3">
+      {/* Challenge + insight */}
+      <section className="grid gap-2.5 lg:grid-cols-2">
         <ChallengeCard challenge={challenge} />
         <InsightCard stats={stats} />
-        <LearnCard stats={stats} />
       </section>
 
       {/* Activity + badges */}
@@ -203,7 +202,7 @@ export default function Landing() {
       <Onboarding
         open={onboardingOpen}
         onClose={() => setOnboardingOpen(false)}
-        onStart={(focus) => navigate(focus === 'code' ? '/code' : focus === 'learn' ? '/learn' : '/practice')}
+        onStart={(focus) => navigate(focus === 'code' ? '/code' : focus === 'battle' ? '/battle' : '/practice')}
       />
     </div>
   );
@@ -245,7 +244,7 @@ function Hero({ name, stats, onStart, onCode }) {
 
           <p className="mt-1.5 max-w-[54ch] text-base leading-relaxed text-ink-2">
             {fresh
-              ? 'A typing trainer built for people who write code. Prose drills, real snippets in eleven languages, and a lesson track that teaches the concepts underneath them.'
+              ? 'A typing trainer built for people who write code. Prose drills, real snippets in eleven languages, and real-time multiplayer battles.'
               : 'Keep your eyes on the screen. Your fingers already know the way — the numbers below are just proof.'}
           </p>
 
@@ -381,7 +380,6 @@ const CHALLENGES = [
   { id: 'quote', title: 'Quote sprint', blurb: 'Type three quotes without dropping below 95% accuracy.', to: '/practice?mode=quote', icon: CalendarCheck },
   { id: 'code', title: 'Snippet of the day', blurb: 'Clear one hard snippet in the language of your choice.', to: '/code', icon: Braces },
   { id: 'symbols', title: 'Bracket bootcamp', blurb: 'Run the brackets and symbols drill twice.', to: '/practice?mode=drill', icon: Keyboard },
-  { id: 'lesson', title: 'One concept deeper', blurb: 'Finish any lesson and pass its quiz.', to: '/learn', icon: GraduationCap },
 ];
 
 function useDailyChallenge() {
@@ -453,41 +451,6 @@ function InsightCard({ stats }) {
           <Skeleton className="h-1.5 w-[62%]" />
         </div>
       )}
-    </Card>
-  );
-}
-
-/* ── Learn preview ─────────────────────────────────────────────────────── */
-
-function LearnCard({ stats }) {
-  return (
-    <Card className="p-2.5">
-      <p className="eyebrow">Module 03</p>
-      <h2 className="mt-0.5 text-lg font-extrabold">Learn &amp; practise</h2>
-      <p className="mt-0.5 text-sm leading-relaxed text-ink-3">
-        Eight concepts per language, each ending in code you type yourself and a quiz that checks you understood it.
-      </p>
-      <div className="mt-1.5 flex flex-wrap gap-0.5">
-        {LANGUAGES.slice(0, 8).map((l) => (
-          <span
-            key={l.id}
-            className="grid h-[24px] w-[24px] place-items-center rounded-[7px] font-mono text-2xs font-extrabold text-white"
-            style={{ background: l.hue }}
-            title={l.name}
-          >
-            {l.icon}
-          </span>
-        ))}
-        <span className="grid h-[24px] place-items-center rounded-[7px] bg-subtle px-0.5 text-2xs font-bold text-ink-3">
-          +{LANGUAGES.length - 8}
-        </span>
-      </div>
-      <div className="mt-2 flex items-center gap-1.5">
-        <Button as={Link} to="/learn" size="sm" variant="secondary" icon={GraduationCap}>
-          Open lessons
-        </Button>
-        <span className="text-xs text-ink-3">{stats.lessonsDone} completed</span>
-      </div>
     </Card>
   );
 }

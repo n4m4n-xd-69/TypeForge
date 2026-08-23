@@ -8,7 +8,7 @@
  *
  * The one place real merging happens is `adoptLocalState`, run exactly once
  * per (device, account) pair the first time a signed-out user with local
- * history signs in: it sums key_stats, unions learn/achievements, and keeps
+ * history signs in: it sums key_stats, unions achievements/problems, and keeps
  * the larger of xp/streak so a local-only user never loses progress by
  * signing up. After that, sync is plain LWW snapshots.
  *
@@ -178,23 +178,6 @@ export async function pushKeyStats(userId, keyStats) {
   if (error) throw error;
 }
 
-export async function pushLearnProgress(userId, learn) {
-  if (!supabase) return;
-  const completed = learn?.completed ?? [];
-  const quizzes = learn?.quizzes ?? {};
-  const ids = new Set([...completed, ...Object.keys(quizzes)]);
-  if (!ids.size) return;
-  const rows = [...ids].map((moduleId) => ({
-    user_id: userId,
-    module_id: moduleId,
-    passed: completed.includes(moduleId) || Boolean(quizzes[moduleId]?.passed),
-    score: quizzes[moduleId]?.score ?? null,
-    updated_at: new Date().toISOString(),
-  }));
-  const { error } = await supabase.from('learn_progress').upsert(rows, { onConflict: 'user_id,module_id' });
-  if (error) throw error;
-}
-
 export async function pushProblemProgress(userId, problems) {
   if (!supabase) return;
   const entries = Object.entries(problems ?? {});
@@ -239,22 +222,20 @@ export async function pushDaily(userId, daily) {
    from the merged session set avoids a lossy round trip. */
 
 async function fetchRemote(userId) {
-  const [profileRes, sessionsRes, keyStatsRes, learnRes, problemsRes, achievementsRes] = await Promise.all([
+  const [profileRes, sessionsRes, keyStatsRes, problemsRes, achievementsRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
     supabase.from('sessions').select('*').eq('user_id', userId).order('ts', { ascending: true }).limit(MAX_SESSIONS),
     supabase.from('key_stats').select('*').eq('user_id', userId),
-    supabase.from('learn_progress').select('*').eq('user_id', userId),
     supabase.from('problem_progress').select('*').eq('user_id', userId),
     supabase.from('achievements').select('*').eq('user_id', userId),
   ]);
-  for (const res of [profileRes, sessionsRes, keyStatsRes, learnRes, problemsRes, achievementsRes]) {
+  for (const res of [profileRes, sessionsRes, keyStatsRes, problemsRes, achievementsRes]) {
     if (res.error) throw res.error;
   }
   return {
     profileRow: profileRes.data,
     sessionRows: sessionsRes.data ?? [],
     keyStatsRows: keyStatsRes.data ?? [],
-    learnRows: learnRes.data ?? [],
     problemRows: problemsRes.data ?? [],
     achievementRows: achievementsRes.data ?? [],
   };
@@ -264,16 +245,6 @@ function keyStatsRowsToMap(rows) {
   const out = {};
   for (const row of rows) out[row.key] = { total: row.total, wrong: row.wrong };
   return out;
-}
-
-function learnRowsToLocal(rows) {
-  const completed = [];
-  const quizzes = {};
-  for (const row of rows) {
-    if (row.passed) completed.push(row.module_id);
-    if (row.passed || row.score != null) quizzes[row.module_id] = { passed: row.passed, score: row.score };
-  }
-  return { completed, quizzes };
 }
 
 function problemRowsToLocal(rows) {
@@ -321,17 +292,6 @@ function unionAchievements(local, remote) {
     out[id] = !localAt || remoteAt < localAt ? remoteAt : localAt;
   }
   return out;
-}
-
-function unionLearn(local, remote) {
-  const completed = new Set([...(local.completed ?? []), ...(remote.completed ?? [])]);
-  const quizzes = { ...remote.quizzes, ...local.quizzes };
-  for (const [id, r] of Object.entries(remote.quizzes ?? {})) {
-    const l = local.quizzes?.[id];
-    if (!l) continue;
-    quizzes[id] = { passed: l.passed || r.passed, score: Math.max(l.score ?? 0, r.score ?? 0) || l.score || r.score || null };
-  }
-  return { completed: [...completed], quizzes };
 }
 
 function sumKeyStats(local, remote) {
@@ -394,7 +354,6 @@ function toLocalPatch(remote, local) {
     xp,
     streak,
     keyStats: keyStatsRowsToMap(remote.keyStatsRows),
-    learn: unionLearn(local.learn, learnRowsToLocal(remote.learnRows)),
     problems: unionProblems(local.problems, problemRowsToLocal(remote.problemRows)),
     achievements: unionAchievements(local.achievements, achievementRowsToMap(remote.achievementRows)),
     daily: rebuildDaily(sessions),
@@ -421,7 +380,6 @@ export async function adoptLocalState(userId, localState) {
 
   const mergedSessions = unionSessions(localState.sessions, remote.sessionRows);
   const mergedKeyStats = sumKeyStats(localState.keyStats, keyStatsRowsToMap(remote.keyStatsRows));
-  const mergedLearn = unionLearn(localState.learn, learnRowsToLocal(remote.learnRows));
   const mergedProblems = unionProblems(localState.problems, problemRowsToLocal(remote.problemRows));
   const mergedAchievements = unionAchievements(localState.achievements, achievementRowsToMap(remote.achievementRows));
   const { profile, xp, streak } = maxProfile(localState, remote.profileRow);
@@ -429,7 +387,6 @@ export async function adoptLocalState(userId, localState) {
   await Promise.all([
     pushSessions(userId, mergedSessions),
     pushKeyStats(userId, mergedKeyStats),
-    pushLearnProgress(userId, mergedLearn),
     pushProblemProgress(userId, mergedProblems),
     pushAchievements(userId, mergedAchievements),
     pushProfile(userId, { profile, xp, streak, settings: localState.settings }),
@@ -444,7 +401,6 @@ function pushSnapshot(userId, s) {
     pushProfile(userId, { profile: s.profile, xp: s.xp, streak: s.streak, settings: s.settings }),
     pushSessions(userId, s.sessions),
     pushKeyStats(userId, s.keyStats),
-    pushLearnProgress(userId, s.learn),
     pushProblemProgress(userId, s.problems),
     pushAchievements(userId, s.achievements),
     pushDaily(userId, s.daily),

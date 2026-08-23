@@ -17,11 +17,6 @@ export function netWPM(correctChars, elapsedMs) {
   return (correctChars / CHARS_PER_WORD) / (elapsedMs / 60_000);
 }
 
-export function grossWPM(typedChars, elapsedMs) {
-  if (elapsedMs < 500) return 0;
-  return (typedChars / CHARS_PER_WORD) / (elapsedMs / 60_000);
-}
-
 export function accuracyPct(correctKeystrokes, totalKeystrokes) {
   if (!totalKeystrokes) return 100;
   return (correctKeystrokes / totalKeystrokes) * 100;

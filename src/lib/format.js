@@ -49,11 +49,6 @@ export function longDate(date = new Date()) {
   return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-export function initials(name) {
-  const parts = (name || 'You').trim().split(/\s+/).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || 'Y';
-}
-
 /** Stable pseudo-random in [0,1) from a string — used for demo leaderboards. */
 export function seeded(str) {
   let h = 2166136261;
