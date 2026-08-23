@@ -1,12 +1,12 @@
 {
-  "name": "TypeForge \u2014 type faster, code sharper",
+  "name": "TypeForge \u2014 type faster, prove it",
   "short_name": "TypeForge",
-  "description": "Practise typing, drill real code, and race in multiplayer battles. Track WPM, accuracy and consistency with a streak that keeps you honest.",
+  "description": "Drill prose and real code, see which keys cost you, and race other people on a clock nobody can cheat.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f6f7f3",
-  "theme_color": "#f6f7f3",
+  "background_color": "#0a0b0d",
+  "theme_color": "#0a0b0d",
   "icons": [
     {
       "src": "/favicon.svg",

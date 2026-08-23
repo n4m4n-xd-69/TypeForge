@@ -69,7 +69,7 @@ export default function Onboarding({ open, onClose, onStart }) {
               <Sparkles size={11} aria-hidden /> Welcome
             </span>
             <h2 className="mt-1 text-3xl font-extrabold tracking-[-0.03em]">
-              Let's set up your <span className="grad-text">practice</span>.
+              Let's set up your <span className="text-brand">practice</span>.
             </h2>
             <p className="mt-0.5 text-sm text-ink-3">Three quick questions. You can change all of them later.</p>
           </div>

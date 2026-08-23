@@ -82,6 +82,19 @@ const PIN_KEY = 'keystroke.rail.pinned';
  */
 const RAIL_TOP = 84;
 
+/**
+ * Routes that render without the app chrome.
+ *
+ * The landing page is for people who have not used the product, and a
+ * navigation rail, a streak counter and a level badge are all answers to
+ * questions they have not asked. It carries its own header instead.
+ *
+ * `/` is the only entry because App's Root redirects anyone with history to
+ * /home — so reaching `/` and staying there means the landing page is what
+ * is being shown.
+ */
+const BARE_ROUTES = new Set(['/']);
+
 export default function AppShell({ children }) {
   const { state } = useStore();
   const stats = useStats();
@@ -127,6 +140,20 @@ export default function AppShell({ children }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  if (BARE_ROUTES.has(location.pathname)) {
+    return (
+      <div className="min-h-dvh">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[60] focus:rounded-sm focus:bg-ink focus:px-2 focus:py-1 focus:text-sm focus:font-semibold focus:text-bg"
+        >
+          Skip to content
+        </a>
+        <div id="main">{children}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-dvh">

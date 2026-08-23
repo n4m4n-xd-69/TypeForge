@@ -1,10 +1,7 @@
 import { motion } from 'framer-motion';
 import {
-  DUR,
-  EASE,
   REVEAL_VIEWPORT,
   fadeUp,
-  hoverLift,
   staggerContainer,
   useReducedMotionSafe,
 } from '../../lib/motion.js';

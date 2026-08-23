@@ -2,10 +2,12 @@ import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import AppShell from './components/layout/AppShell.jsx';
 import { Card, Skeleton } from './components/ui/Primitives.jsx';
+import { useStore } from './lib/store.jsx';
 
 /* Route-level code splitting: the charts and Prism grammars only load when the
    surface that needs them is opened. */
 const Landing = lazy(() => import('./modules/landing/Landing.jsx'));
+const Home = lazy(() => import('./modules/home/Home.jsx'));
 const Practice = lazy(() => import('./modules/practice/Practice.jsx'));
 const CodeTyping = lazy(() => import('./modules/code/CodeTyping.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
@@ -17,12 +19,32 @@ const Profile = lazy(() => import('./modules/profile/Profile.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
 const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
 
+/**
+ * `/` answers two different questions depending on who is asking, so it
+ * resolves to two different screens rather than one screen with a branch
+ * inside it.
+ *
+ * A stranger gets the landing page. Someone who has typed here before gets
+ * their dashboard — sending them to a page explaining what the product is
+ * would be asking them to re-read the pitch every morning.
+ *
+ * The test is local session history rather than an auth check, because the
+ * product works signed-out: a returning user may well have no account, and
+ * they have still earned the dashboard.
+ */
+function Root() {
+  const { state } = useStore();
+  const returning = state.sessions.length > 0 || state.profile.onboarded;
+  return returning ? <Navigate to="/home" replace /> : <Landing />;
+}
+
 export default function App() {
   return (
     <AppShell>
       <Suspense fallback={<RouteSkeleton />}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Root />} />
+          <Route path="/home" element={<Home />} />
           <Route path="/practice" element={<Practice />} />
           <Route path="/code" element={<CodeTyping />} />
           <Route path="/dashboard" element={<Dashboard />} />

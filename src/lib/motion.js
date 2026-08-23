@@ -75,17 +75,3 @@ export const staggerContainer = (reduce, step = 0.045, delay = 0) => ({
 /** Shared `whileInView` config — reveal once, slightly before the edge. */
 export const REVEAL_VIEWPORT = { once: true, margin: '0px 0px -12% 0px' };
 
-/**
- * Hover/press feedback for interactive cards. Skipped under reduced motion.
- *
- * The lift is 1px, down from 3px. A card that jumps announces itself; a card
- * that shifts by a hairline reads as responsive without competing with
- * whatever the user is actually looking at.
- */
-export const hoverLift = (reduce) =>
-  reduce
-    ? {}
-    : {
-        whileHover: { y: -1, transition: { duration: DUR.fast, ease: EASE } },
-        whileTap: { scale: 0.99, transition: { duration: DUR.instant } },
-      };
