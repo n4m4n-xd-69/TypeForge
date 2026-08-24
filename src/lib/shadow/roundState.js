@@ -87,10 +87,15 @@ export function parrySucceeded(allEvents, parryEvent) {
 // construction" per the PRD; this priority order is the tie-break if
 // game flow ever produces an overlap anyway.
 export function deriveContestState(allEvents, player, atTimeMs) {
+  // Committed uses a closed interval [tStart, tEnd] (the move's own execution span,
+  // both endpoints meaningful instants of the same event), while Guarding/Exposed/
+  // Staggered use half-open [tEnd, tEnd+DURATION) (fixed-length decay windows starting
+  // at a trigger point, naturally half-open by construction). These are two different
+  // kinds of window and deserve different conventions.
   const isCommitted = allEvents.some((ev) => {
     const move = MOVES[ev.moveId];
     return (
-      ev.player === player && ev.outcome === 'complete' && move?.committed &&
+      ev.player === player && (ev.outcome === 'complete' || ev.outcome === 'expire') && move?.committed &&
       ev.tStart <= atTimeMs && atTimeMs <= ev.tEnd
     );
   });
