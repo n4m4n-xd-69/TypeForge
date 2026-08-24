@@ -12,7 +12,11 @@ export const MODE_REGISTRY = [
     icon: Clock, route: '/practice?mode=time', category: 'practice', kind: 'text',
     scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: DIFFICULTIES,
     xpRule: { kindFactor: 1 }, quickLaunch: false,
-    navSurface: true, navGroup: 'Train', navLabel: 'Typing', navRoute: '/practice',
+    // navIcon overrides icon here: `icon` is this mode's own identity (Clock,
+    // matching the /practice mode switcher), but the nav rail's "Typing" tab
+    // represents the whole practice surface, not the Time submode, so it
+    // keeps the pre-registry Keyboard glyph.
+    navSurface: true, navGroup: 'Train', navLabel: 'Typing', navRoute: '/practice', navIcon: Keyboard,
   },
   {
     id: 'words', name: 'Words', description: 'Type a fixed word count as fast as you cleanly can.',

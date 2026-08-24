@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Braces, ChevronRight, Command, Flame, Home, Keyboard,
-  LineChart, Swords, Trophy,
+  ChevronRight, Command, Flame, Home, LineChart, Trophy,
 } from 'lucide-react';
 import { cx } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
@@ -15,6 +14,8 @@ import CommandPalette from './CommandPalette.jsx';
 import ChatFab from './ChatFab.jsx';
 import AccountMenu from '../../modules/auth/AccountMenu.jsx';
 import AuthModal from '../../modules/auth/AuthModal.jsx';
+import { MODE_REGISTRY } from '../../lib/modes/registry.js';
+import { deriveNavGroups } from '../../lib/modes/derive.js';
 
 /**
  * Navigation, grouped by what you are doing rather than by feature.
@@ -33,27 +34,16 @@ import AuthModal from '../../modules/auth/AuthModal.jsx';
  * /chat and /about are deliberately out: the coach floats on every route via
  * ChatFab, and both are in the command palette.
  */
-export const NAV_GROUPS = [
-  {
-    label: 'Train',
-    items: [
-      { to: '/', label: 'Home', icon: Home, end: true },
-      { to: '/practice', label: 'Typing', icon: Keyboard },
-      { to: '/code', label: 'Code', icon: Braces },
-    ],
-  },
-  {
-    label: 'Compete',
-    items: [
-      { to: '/battle', label: 'Battle', icon: Swords },
-      { to: '/dashboard', label: 'Progress', icon: LineChart },
-      /* Rewards stays until Progress absorbs it. Dropping it now to hit a
-         five-item target would leave a live route reachable only from the
-         command palette, which trades discoverability for a number. */
-      { to: '/achievements', label: 'Rewards', icon: Trophy },
-    ],
-  },
-];
+export const NAV_GROUPS = deriveNavGroups(MODE_REGISTRY, {
+  Train: [{ to: '/', label: 'Home', icon: Home, end: true }],
+  Compete: [
+    { to: '/dashboard', label: 'Progress', icon: LineChart },
+    /* Rewards stays until Progress absorbs it. Dropping it now to hit a
+       five-item target would leave a live route reachable only from the
+       command palette, which trades discoverability for a number. */
+    { to: '/achievements', label: 'Rewards', icon: Trophy },
+  ],
+});
 
 export const NAV = NAV_GROUPS.flatMap((g) => g.items);
 
