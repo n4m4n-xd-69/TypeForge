@@ -1,0 +1,9 @@
+{
+  "name": "ko-single",
+  "description": "One fighter reaches HP <= 0 -> the other wins the round",
+  "options": { "initialState": { "hp": [1000, 100] } },
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 3800, "keystrokes": 12, "errors": 0, "ikiStats": [280, 15], "moveId": "crush", "chars": 12 }
+  ],
+  "expected": { "outcome": { "type": "ko", "winner": 0 } }
+}

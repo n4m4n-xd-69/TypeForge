@@ -1,0 +1,9 @@
+{
+  "name": "mend-heals-and-costs-focus",
+  "description": "§10.1/§11.2 — Mend costs 25 Focus and restores 12 HP, verified here through the full reduceRound pipeline (Task 5's unit test covers the max-HP clamp separately)",
+  "options": { "initialState": { "hp": [600, 1000], "focus": [40, 0] } },
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 0, "tEnd": 1100, "keystrokes": 6, "errors": 0, "ikiStats": [180, 10], "moveId": "mend", "chars": 6 }
+  ],
+  "expected": { "hp": [720, 1000], "focus": [15, 0] }
+}

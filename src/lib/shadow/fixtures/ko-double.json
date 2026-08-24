@@ -1,0 +1,10 @@
+{
+  "name": "ko-double",
+  "description": "§12.3 — both fighters reach HP <= 0 within the same 120ms window -> double knockout, a round draw",
+  "options": { "initialState": { "hp": [80, 80] } },
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1600, "keystrokes": 7, "errors": 0, "ikiStats": [120, 15], "moveId": "slash", "chars": 7 },
+    { "seq": 1, "player": 1, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1660, "keystrokes": 7, "errors": 0, "ikiStats": [120, 15], "moveId": "slash", "chars": 7 }
+  ],
+  "expected": { "outcome": { "type": "double-ko", "winner": null } }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "guard-completes-unconditional-focus",
+  "description": "§11.2 — Guard grants +3 Focus unconditionally and follows the general chain rule, verified here through the full reduceRound pipeline rather than a direct stepEvent call (Task 5's unit test covers the latter)",
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 0, "tEnd": 300, "keystrokes": 4, "errors": 0, "ikiStats": [80, 5], "moveId": "guard", "chars": 4 }
+  ],
+  "expected": { "focus": [3, 0], "chain": [1, 0], "hp": [1000, 1000] }
+}

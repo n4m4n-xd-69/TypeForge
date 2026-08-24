@@ -1,0 +1,8 @@
+{
+  "name": "85-clean-slash-neutral",
+  "description": "PRD §8.5 row 1 — Clean Slash at par, chain 0, opponent neutral -> 12.5",
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1600, "keystrokes": 7, "errors": 0, "ikiStats": [120, 15], "moveId": "slash", "chars": 7 }
+  ],
+  "expected": { "hp": [1000, 875], "focus": [6, 0], "chain": [1, 0] }
+}

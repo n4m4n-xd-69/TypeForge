@@ -1,0 +1,9 @@
+{
+  "name": "85-sloppy-crush-guarded",
+  "description": "PRD §8.5 row 4 — sloppy Crush, over par, opponent guarding -> 3.4. parMs(12) = 2600; actualMs = 3714 gives speed ~= 0.70 (2600/3714). The guard's window (3000..4200) is timed to still cover the Crush's late resolution at t=3714.",
+  "events": [
+    { "seq": 0, "player": 1, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 0, "tEnd": 3000, "keystrokes": 4, "errors": 0, "ikiStats": [80, 5], "moveId": "guard", "chars": 4 },
+    { "seq": 1, "player": 0, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 3714, "keystrokes": 12, "errors": 3, "ikiStats": [280, 40], "moveId": "crush", "chars": 12 }
+  ],
+  "expected": { "hp": [1000, 966] }
+}

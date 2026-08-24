@@ -1,0 +1,8 @@
+{
+  "name": "shuriken-neutral",
+  "description": "Shuriken at par, chain 0, neutral opponent -> a plain damage/Focus check for the one strike move not otherwise exercised in this fixture set (Shuriken vs. a guarding target is covered by a combat.test.js unit test in Task 4)",
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1400, "keystrokes": 6, "errors": 0, "ikiStats": [180, 15], "moveId": "shuriken", "chars": 6 }
+  ],
+  "expected": { "hp": [1000, 912], "focus": [5, 0], "chain": [1, 0] }
+}

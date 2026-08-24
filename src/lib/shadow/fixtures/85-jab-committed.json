@@ -1,0 +1,9 @@
+{
+  "name": "85-jab-committed",
+  "description": "PRD §8.5 row 5 — clean Jab into a committed opponent -> 11.3. Player 1's Crush (tStart 0, tEnd 2600 = parMs(12), at par) is itself an event that resolves and deals its own damage to player 0 — 16 * 1.00 * 1.25 * 1.00(neutral, chain 0) = 20.0 HP (200 tenths) — so expected.hp[0] is 800, not 1000. The Jab (tStart 500, tEnd 1500 = parMs(4), at par) resolves at t=1500, inside the Crush's committed window [0, 2600].",
+  "events": [
+    { "seq": 0, "player": 1, "round": 1, "cardIndex": 0, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 2600, "keystrokes": 12, "errors": 0, "ikiStats": [300, 20], "moveId": "crush", "chars": 12 },
+    { "seq": 1, "player": 0, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 500, "tEnd": 1500, "keystrokes": 4, "errors": 0, "ikiStats": [180, 10], "moveId": "jab", "chars": 4 }
+  ],
+  "expected": { "hp": [800, 887] }
+}
