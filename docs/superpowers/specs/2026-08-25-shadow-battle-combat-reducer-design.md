@@ -98,6 +98,20 @@ carried through onto history entries but **consumed by nothing** in Plan 1
 — it's reserved for the anti-cheat plan (§21.2). The module's docblock says
 this explicitly so a future reader doesn't mistake it for dead code.
 
+**Event resolution seam.** §8.2's `CombatEvent` is the wire/persistence
+shape — it carries `cardIndex`, not a move id or word length, because
+resolving `cardIndex` to those requires the seeded queue (§9.4), which is
+Plan 2. But the damage formula needs `chars` (for `parMs`) and the move's
+identity (for `base`/`focus`/`committed`). So `combat.js` accepts a
+**resolved** event: the wire `CombatEvent` plus `moveId` (a key into
+`moveTable.MOVES`) and `chars` (word length). Plan 2 is responsible for
+producing resolved events from wire events before they reach the reducer
+— client-side from its own local queue derivation, server-side from the
+Edge Function's replay of the same queue. Plan 1's fixtures specify
+`moveId`/`chars` directly, standing in for that resolution step this plan
+doesn't own. `combat.js` never looks at word content — only at the one
+derived fact (word length) the formula needs.
+
 `RoundState`:
 ```
 {
@@ -114,12 +128,39 @@ this explicitly so a future reader doesn't mistake it for dead code.
 }
 ```
 
-`stepEvent(state, event)` is the atomic pure transition; `reduceRound(events)
-= events.reduce(stepEvent, initialRoundState())`. This is deliberate: **live
-local playback (apply one event as it arrives) and full server replay (fold
-the whole log) are the same function**, which is what §8.1 requires for
-"both clients run the reducer locally... over their own events plus the
-opponent's as they arrive."
+`stepEvent(state, event, allEvents)` is the atomic pure transition —
+`allEvents` is the full round event array being replayed, not just prior
+history. `reduceRound(events, options)` sorts by `tEnd` and folds:
+`sorted.reduce((s, e) => stepEvent(s, e, sorted), initialRoundState())`,
+then runs a one-time `finalizeOutcome` pass (see below).
+
+**Why `stepEvent` needs the full array, not just history:** detecting that
+a struck player was `committed` (mid-Crush/Overdrive/Mend, §8.4) requires
+seeing that player's committing event even when its own `tEnd` is *later*
+than the strike being resolved — e.g. a Jab lands at t=400 while the
+target's Crush (tStart=0, tEnd=1500) is still in flight. A left-fold over
+prior history alone can't see that Crush yet. A full replay can, because
+the whole log is known upfront. This means `stepEvent`'s contract is
+defined for **whole-log (authoritative) replay** — the case that actually
+decides match outcomes. True instant local feedback from partial
+information (the live client's own "opponent looks mid-swing" read before
+that event resolves) is a presentation concern for the battle-screen UI
+(Plan 6), which can show a provisional/optimistic number and reconcile
+once the authoritative event arrives. Plan 1 does not need to solve
+that — it defines the authoritative function.
+
+**Round-outcome finalization is a separate pass, not per-event.** §12.3's
+double-knockout rule (both players' HP hits 0 within a 120ms window) is
+only decidable once you know no second KO follows within the window — a
+single `stepEvent` call can't know that in isolation. `stepEvent` tracks
+each player's first zero-HP timestamp (`koAt`) but leaves `outcome: null`;
+`finalizeOutcome(state, { timeUp })` runs once after the fold and applies
+§12.3's table (double-KO if both `koAt` within 120ms; otherwise the
+earlier `koAt` loses; otherwise, if the caller says the 90s cap was
+reached, higher HP wins or ties draw; otherwise the round is still open).
+`timeUp` is a caller-supplied boolean, not a `Date.now()` read inside the
+reducer — it comes from the same `starts_at`-relative clock §12.5 already
+uses, so determinism (SB-CMB-2) holds.
 
 Contest state (guarding/parrying/committed/etc.) is a function of recent
 history and the timing constants (§10.5), not a separately-mutated field —
