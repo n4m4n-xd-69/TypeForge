@@ -581,10 +581,12 @@ git commit -m "refactor: derive XP kind-factor from the mode registry"
 - Modify: `src/components/layout/AppShell.jsx:36-58`
 
 **Interfaces:**
-- Consumes: `MODE_REGISTRY` (Task 3), entries' `navSurface/navGroup/navLabel/navRoute/icon` fields
-- Produces: `deriveNavGroups(registry, extraItemsByGroup): Array<{label: string, items: Array<{to, label, icon, end?}>}>` — order within a group is: extra items first (so `Home` still leads `Train`), then registry-derived items, in registry array order
+- Consumes: `MODE_REGISTRY` (Task 3), entries' `navSurface/navGroup/navLabel/navRoute/icon/navIcon` fields
+- Produces: `deriveNavGroups(registry, extraItemsByGroup): Array<{label: string, items: Array<{to, label, icon, end?, lead?}>}>` — order within a group is: extras with `lead: true` first, then registry-derived items in registry array order, then any remaining extras. `lead` is a purpose-built positional field, independent of `end` (React Router's exact-match `NavLink` semantics) — an extra can have either, both, or neither.
 
 Only 3 of the 8 registry entries represent a distinct nav destination (`time` for the Typing surface, `code`, `battle`) — the other 5 practice sub-modes live inside `/practice`. `Home`, `Progress` and `Rewards` aren't modes at all, so they stay hand-authored and get passed in as `extraItemsByGroup`.
+
+`registry.js`'s `time` entry additionally carries `navIcon: Keyboard`: its own `icon` (`Clock`) is the mode's identity, matching the `/practice` mode switcher (Task 7), but the nav rail's "Typing" tab represents the whole practice surface and keeps the pre-registry `Keyboard` glyph. `deriveNavGroups` resolves an item's icon as `m.navIcon ?? m.icon`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -597,7 +599,7 @@ import { MODE_REGISTRY } from './registry.js';
 describe('deriveNavGroups', () => {
   it('reproduces the current Train/Compete nav exactly, given the current extras', () => {
     const extras = {
-      Train: [{ to: '/', label: 'Home', icon: 'Home', end: true }],
+      Train: [{ to: '/', label: 'Home', icon: 'Home', end: true, lead: true }],
       Compete: [
         { to: '/dashboard', label: 'Progress', icon: 'LineChart' },
         { to: '/achievements', label: 'Rewards', icon: 'Trophy' },
@@ -625,6 +627,24 @@ describe('deriveNavGroups', () => {
     const compete = groups.find((g) => g.label === 'Compete');
     expect(compete.items.map((i) => i.to)).toContain('/stub');
   });
+
+  // `lead` (position) and `end` (NavLink exact-match routing) are unrelated
+  // fields that happen to coincide for Home. This proves position tracks
+  // `lead` alone: an extra with `lead: true` but no `end` still leads, and
+  // an extra with `end: true` but no `lead` still trails.
+  it('orders extras by `lead` independently of `end`', () => {
+    const registryOnlyCompete = MODE_REGISTRY.filter((m) => m.id === 'battle');
+    const extras = {
+      Compete: [
+        { to: '/first', label: 'First', icon: 'First', lead: true },
+        { to: '/last', label: 'Last', icon: 'Last', end: true },
+      ],
+    };
+    const groups = deriveNavGroups(registryOnlyCompete, extras);
+    const compete = groups.find((g) => g.label === 'Compete');
+
+    expect(compete.items.map((i) => i.to)).toEqual(['/first', '/battle', '/last']);
+  });
 });
 ```
 
@@ -644,21 +664,30 @@ Expected: FAIL — `src/lib/modes/derive.js` does not exist
  */
 
 export function deriveNavGroups(registry, extraItemsByGroup = {}) {
-  const groupOrder = [...new Set(Object.keys(extraItemsByGroup))];
+  const groupOrder = Object.keys(extraItemsByGroup);
   for (const mode of registry) {
     if (mode.navSurface && !groupOrder.includes(mode.navGroup)) groupOrder.push(mode.navGroup);
   }
 
   return groupOrder.map((label) => {
     const extras = extraItemsByGroup[label] ?? [];
+    // `lead: true` is a positional declaration, independent of `end`. `end`
+    // is React Router's exact-match flag for NavLink and says nothing about
+    // where an item sits in its group; `lead` is what actually orders an
+    // extra ahead of the registry-derived items (e.g. Home leads Train).
+    // Extras without `lead` trail the registry-derived items instead,
+    // matching the pre-registry nav literal for both Train (Home leads)
+    // and Compete (Battle, a registry item, leads; Progress/Rewards trail).
+    const leadingExtras = extras.filter((item) => item.lead);
+    const trailingExtras = extras.filter((item) => !item.lead);
     const modeItems = registry
       .filter((m) => m.navSurface && m.navGroup === label)
       .map((m) => ({
         to: m.navRoute ?? m.route,
         label: m.navLabel ?? m.name,
-        icon: m.icon,
+        icon: m.navIcon ?? m.icon,
       }));
-    return { label, items: [...extras, ...modeItems] };
+    return { label, items: [...leadingExtras, ...modeItems, ...trailingExtras] };
   });
 }
 ```
@@ -677,7 +706,7 @@ import { MODE_REGISTRY } from '../../lib/modes/registry.js';
 import { deriveNavGroups } from '../../lib/modes/derive.js';
 
 export const NAV_GROUPS = deriveNavGroups(MODE_REGISTRY, {
-  Train: [{ to: '/', label: 'Home', icon: Home, end: true }],
+  Train: [{ to: '/', label: 'Home', icon: Home, end: true, lead: true }],
   Compete: [
     { to: '/dashboard', label: 'Progress', icon: LineChart },
     { to: '/achievements', label: 'Rewards', icon: Trophy },

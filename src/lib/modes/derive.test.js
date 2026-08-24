@@ -6,7 +6,7 @@ import { MODE_REGISTRY } from './registry.js';
 describe('deriveNavGroups', () => {
   it('reproduces the current Train/Compete nav exactly, given the current extras', () => {
     const extras = {
-      Train: [{ to: '/', label: 'Home', icon: 'Home', end: true }],
+      Train: [{ to: '/', label: 'Home', icon: 'Home', end: true, lead: true }],
       Compete: [
         { to: '/dashboard', label: 'Progress', icon: 'LineChart' },
         { to: '/achievements', label: 'Rewards', icon: 'Trophy' },
@@ -47,7 +47,7 @@ describe('deriveNavGroups', () => {
   // AppShell.jsx passes.
   it('matches the pre-registry NAV_GROUPS literal exactly, including icon identity and order', () => {
     const extras = {
-      Train: [{ to: '/', label: 'Home', icon: Home, end: true }],
+      Train: [{ to: '/', label: 'Home', icon: Home, end: true, lead: true }],
       Compete: [
         { to: '/dashboard', label: 'Progress', icon: LineChart },
         { to: '/achievements', label: 'Rewards', icon: Trophy },
@@ -59,7 +59,7 @@ describe('deriveNavGroups', () => {
       {
         label: 'Train',
         items: [
-          { to: '/', label: 'Home', icon: Home, end: true },
+          { to: '/', label: 'Home', icon: Home, end: true, lead: true },
           { to: '/practice', label: 'Typing', icon: Keyboard },
           { to: '/code', label: 'Code', icon: Braces },
         ],
@@ -73,5 +73,25 @@ describe('deriveNavGroups', () => {
         ],
       },
     ]);
+  });
+
+  // `lead` (position) and `end` (NavLink exact-match routing) are unrelated
+  // fields that happen to coincide for Home. This proves position tracks
+  // `lead` alone: an extra with `lead: true` but no `end` still leads, and
+  // an extra with `end: true` but no `lead` still trails.
+  it('orders extras by `lead` independently of `end`', () => {
+    const registryOnlyCompete = MODE_REGISTRY.filter((m) => m.id === 'battle');
+    const extras = {
+      Compete: [
+        // No `end`, but should lead.
+        { to: '/first', label: 'First', icon: 'First', lead: true },
+        // `end: true`, but no `lead`, so it should trail — not lead.
+        { to: '/last', label: 'Last', icon: 'Last', end: true },
+      ],
+    };
+    const groups = deriveNavGroups(registryOnlyCompete, extras);
+    const compete = groups.find((g) => g.label === 'Compete');
+
+    expect(compete.items.map((i) => i.to)).toEqual(['/first', '/battle', '/last']);
   });
 });

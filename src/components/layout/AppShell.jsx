@@ -35,7 +35,7 @@ import { deriveNavGroups } from '../../lib/modes/derive.js';
  * ChatFab, and both are in the command palette.
  */
 export const NAV_GROUPS = deriveNavGroups(MODE_REGISTRY, {
-  Train: [{ to: '/', label: 'Home', icon: Home, end: true }],
+  Train: [{ to: '/', label: 'Home', icon: Home, end: true, lead: true }],
   Compete: [
     { to: '/dashboard', label: 'Progress', icon: LineChart },
     /* Rewards stays until Progress absorbs it. Dropping it now to hit a
