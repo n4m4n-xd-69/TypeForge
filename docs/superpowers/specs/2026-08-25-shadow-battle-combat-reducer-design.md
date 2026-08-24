@@ -57,8 +57,15 @@ concern, not a pure fold over already-known round outcomes).
 500-fixture suite" — that's a *parity* check between two implementations.
 Plan 1 has only one implementation (the Edge Function deployment is Plan 4),
 so a 500-case property-fuzz suite would only be proving the JS reducer
-agrees with itself. Instead Plan 1 delivers ~40-60 hand-authored JSON
-fixtures (event log in, expected state out) covering:
+agrees with itself. Instead Plan 1 delivers a hand-authored JSON fixture
+set (event log in, expected state out) covering every category below —
+the plan sizes this at roughly 15-20 fixtures rather than a larger round
+number: each one requires hand-tracing the §10.5 timing windows to make
+sure the events actually overlap the way the fixture intends (several
+did not, on the first attempt, while writing the plan — see its Task 7
+note on how a failing fixture should be re-derived), and that manual
+verification cost — not an arbitrary target — is what actually bounds a
+*hand-authored* set's size. Coverage breadth matters more than count:
 - every move in the table (Jab, Slash, Crush, Shuriken, Overdrive, Guard,
   Parry, Mend)
 - every §8.4 contest state (neutral, guarding, guarding-vs-Shuriken,
