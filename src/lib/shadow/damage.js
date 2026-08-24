@@ -3,7 +3,7 @@ import { CHARS_PER_WORD } from '../typing.js';
 /**
  * The §8 damage formula, in integer tenths of an HP point (SB-CMB-3) —
  * every sub-factor is a float, but `computeDamage`/`reflectedDamage` round
- * exactly once, at the end. No `Math.random`, no `Date.now` (SB-CMB-2):
+ * exactly once, at the end. Deterministic only (SB-CMB-2):
  * every input here is a fact already present on a resolved CombatEvent.
  */
 

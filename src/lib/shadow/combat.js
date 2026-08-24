@@ -5,7 +5,7 @@ import {
 } from './damage.js';
 import {
   clampHp, clampFocus, nextChainValue, chainMilestoneBonus,
-  strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN, parrySucceeded,
+  strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN, parrySucceeded, initialRoundState,
 } from './roundState.js';
 
 /**
@@ -146,4 +146,35 @@ export function stepEvent(state, event, allEvents) {
   const move = getMove(event.moveId);
   if (move.lane === LANES.STRIKE) return applyStrike(state, event, move, allEvents);
   return applyGuardLane(state, event, move, allEvents);
+}
+
+export const DOUBLE_KO_WINDOW_MS = 120; // §12.3: "within the same 120ms resolution window"
+export const ROUND_TIME_CAP_MS = 90000; // §12.2
+
+export function finalizeOutcome(state, { timeUp = false } = {}) {
+  const [ko0, ko1] = state.koAt;
+
+  if (ko0 != null && ko1 != null) {
+    if (Math.abs(ko0 - ko1) <= DOUBLE_KO_WINDOW_MS) {
+      return { ...state, outcome: { type: 'double-ko', winner: null } };
+    }
+    return { ...state, outcome: { type: 'ko', winner: ko0 < ko1 ? 1 : 0 } };
+  }
+  if (ko0 != null) return { ...state, outcome: { type: 'ko', winner: 1 } };
+  if (ko1 != null) return { ...state, outcome: { type: 'ko', winner: 0 } };
+
+  if (timeUp) {
+    if (state.hp[0] === state.hp[1]) return { ...state, outcome: { type: 'time-draw', winner: null } };
+    return { ...state, outcome: { type: 'time', winner: state.hp[0] > state.hp[1] ? 0 : 1 } };
+  }
+
+  return state; // still open
+}
+
+export function reduceRound(events, options = {}) {
+  const { timeUp = false, initialState } = options;
+  const start = initialState ? { ...initialRoundState(), ...initialState } : initialRoundState();
+  const sorted = [...events].sort((a, b) => a.tEnd - b.tEnd);
+  const folded = sorted.reduce((s, e) => stepEvent(s, e, sorted), start);
+  return finalizeOutcome(folded, { timeUp });
 }

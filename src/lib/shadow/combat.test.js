@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CONTEST, parMs } from './damage.js';
 import { initialRoundState } from './roundState.js';
-import { stepEvent } from './combat.js';
+import { stepEvent, reduceRound, finalizeOutcome, DOUBLE_KO_WINDOW_MS, ROUND_TIME_CAP_MS } from './combat.js';
 
 const strike = (overrides) => ({
   seq: 0, player: 0, round: 1, cardIndex: 0, lane: 'strike',
@@ -178,5 +178,77 @@ describe('stepEvent — Mend', () => {
     const event = guardLane({ moveId: 'mend', tStart: 0, tEnd: 1100 });
     const next = stepEvent(state, event, [event]);
     expect(next.hp[0]).toBe(1000);
+  });
+});
+
+describe('finalizeOutcome — §12.3', () => {
+  it('a single KO: the other player wins', () => {
+    const state = { ...initialRoundState(), koAt: [null, 1500] };
+    expect(finalizeOutcome(state, {}).outcome).toEqual({ type: 'ko', winner: 0 });
+  });
+
+  it('both KO within the 120ms window: double knockout, a draw', () => {
+    const state = { ...initialRoundState(), koAt: [1500, 1500 + DOUBLE_KO_WINDOW_MS] };
+    expect(finalizeOutcome(state, {}).outcome).toEqual({ type: 'double-ko', winner: null });
+  });
+
+  it('both KO more than 120ms apart: the earlier one lost', () => {
+    const state = { ...initialRoundState(), koAt: [1500, 1500 + DOUBLE_KO_WINDOW_MS + 1] };
+    expect(finalizeOutcome(state, {}).outcome).toEqual({ type: 'ko', winner: 1 });
+  });
+
+  it('time cap reached, HP differs: higher HP wins', () => {
+    const state = { ...initialRoundState(), hp: [400, 600] };
+    expect(finalizeOutcome(state, { timeUp: true }).outcome).toEqual({ type: 'time', winner: 1 });
+  });
+
+  it('time cap reached, HP tied: a round draw', () => {
+    const state = { ...initialRoundState(), hp: [400, 400] };
+    expect(finalizeOutcome(state, { timeUp: true }).outcome).toEqual({ type: 'time-draw', winner: null });
+  });
+
+  it('no KO, time not up: still open', () => {
+    expect(finalizeOutcome(initialRoundState(), {}).outcome).toBeNull();
+  });
+
+  it('ROUND_TIME_CAP_MS is 90 seconds', () => {
+    expect(ROUND_TIME_CAP_MS).toBe(90000);
+  });
+});
+
+describe('reduceRound', () => {
+  it('folds a full event log and finalizes the outcome in one call', () => {
+    const event = strike({ tEnd: parMs(7) });
+    const result = reduceRound([event]);
+    expect(result.hp).toEqual([1000, 875]);
+    expect(result.outcome).toBeNull(); // no KO, time not up
+  });
+
+  it('sorts by tEnd before folding, regardless of input order', () => {
+    // Both strikes are the same player's, against the same opponent, so
+    // this is a real discriminator: the second strike's chainMul depends
+    // on whether the first (earlier tEnd) has already been folded. If
+    // reduceRound folded input-array order instead of tEnd order, the two
+    // calls below would disagree (second would see chain 0 in one and
+    // chain 1 in the other) instead of matching.
+    const first = strike({ seq: 0, player: 0, tStart: 0, tEnd: 500 });
+    const second = strike({ seq: 1, player: 0, tStart: 600, tEnd: 1000 });
+    const forward = reduceRound([first, second]);
+    const reversed = reduceRound([second, first]);
+    expect(reversed).toEqual(forward);
+    expect(forward.chain[0]).toBe(2); // two clean completions, in tEnd order
+  });
+
+  it('accepts an initialState override for test convenience (e.g. pre-loaded Focus)', () => {
+    const event = strike({ moveId: 'overdrive', chars: 18, tEnd: parMs(18) });
+    const result = reduceRound([event], { initialState: { focus: [100, 0] } });
+    expect(result.focus).toEqual([0, 0]);
+  });
+
+  it('reports a KO outcome once HP crosses 0', () => {
+    const lethal = strike({ moveId: 'crush', chars: 12, tEnd: parMs(12) });
+    const result = reduceRound([lethal], { initialState: { hp: [1000, 20] } });
+    expect(result.outcome.type).toBe('ko');
+    expect(result.outcome.winner).toBe(0);
   });
 });
