@@ -73,3 +73,15 @@ export function deriveModePaletteEntries(registry) {
 
   return [...navigateEntries, ...quickLaunchEntries];
 }
+
+// Unlike `navIcon` (nav rail) and `quickLaunchIcon` (command palette), the
+// Practice mode switcher has always shown each mode's own identity icon
+// directly — no third override field is needed here. Verified against the
+// pre-registry MODES literal (980d633): `icon` matches for all six
+// practice-category entries (time: Clock, words: Hash, quote: Quote,
+// drill: Keyboard, custom: PenLine, zen: Leaf).
+export function deriveModeSegmentedOptions(registry, category) {
+  return registry
+    .filter((m) => m.category === category)
+    .map((m) => ({ value: m.id, label: m.name, icon: m.icon }));
+}

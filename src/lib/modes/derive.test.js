@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Braces, Home, Keyboard, LineChart, Swords, Trophy, Zap } from 'lucide-react';
-import { deriveModePaletteEntries, deriveNavGroups } from './derive.js';
+import { Braces, Clock, Hash, Home, Keyboard, Leaf, LineChart, PenLine, Quote, Swords, Trophy, Zap } from 'lucide-react';
+import { deriveModePaletteEntries, deriveModeSegmentedOptions, deriveNavGroups } from './derive.js';
 import { MODE_REGISTRY } from './registry.js';
 
 describe('deriveNavGroups', () => {
@@ -129,5 +129,37 @@ describe('deriveModePaletteEntries', () => {
     ];
     const entries = deriveModePaletteEntries(registryWithExtra);
     expect(entries.filter((e) => e.group === 'Practice').map((e) => e.route)).toContain('/stub');
+  });
+});
+
+describe('deriveModeSegmentedOptions', () => {
+  it('reproduces the current Practice mode switcher exactly', () => {
+    const options = deriveModeSegmentedOptions(MODE_REGISTRY, 'practice');
+    expect(options.map((o) => o.value)).toEqual(['time', 'words', 'quote', 'drill', 'custom', 'zen']);
+    expect(options[0]).toMatchObject({ value: 'time', label: 'Time' });
+  });
+
+  // Unlike the nav rail (`navIcon`) and the command palette (`quickLaunchIcon`),
+  // the pre-registry Practice switcher literal used each mode's own identity
+  // icon directly — Clock/Hash/Quote/Keyboard/PenLine/Leaf, matching
+  // registry.js's plain `icon` field for all six practice-category entries.
+  // No third icon override field is needed for this surface; this pins that
+  // decision against the pre-registry MODES literal (980d633) byte-for-byte.
+  it('matches the pre-registry MODES literal exactly, including icon identity and order', () => {
+    const options = deriveModeSegmentedOptions(MODE_REGISTRY, 'practice');
+    expect(options).toEqual([
+      { value: 'time', label: 'Time', icon: Clock },
+      { value: 'words', label: 'Words', icon: Hash },
+      { value: 'quote', label: 'Quote', icon: Quote },
+      { value: 'drill', label: 'Drill', icon: Keyboard },
+      { value: 'custom', label: 'Custom', icon: PenLine },
+      { value: 'zen', label: 'Zen', icon: Leaf },
+    ]);
+  });
+
+  it('a new practice-category entry appears with zero changes to this function or its caller', () => {
+    const registryWithExtra = [...MODE_REGISTRY, { id: 'stub', name: 'Stub', icon: 'Stub', category: 'practice' }];
+    const options = deriveModeSegmentedOptions(registryWithExtra, 'practice');
+    expect(options.map((o) => o.value)).toContain('stub');
   });
 });

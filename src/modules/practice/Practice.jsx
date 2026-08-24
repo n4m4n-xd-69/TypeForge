@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Clock, Eye, EyeOff, Hash, Keyboard as KeyboardIcon, KeyboardOff, Leaf, Maximize2,
-  Minimize2, PenLine, Quote, RotateCcw, Settings2, SkipForward, Sparkles, Volume2, VolumeX,
+  Eye, EyeOff, Keyboard as KeyboardIcon, KeyboardOff, Maximize2,
+  Minimize2, PenLine, RotateCcw, Settings2, SkipForward, Sparkles, Volume2, VolumeX,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -22,15 +22,10 @@ import { useToast } from '../../components/ui/Toast.jsx';
 import { DIFFICULTIES, DRILLS, randomQuote, randomWords } from '../../lib/content.js';
 import { aiConfigured, generatePassage } from '../../lib/ai.js';
 import { cx, mmss, relativeTime } from '../../lib/format.js';
+import { MODE_REGISTRY } from '../../lib/modes/registry.js';
+import { deriveModeSegmentedOptions } from '../../lib/modes/derive.js';
 
-const MODES = [
-  { value: 'time', label: 'Time', icon: Clock },
-  { value: 'words', label: 'Words', icon: Hash },
-  { value: 'quote', label: 'Quote', icon: Quote },
-  { value: 'drill', label: 'Drill', icon: KeyboardIcon },
-  { value: 'custom', label: 'Custom', icon: PenLine },
-  { value: 'zen', label: 'Zen', icon: Leaf },
-];
+const MODE_OPTIONS = deriveModeSegmentedOptions(MODE_REGISTRY, 'practice');
 
 const DURATIONS = [15, 30, 60, 120];
 const WORD_COUNTS = [10, 25, 50, 100];
@@ -576,7 +571,7 @@ function Controls({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <Segmented options={MODES} value={mode} onChange={setMode} size="sm" label="Practice mode" />
+      <Segmented options={MODE_OPTIONS} value={mode} onChange={setMode} size="sm" label="Practice mode" />
 
       <span className="mx-0.5 hidden h-2 w-px bg-line sm:block" aria-hidden />
 
