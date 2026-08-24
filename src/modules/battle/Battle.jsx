@@ -13,13 +13,9 @@ import { signInAnonymously } from '../../lib/supabase.js';
 import { createBattle, joinBattle } from '../../lib/battle/api.js';
 import { LENGTH_PRESETS, pickBattlePassage, presetById } from '../../lib/battle/passage.js';
 import { cx } from '../../lib/format.js';
+import { DIFFICULTIES } from '../../lib/content.js';
 
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'hard', label: 'Hard' },
-  { value: 'expert', label: 'Expert' },
-];
+const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d.id, label: d.name }));
 
 /**
  * The Battlefield hub: open one, or join one.
@@ -131,7 +127,7 @@ export default function Battle() {
               <p className="-mt-1 text-2xs text-ink-3">{presetById(preset).hint}</p>
 
               <Field label="Difficulty">
-                <Segmented size="sm" label="Difficulty" options={DIFFICULTIES} value={difficulty} onChange={setDifficulty} />
+                <Segmented size="sm" label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
               </Field>
 
               <Field label="Players">

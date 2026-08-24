@@ -19,7 +19,7 @@ import useTypingEngine from '../../components/typing/useTypingEngine.js';
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import { HAND_GUIDE_LIMIT, useStore, useStats } from '../../lib/store.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
-import { DRILLS, randomQuote, randomWords } from '../../lib/content.js';
+import { DIFFICULTIES, DRILLS, randomQuote, randomWords } from '../../lib/content.js';
 import { aiConfigured, generatePassage } from '../../lib/ai.js';
 import { cx, mmss, relativeTime } from '../../lib/format.js';
 
@@ -34,12 +34,7 @@ const MODES = [
 
 const DURATIONS = [15, 30, 60, 120];
 const WORD_COUNTS = [10, 25, 50, 100];
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'hard', label: 'Hard' },
-  { value: 'expert', label: 'Expert' },
-];
+const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d.id, label: d.name }));
 
 export default function Practice() {
   const [params, setParams] = useSearchParams();
@@ -618,7 +613,7 @@ function Controls({
         </Button>
       ) : null}
       {['time', 'words', 'zen'].includes(mode) ? (
-        <Segmented size="sm" label="Difficulty" options={DIFFICULTIES} value={difficulty} onChange={setDifficulty} />
+        <Segmented size="sm" label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
       ) : null}
 
       <div className="ml-auto flex items-center gap-0.5">
