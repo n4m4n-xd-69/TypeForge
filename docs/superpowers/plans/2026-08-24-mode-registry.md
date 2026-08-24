@@ -341,6 +341,22 @@ describe('MODE_REGISTRY', () => {
   it('getMode returns undefined for an unknown id', () => {
     expect(getMode('nonexistent')).toBeUndefined();
   });
+
+  it('only time, words, zen, code, and battle have non-null difficulties', () => {
+    const withDifficulties = MODE_REGISTRY.filter((m) => m.difficulties !== null).map((m) => m.id).sort();
+    expect(withDifficulties).toEqual(['battle', 'code', 'time', 'words', 'zen']);
+  });
+
+  it('kindFactor values match the spec', () => {
+    expect(getMode('time').xpRule.kindFactor).toBe(1);
+    expect(getMode('words').xpRule.kindFactor).toBe(1);
+    expect(getMode('quote').xpRule.kindFactor).toBe(1);
+    expect(getMode('drill').xpRule.kindFactor).toBe(1);
+    expect(getMode('custom').xpRule.kindFactor).toBe(1);
+    expect(getMode('zen').xpRule.kindFactor).toBe(1);
+    expect(getMode('code').xpRule.kindFactor).toBe(1.25);
+    expect(getMode('battle').xpRule.kindFactor).toBe(1.15);
+  });
 });
 ```
 
@@ -379,21 +395,21 @@ export const MODE_REGISTRY = [
   {
     id: 'quote', name: 'Quote', description: 'Type a real quote, once, start to finish.',
     icon: Quote, route: '/practice?mode=quote', category: 'practice', kind: 'text',
-    scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: DIFFICULTIES,
+    scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: null,
     xpRule: { kindFactor: 1 }, quickLaunch: true,
     navSurface: false, navGroup: null, navLabel: null, navRoute: null,
   },
   {
     id: 'drill', name: 'Drill', description: 'Targeted practice on one key group.',
     icon: Keyboard, route: '/practice?mode=drill', category: 'practice', kind: 'text',
-    scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: DIFFICULTIES,
+    scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: null,
     xpRule: { kindFactor: 1 }, quickLaunch: false,
     navSurface: false, navGroup: null, navLabel: null, navRoute: null,
   },
   {
     id: 'custom', name: 'Custom', description: 'Paste or type your own text.',
     icon: PenLine, route: '/practice?mode=custom', category: 'practice', kind: 'text',
-    scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: DIFFICULTIES,
+    scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: null,
     xpRule: { kindFactor: 1 }, quickLaunch: false,
     navSurface: false, navGroup: null, navLabel: null, navRoute: null,
   },

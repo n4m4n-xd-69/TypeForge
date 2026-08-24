@@ -48,4 +48,20 @@ describe('MODE_REGISTRY', () => {
   it('getMode returns undefined for an unknown id', () => {
     expect(getMode('nonexistent')).toBeUndefined();
   });
+
+  it('only time, words, zen, code, and battle have non-null difficulties', () => {
+    const withDifficulties = MODE_REGISTRY.filter((m) => m.difficulties !== null).map((m) => m.id).sort();
+    expect(withDifficulties).toEqual(['battle', 'code', 'time', 'words', 'zen']);
+  });
+
+  it('kindFactor values match the spec', () => {
+    expect(getMode('time').xpRule.kindFactor).toBe(1);
+    expect(getMode('words').xpRule.kindFactor).toBe(1);
+    expect(getMode('quote').xpRule.kindFactor).toBe(1);
+    expect(getMode('drill').xpRule.kindFactor).toBe(1);
+    expect(getMode('custom').xpRule.kindFactor).toBe(1);
+    expect(getMode('zen').xpRule.kindFactor).toBe(1);
+    expect(getMode('code').xpRule.kindFactor).toBe(1.25);
+    expect(getMode('battle').xpRule.kindFactor).toBe(1.15);
+  });
 });
