@@ -1,4 +1,4 @@
-import { Braces, Clock, Hash, Keyboard, Leaf, PenLine, Quote, Swords } from 'lucide-react';
+import { Braces, Clock, Hash, Keyboard, Leaf, PenLine, Quote, Swords, Zap } from 'lucide-react';
 import { DIFFICULTIES } from '../content.js';
 
 /**
@@ -30,6 +30,10 @@ export const MODE_REGISTRY = [
     icon: Quote, route: '/practice?mode=quote', category: 'practice', kind: 'text',
     scored: 'time-trial', multiplayer: false, requiresCloud: false, difficulties: null,
     xpRule: { kindFactor: 1 }, quickLaunch: true,
+    // quickLaunchIcon overrides icon here: `icon` is this mode's own identity
+    // (Quote), but the command palette's quick-launch shortcut has always
+    // shown the generic Keyboard glyph instead, same split as `navIcon`.
+    quickLaunchIcon: Keyboard,
     navSurface: false, navGroup: null, navLabel: null, navRoute: null,
   },
   {
@@ -51,6 +55,10 @@ export const MODE_REGISTRY = [
     icon: Leaf, route: '/practice?mode=zen', category: 'practice', kind: 'text',
     scored: false, multiplayer: false, requiresCloud: false, difficulties: DIFFICULTIES,
     xpRule: { kindFactor: 1 }, quickLaunch: true,
+    // quickLaunchIcon overrides icon here: `icon` is this mode's own identity
+    // (Leaf), but the command palette's quick-launch shortcut has always
+    // shown Zap instead, same split as `navIcon`.
+    quickLaunchIcon: Zap,
     navSurface: false, navGroup: null, navLabel: null, navRoute: null,
   },
   {

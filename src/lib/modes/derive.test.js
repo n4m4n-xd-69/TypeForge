@@ -108,6 +108,10 @@ describe('deriveModePaletteEntries', () => {
     // the nav rail's `navIcon` from Task 5. Code/Battle icons already match
     // their mode's own icon, so this only bites for `time`.
     expect(navigate.map((e) => e.icon)).toEqual([Keyboard, Braces, Swords]);
+    // Inert today (React `key` only, verified against the rest of the
+    // codebase), but cheap insurance against a silent id drift: these come
+    // straight from the registry's own ids, not a hand-picked palette id.
+    expect(navigate.map((e) => e.id)).toEqual(['time', 'code', 'battle']);
 
     const practice = entries.filter((e) => e.group === 'Practice');
     expect(practice.map((e) => e.route)).toEqual(['/practice?mode=zen', '/practice?mode=quote']);

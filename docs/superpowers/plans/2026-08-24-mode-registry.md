@@ -740,15 +740,22 @@ git commit -m "refactor: derive NAV_GROUPS from the mode registry"
 ### Task 6: `deriveModePaletteEntries` — command palette derived from the registry
 
 **Files:**
+- Modify: `src/lib/modes/registry.js` (add `quickLaunchIcon` to the `zen` and `quote` entries — see Step 3 below; scope extension approved at review, same reasoning as the `time` entry's `navIcon`)
 - Modify: `src/lib/modes/derive.js`
 - Modify: `src/lib/modes/derive.test.js`
 - Modify: `src/components/layout/CommandPalette.jsx:21-45`
 
 **Interfaces:**
-- Consumes: `MODE_REGISTRY` (Task 3), entries' `navSurface`/`quickLaunch`/`route`/`icon`/`name` fields
+- Consumes: `MODE_REGISTRY` (Task 3), entries' `navSurface`/`quickLaunch`/`route`/`icon`/`navIcon`/`quickLaunchIcon`/`name` fields
 - Produces: `deriveModePaletteEntries(registry): Array<{id, label, icon, group, route}>` — `run` is intentionally not part of the pure function (it needs `navigate`, which is a React Router hook); the caller wraps `route` into `run: () => navigate(entry.route)`
 
 Splits into the same two groups the palette already has: `navSurface` entries become "Navigate" links (`Typing`/`Code`/`Battle` — matching today), `quickLaunch` entries become "Practice" quick-launch shortcuts (`zen`/`quote` — matching today exactly, since those are the only two entries with `quickLaunch: true` from Task 3).
+
+**Post-review correction:** the original Step 3 below (`icon: m.icon` and a plain `quickLaunch` filter) doesn't reproduce the pre-refactor palette exactly. Two divergences, both caught by extending the test with icon and order assertions before implementing:
+- Icons: the pre-refactor palette showed `Keyboard` for the `time` entry's Navigate link (not `time.icon`, which is `Clock`), and `Zap`/`Keyboard` for the `zen`/`quote` quick-launch entries (not their own `Leaf`/`Quote` icons). Same surface-vs-identity split Task 5 solved with `navIcon` on the registry entry. Fixed the same way: added `quickLaunchIcon: Zap` to `zen` and `quickLaunchIcon: Keyboard` to `quote` in `registry.js`, and resolve as `m.quickLaunchIcon ?? m.icon` (Navigate already resolves as `m.navIcon ?? m.icon`). An implementer's first pass instead put a private `{id: Icon}` override map inside `derive.js` — passed its own tests, but duplicated the `navIcon` mechanism with a second, inconsistent one twenty lines away; corrected at review to the registry-field approach below.
+- Order: `registry.js` declares the `quote` entry (`quickLaunch: true`) ahead of the `zen` entry, so a plain `.filter(m => m.quickLaunch)` yields `[quote, zen]`, reversing the palette's historical `[zen, quote]` order. Fixed with a local `QUICK_LAUNCH_ORDER` pin in `derive.js` (unlisted entries trail in registry order) — this one *does* stay local, since order is palette presentation, not mode data, matching how `NAV_LABEL_OVERRIDES` already pins label exceptions locally.
+
+The Step 3 code block below reflects the corrected implementation.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -786,7 +793,25 @@ Expected: FAIL — `deriveModePaletteEntries` is not exported yet
 
 - [ ] **Step 3: Implement it**
 
-Append to `src/lib/modes/derive.js`:
+First, add `quickLaunchIcon` to `src/lib/modes/registry.js`'s `zen` and `quote` entries, mirroring the `time` entry's `navIcon` (with a comment explaining the divergence from the mode's own `icon`):
+
+```js
+// on the `quote` entry:
+    // quickLaunchIcon overrides icon here: `icon` is this mode's own identity
+    // (Quote), but the command palette's quick-launch shortcut has always
+    // shown the generic Keyboard glyph instead, same split as `navIcon`.
+    quickLaunchIcon: Keyboard,
+
+// on the `zen` entry:
+    // quickLaunchIcon overrides icon here: `icon` is this mode's own identity
+    // (Leaf), but the command palette's quick-launch shortcut has always
+    // shown Zap instead, same split as `navIcon`.
+    quickLaunchIcon: Zap,
+```
+
+(`Zap` needs adding to `registry.js`'s `lucide-react` import; `Keyboard` is already imported.)
+
+Then append to `src/lib/modes/derive.js`:
 
 ```js
 const NAV_LABEL_OVERRIDES = {
@@ -795,30 +820,44 @@ const NAV_LABEL_OVERRIDES = {
   battle: 'Open Battlefield — multiplayer',
 };
 
+// The palette has always shown `zen` before `quote`, but the registry
+// declares the `quote` entry (quickLaunch: true) ahead of the `zen` entry,
+// so a plain filter reverses them. Pin the historical order explicitly;
+// an entry not listed here (e.g. a newly added quickLaunch mode) trails
+// in registry order, so it still appears with zero changes required here.
+const QUICK_LAUNCH_ORDER = ['zen', 'quote'];
+
 export function deriveModePaletteEntries(registry) {
   const navigateEntries = registry
     .filter((m) => m.navSurface)
     .map((m) => ({
       id: m.id,
       label: NAV_LABEL_OVERRIDES[m.id] ?? m.navLabel ?? m.name,
-      icon: m.icon,
+      icon: m.navIcon ?? m.icon,
       group: 'Navigate',
       route: m.navRoute ?? m.route,
     }));
 
+  const quickLaunchRank = (id) => {
+    const i = QUICK_LAUNCH_ORDER.indexOf(id);
+    return i === -1 ? Infinity : i;
+  };
   const quickLaunchEntries = registry
     .filter((m) => m.quickLaunch)
     .map((m) => ({
       id: m.id,
       label: m.id === 'zen' ? 'Zen mode — no timer, no stats' : `Practice with a ${m.name.toLowerCase()}`,
-      icon: m.icon,
+      icon: m.quickLaunchIcon ?? m.icon,
       group: 'Practice',
       route: m.route,
-    }));
+    }))
+    .sort((a, b) => quickLaunchRank(a.id) - quickLaunchRank(b.id));
 
   return [...navigateEntries, ...quickLaunchEntries];
 }
 ```
+
+Note `derive.js` imports nothing here — icons flow through as plain values already carried by the registry entries (`m.navIcon`, `m.quickLaunchIcon`, `m.icon`), keeping the derivation layer free of mode-specific data, per the same reasoning `deriveNavGroups` (Task 5) already established for `navIcon`.
 
 - [ ] **Step 4: Run the test to confirm it passes**
 
@@ -873,7 +912,7 @@ Run: `npm run dev`, press `⌘K`/`Ctrl+K`. Confirm every entry from before (Go t
 - [ ] **Step 7: Commit**
 
 ```bash
-git add src/lib/modes/derive.js src/lib/modes/derive.test.js src/components/layout/CommandPalette.jsx
+git add src/lib/modes/registry.js src/lib/modes/derive.js src/lib/modes/derive.test.js src/components/layout/CommandPalette.jsx
 git commit -m "refactor: derive command palette mode entries from the registry"
 ```
 
