@@ -1,3 +1,5 @@
+import { Keyboard, Zap } from 'lucide-react';
+
 /**
  * Pure functions turning MODE_REGISTRY into the shapes AppShell, CommandPalette
  * and the mode/difficulty pickers actually render. See
@@ -30,4 +32,59 @@ export function deriveNavGroups(registry, extraItemsByGroup = {}) {
       }));
     return { label, items: [...leadingExtras, ...modeItems, ...trailingExtras] };
   });
+}
+
+const NAV_LABEL_OVERRIDES = {
+  time: 'Start typing practice',
+  code: 'Start code typing',
+  battle: 'Open Battlefield — multiplayer',
+};
+
+// Same surface-vs-identity split as `navIcon` in deriveNavGroups (Task 5):
+// these two quick-launch shortcuts have always shown a different icon in
+// the palette than the mode's own identity icon (zen: Leaf -> Zap, quote:
+// Quote -> Keyboard). There's no registry field for this yet, so pin it
+// here the same way NAV_LABEL_OVERRIDES pins label exceptions.
+const QUICK_LAUNCH_ICON_OVERRIDES = {
+  zen: Zap,
+  quote: Keyboard,
+};
+
+// The palette has always shown zen before quote, but the registry declares
+// `quote` (line ~29) ahead of `zen` (line ~50), so a plain filter reverses
+// them. Pin the historical order explicitly; an entry not listed here
+// (e.g. a newly added quickLaunch mode) trails in registry order, so it
+// still appears with zero changes required here.
+const QUICK_LAUNCH_ORDER = ['zen', 'quote'];
+
+export function deriveModePaletteEntries(registry) {
+  const navigateEntries = registry
+    .filter((m) => m.navSurface)
+    .map((m) => ({
+      id: m.id,
+      label: NAV_LABEL_OVERRIDES[m.id] ?? m.navLabel ?? m.name,
+      icon: m.navIcon ?? m.icon,
+      group: 'Navigate',
+      route: m.navRoute ?? m.route,
+    }));
+
+  const quickLaunchEntries = registry
+    .filter((m) => m.quickLaunch)
+    .map((m) => ({
+      id: m.id,
+      label: m.id === 'zen' ? 'Zen mode — no timer, no stats' : `Practice with a ${m.name.toLowerCase()}`,
+      icon: QUICK_LAUNCH_ICON_OVERRIDES[m.id] ?? m.icon,
+      group: 'Practice',
+      route: m.route,
+    }))
+    .sort((a, b) => {
+      const ai = QUICK_LAUNCH_ORDER.indexOf(a.id);
+      const bi = QUICK_LAUNCH_ORDER.indexOf(b.id);
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+
+  return [...navigateEntries, ...quickLaunchEntries];
 }

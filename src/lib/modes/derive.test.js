@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { Braces, Home, Keyboard, LineChart, Swords, Trophy } from 'lucide-react';
-import { deriveNavGroups } from './derive.js';
+import { Braces, Home, Keyboard, LineChart, Swords, Trophy, Zap } from 'lucide-react';
+import { deriveModePaletteEntries, deriveNavGroups } from './derive.js';
 import { MODE_REGISTRY } from './registry.js';
 
 describe('deriveNavGroups', () => {
@@ -93,5 +93,37 @@ describe('deriveNavGroups', () => {
     const compete = groups.find((g) => g.label === 'Compete');
 
     expect(compete.items.map((i) => i.to)).toEqual(['/first', '/battle', '/last']);
+  });
+});
+
+describe('deriveModePaletteEntries', () => {
+  it('reproduces the current Navigate mode links and Practice quick-launch entries', () => {
+    const entries = deriveModePaletteEntries(MODE_REGISTRY);
+
+    const navigate = entries.filter((e) => e.group === 'Navigate');
+    expect(navigate.map((e) => e.route)).toEqual(['/practice', '/code', '/battle']);
+    expect(navigate.map((e) => e.label)).toEqual(['Start typing practice', 'Start code typing', 'Open Battlefield — multiplayer']);
+    // The palette's "Typing" entry has always shown Keyboard, not the Time
+    // mode's own identity icon (Clock) — same surface-vs-identity split as
+    // the nav rail's `navIcon` from Task 5. Code/Battle icons already match
+    // their mode's own icon, so this only bites for `time`.
+    expect(navigate.map((e) => e.icon)).toEqual([Keyboard, Braces, Swords]);
+
+    const practice = entries.filter((e) => e.group === 'Practice');
+    expect(practice.map((e) => e.route)).toEqual(['/practice?mode=zen', '/practice?mode=quote']);
+    expect(practice.map((e) => e.label)).toEqual(['Zen mode — no timer, no stats', 'Practice with a quote']);
+    // Same split for the quick-launch shortcuts: the pre-registry palette
+    // used Zap for zen (not the mode's own Leaf) and Keyboard for quote
+    // (not the mode's own Quote icon).
+    expect(practice.map((e) => e.icon)).toEqual([Zap, Keyboard]);
+  });
+
+  it('a new quickLaunch entry appears with zero changes to this function or its caller', () => {
+    const registryWithExtra = [
+      ...MODE_REGISTRY,
+      { id: 'stub', name: 'Stub Mode', icon: 'Stub', route: '/stub', quickLaunch: true, navSurface: false },
+    ];
+    const entries = deriveModePaletteEntries(registryWithExtra);
+    expect(entries.filter((e) => e.group === 'Practice').map((e) => e.route)).toContain('/stub');
   });
 });
