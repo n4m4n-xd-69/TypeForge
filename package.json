@@ -3,12 +3,14 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "TypeForge \u2014 a typing-performance platform for people who type for a living.",
+  "description": "TypeForge — a typing-performance platform for people who type for a living.",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/build-icons.mjs && vite build",
     "preview": "vite preview",
-    "icons": "node scripts/build-icons.mjs"
+    "icons": "node scripts/build-icons.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
@@ -26,7 +28,8 @@
     "postcss": "^8.4.49",
     "sharp": "^0.35.3",
     "tailwindcss": "^3.4.17",
-    "vite": "^6.0.7"
+    "vite": "^6.0.7",
+    "vitest": "^4.1.11"
   },
   "allowScripts": {
     "esbuild@0.25.12": true
