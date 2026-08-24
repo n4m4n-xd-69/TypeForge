@@ -290,7 +290,7 @@ This is the direct fix for 01-PRD.md §25.2: mode knowledge currently scattered 
 - [ ] **Step 1: Write the failing tests**
 
 ```js
-// src/lib/modes/registry.js — append to the existing test file, replacing the Task 1 smoke test
+// src/lib/modes/registry.test.js — append to the existing test file, replacing the Task 1 smoke test
 import { describe, expect, it } from 'vitest';
 import { getMode, MODE_REGISTRY } from './registry.js';
 
@@ -456,7 +456,7 @@ git commit -m "feat: populate the mode registry with all 8 existing modes"
 - [ ] **Step 1: Write the failing tests**
 
 ```js
-// src/lib/modes/registry.js — append to registry.test.js
+// src/lib/modes/registry.test.js — append here
 import { kindFactorFor } from './registry.js';
 
 describe('kindFactorFor', () => {
@@ -698,7 +698,7 @@ Splits into the same two groups the palette already has: `navSurface` entries be
 - [ ] **Step 1: Write the failing test**
 
 ```js
-// src/lib/modes/derive.js — append to derive.test.js
+// src/lib/modes/derive.test.js — append here
 import { deriveModePaletteEntries } from './derive.js';
 
 describe('deriveModePaletteEntries', () => {
@@ -840,7 +840,7 @@ The Practice screen's mode switcher (`MODES`, currently hardcoded at lines 26-33
 - [ ] **Step 1: Write the failing test**
 
 ```js
-// src/lib/modes/derive.js — append to derive.test.js
+// src/lib/modes/derive.test.js — append here
 import { deriveModeSegmentedOptions } from './derive.js';
 
 describe('deriveModeSegmentedOptions', () => {
