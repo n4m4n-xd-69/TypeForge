@@ -104,3 +104,79 @@ describe('stepEvent — KO tracking', () => {
     expect(state.koAt[1]).toBe(lethal.tEnd); // unchanged
   });
 });
+
+const guardLane = (overrides) => ({
+  seq: 0, player: 0, round: 1, cardIndex: 0, lane: 'guard',
+  outcome: 'complete', tStart: 0, tEnd: 300, keystrokes: 4, errors: 0,
+  ikiStats: [80, 5], moveId: 'guard', chars: 4, ...overrides,
+});
+
+describe('stepEvent — Guard', () => {
+  it('grants +3 Focus unconditionally and follows the general chain rule', () => {
+    const event = guardLane({ errors: 1 });
+    const next = stepEvent(initialRoundState(), event, [event]);
+    expect(next.focus).toEqual([3, 0]);
+    expect(next.chain).toEqual([0, 0]); // 1 error: held
+  });
+});
+
+describe('stepEvent — Parry', () => {
+  it('success: +10 Focus, 0 damage to the parrier, 60% reflected to the attacker', () => {
+    const parry = guardLane({ player: 0, moveId: 'parry', tStart: 100, tEnd: 500 });
+    const attack = strike({ player: 1, moveId: 'slash', chars: 7, tStart: 0, tEnd: parMs(7) });
+    let state = initialRoundState();
+    const all = [parry, attack];
+    state = stepEvent(state, parry, all);
+    state = stepEvent(state, attack, all);
+    expect(state.focus[0]).toBe(10);
+    expect(state.hp[0]).toBe(1000); // parrier takes 0
+    // §8.5: "Any strike into a successful Parry: 0 dealt, ~7.5 taken" (a
+    // clean-at-par Slash's neutral damage is 12.5 HP; 60% of that is 7.5)
+    expect(state.hp[1]).toBe(1000 - 75);
+  });
+
+  it('failure: no Focus gain, and the fighter is Exposed for 600ms', () => {
+    const parry = guardLane({ player: 0, moveId: 'parry', tStart: 0, tEnd: 50 });
+    let state = stepEvent(initialRoundState(), parry, [parry]);
+    expect(state.focus).toEqual([0, 0]);
+
+    // A follow-up strike into the exposed window (50..650) takes contest
+    // x1.25 — but it must start strictly after the parry's own tEnd (50).
+    // If it started at or before 50 it would itself have been "in flight"
+    // when the parry resolved, which would make the parry succeed against
+    // it instead (findSuccessfulParryAgainst — Task 4) — the two checks
+    // share the same strikeInFlightAt window, so a strike can't be both
+    // "not yet started" (making the earlier parry fail) and "in flight"
+    // (making it the parry's target) at once. Starting after tEnd, the
+    // window (600ms) is still narrower than even the fastest strike's
+    // at-par duration (Jab at 3 chars: parMs(3) = 800ms), so this
+    // necessarily lands as a Critical too — the assertion computes the
+    // expected damage from the actual resulting speed rather than
+    // assuming a specific one, so that's accounted for either way.
+    const par = parMs(3);
+    const punish = strike({ player: 1, moveId: 'jab', chars: 3, tStart: 51, tEnd: 550 });
+    state = stepEvent(state, punish, [parry, punish]);
+    const speed = Math.min(1.40, Math.max(0.60, par / (punish.tEnd - punish.tStart)));
+    const precision = 1.25; // errors: 0
+    const crit = precision === 1.25 && speed >= 1.25 ? 1.50 : 1.00;
+    const expectedTenths = Math.round(6 * speed * precision * 1.00 * 1.25 * crit * 10);
+    expect(state.hp[0]).toBe(1000 - expectedTenths);
+  });
+});
+
+describe('stepEvent — Mend', () => {
+  it('costs 25 Focus and heals 12 HP', () => {
+    const state = { ...initialRoundState(), hp: [600, 1000], focus: [40, 0] };
+    const event = guardLane({ moveId: 'mend', tStart: 0, tEnd: 1100 });
+    const next = stepEvent(state, event, [event]);
+    expect(next.focus).toEqual([15, 0]);
+    expect(next.hp[0]).toBe(720); // 600 + 120 tenths
+  });
+
+  it('never heals past MAX_HP_TENTHS', () => {
+    const state = { ...initialRoundState(), hp: [950, 1000], focus: [40, 0] };
+    const event = guardLane({ moveId: 'mend', tStart: 0, tEnd: 1100 });
+    const next = stepEvent(state, event, [event]);
+    expect(next.hp[0]).toBe(1000);
+  });
+});

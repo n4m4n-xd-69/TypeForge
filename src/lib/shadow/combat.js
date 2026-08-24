@@ -5,7 +5,7 @@ import {
 } from './damage.js';
 import {
   clampHp, clampFocus, nextChainValue, chainMilestoneBonus,
-  strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN,
+  strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN, parrySucceeded,
 } from './roundState.js';
 
 /**
@@ -104,11 +104,46 @@ function applyWhiff(state, event) {
   return { ...state, focus: nextFocus, history: [...state.history, event] }; // chain unchanged
 }
 
+function applyGuard(state, event, move) {
+  const p = event.player;
+  const nextFocus = [...state.focus];
+  nextFocus[p] = clampFocus(nextFocus[p] + move.focus); // unconditional +3
+  const nextChain = [...state.chain];
+  nextChain[p] = nextChainValue(nextChain[p], event.errors);
+  return { ...state, focus: nextFocus, chain: nextChain, history: [...state.history, event] };
+}
+
+function applyParry(state, event, move, allEvents) {
+  const p = event.player;
+  const succeeded = parrySucceeded(allEvents, event);
+  const nextFocus = [...state.focus];
+  if (succeeded) nextFocus[p] = clampFocus(nextFocus[p] + move.focus); // +10, only on success
+  const nextChain = [...state.chain];
+  nextChain[p] = nextChainValue(nextChain[p], event.errors);
+  return { ...state, focus: nextFocus, chain: nextChain, history: [...state.history, event] };
+}
+
+function applyMend(state, event, move) {
+  const p = event.player;
+  const nextFocus = [...state.focus];
+  nextFocus[p] = clampFocus(nextFocus[p] + move.focus); // -25
+  const nextHp = [...state.hp];
+  nextHp[p] = clampHp(nextHp[p] + move.healsHp); // +12 HP (120 tenths)
+  const nextChain = [...state.chain];
+  nextChain[p] = nextChainValue(nextChain[p], event.errors);
+  return { ...state, focus: nextFocus, hp: nextHp, chain: nextChain, history: [...state.history, event] };
+}
+
+function applyGuardLane(state, event, move, allEvents) {
+  if (move.id === 'guard') return applyGuard(state, event, move);
+  if (move.id === 'parry') return applyParry(state, event, move, allEvents);
+  return applyMend(state, event, move);
+}
+
 export function stepEvent(state, event, allEvents) {
   if (event.outcome === 'whiff') return applyWhiff(state, event);
   if (event.outcome === 'expire') return applyExpiry(state, event);
   const move = getMove(event.moveId);
   if (move.lane === LANES.STRIKE) return applyStrike(state, event, move, allEvents);
-  // Guard-lane 'complete' handling arrives in Task 5.
-  throw new Error(`Guard-lane resolution not yet implemented for move: ${event.moveId}`);
+  return applyGuardLane(state, event, move, allEvents);
 }
