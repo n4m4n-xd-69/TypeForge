@@ -174,7 +174,7 @@ export function finalizeOutcome(state, { timeUp = false } = {}) {
 export function reduceRound(events, options = {}) {
   const { timeUp = false, initialState } = options;
   const start = initialState ? { ...initialRoundState(), ...initialState } : initialRoundState();
-  const sorted = [...events].sort((a, b) => a.tEnd - b.tEnd);
+  const sorted = [...events].sort((a, b) => (a.tEnd - b.tEnd) || (a.player - b.player) || (a.seq - b.seq));
   const folded = sorted.reduce((s, e) => stepEvent(s, e, sorted), start);
   return finalizeOutcome(folded, { timeUp });
 }

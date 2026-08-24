@@ -251,4 +251,33 @@ describe('reduceRound', () => {
     expect(result.outcome.type).toBe('ko');
     expect(result.outcome.winner).toBe(0);
   });
+
+  it('sorts by tEnd, then player, then seq — same-tEnd events from different players fold deterministically', () => {
+    // Player 0's critical strike on player 1 at tEnd 128 (fast jab, triggers critical).
+    // Player 1's clean strike on player 0 at the same tEnd 128.
+    // When player 0's strike folds first (player 0 < player 1), it zeroes player 1's chain
+    // due to the critical hit. Then player 1's strike folds and increments it back to 1.
+    // If we reverse input order, the sort should still produce the same fold order.
+    const jab3ParMs = parMs(3); // ~160ms at par
+    const criticalStrike = strike({
+      player: 0, moveId: 'jab', chars: 3, seq: 0,
+      tStart: 0, tEnd: 128, // well under par -> speed 1.25+ -> critical
+      errors: 0,
+    });
+    const respondingStrike = strike({
+      player: 1, moveId: 'slash', chars: 7, seq: 0,
+      tStart: 0, tEnd: 128, // same tEnd as the critical strike
+      errors: 0,
+    });
+
+    const forward = reduceRound([criticalStrike, respondingStrike]);
+    const reversed = reduceRound([respondingStrike, criticalStrike]);
+
+    // Both orders should produce the same result due to deterministic tie-breaking
+    expect(reversed).toEqual(forward);
+    // Player 1's chain: starts at 0, then player 1's strike increments it to 1
+    // (because player 0's critical strike resolves first and zeroes it, but then
+    // player 1's clean strike increments it, all deterministically)
+    expect(forward.chain[1]).toBe(1);
+  });
 });
