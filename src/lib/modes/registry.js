@@ -2,6 +2,18 @@ import { Braces, Clock, Hash, Keyboard, Leaf, PenLine, Quote, Swords, Zap } from
 import { DIFFICULTIES } from '../content.js';
 
 /**
+ * The MR-2-required field set every registry entry must carry, per
+ * docs/01-PRD.md §25. Exported so registry.test.js and
+ * stickmanExpressibility.test.js check the same real/hypothetical entries
+ * against one single list, instead of each file pinning its own literal
+ * copy that could silently drift out of sync with the real contract.
+ */
+export const REQUIRED_MODE_FIELDS = [
+  'id', 'name', 'description', 'icon', 'route', 'category',
+  'kind', 'scored', 'multiplayer', 'requiresCloud', 'difficulties', 'xpRule',
+];
+
+/**
  * The single source of truth for every typing mode in the product.
  * See docs/01-PRD.md §25 (MR-1..MR-7) and
  * docs/superpowers/plans/2026-08-24-mode-registry.md for the shape contract.

@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getMode, MODE_REGISTRY, kindFactorFor } from './registry.js';
-
-const REQUIRED_FIELDS = [
-  'id', 'name', 'description', 'icon', 'route', 'category',
-  'kind', 'scored', 'multiplayer', 'requiresCloud', 'difficulties', 'xpRule',
-];
+import { getMode, MODE_REGISTRY, kindFactorFor, REQUIRED_MODE_FIELDS } from './registry.js';
 
 describe('MODE_REGISTRY', () => {
   it('has exactly the 8 existing modes', () => {
@@ -15,7 +10,7 @@ describe('MODE_REGISTRY', () => {
 
   it('every entry has every MR-2-required field', () => {
     for (const mode of MODE_REGISTRY) {
-      for (const field of REQUIRED_FIELDS) {
+      for (const field of REQUIRED_MODE_FIELDS) {
         expect(mode, `${mode.id} is missing ${field}`).toHaveProperty(field);
       }
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MODE_REGISTRY, kindFactorFor } from './registry.js';
+import { MODE_REGISTRY, REQUIRED_MODE_FIELDS, kindFactorFor } from './registry.js';
 import { deriveModePaletteEntries, deriveNavGroups } from './derive.js';
 import { buildSessionPayload } from './sessionContract.js';
 import { xpForSession } from '../gamification.js';
@@ -72,12 +72,11 @@ describe('SC-A1, SC-A2, SC-A4 — the stickman entry is expressible (SC-A3 out o
     // A shape/schema check on the fixture literal, not a function call —
     // that is the correct proof for SC-A1, which is a claim about what the
     // registry's *schema* can describe, mirrored against the same
-    // REQUIRED_FIELDS list registry.test.js enforces for the 8 real entries.
-    const REQUIRED_FIELDS = [
-      'id', 'name', 'description', 'icon', 'route', 'category',
-      'kind', 'scored', 'multiplayer', 'requiresCloud', 'difficulties', 'xpRule',
-    ];
-    for (const field of REQUIRED_FIELDS) expect(STICKMAN_ENTRY).toHaveProperty(field);
+    // REQUIRED_MODE_FIELDS list registry.test.js enforces for the 8 real
+    // entries. Imported from registry.js (not re-declared here) so both
+    // files check the same single list — if the registry's real contract
+    // ever gains a field, both test files see it automatically.
+    for (const field of REQUIRED_MODE_FIELDS) expect(STICKMAN_ENTRY).toHaveProperty(field);
     expect(STICKMAN_ENTRY.multiplayer).toBe(true);
     expect(STICKMAN_ENTRY.scored).not.toBe('time-trial');
   });
@@ -173,10 +172,10 @@ describe('SC-A1, SC-A2, SC-A4 — the stickman entry is expressible (SC-A3 out o
     // never collide with a contract field name". Prove the actual, current
     // precedence when a meta key DOES collide, with a real call and an
     // assertion against the real returned payload (not two literals
-    // declared in this file): `...meta` spreads last in sessionContract.js,
-    // so a colliding meta key overwrites the fixed contract field.
+    // declared in this file): `...meta` spreads FIRST in sessionContract.js,
+    // so the fixed contract field always wins over a colliding meta key.
     const collisionPayload = buildSessionPayload({ modeId: 'battle', difficulty: 'hard', run, meta: { wpm: 999 } });
-    expect(collisionPayload.wpm).toBe(999);
+    expect(collisionPayload.wpm).toBe(74);
 
     // Shadow Battle's actual meta keys never hit this case: none of
     // roomId/roundsWon/roundsLost/frDelta/opponentKind collide with the

@@ -45,6 +45,14 @@ const NAV_LABEL_OVERRIDES = {
 // in registry order, so it still appears with zero changes required here.
 const QUICK_LAUNCH_ORDER = ['zen', 'quote'];
 
+// Same shape as NAV_LABEL_OVERRIDES above: a lookup map keyed by mode id,
+// falling back to a generic label when a mode isn't listed. `zen`'s
+// quick-launch copy ("no timer, no stats") doesn't fit the generic
+// "Practice with a <name>" pattern the other quick-launch entries use.
+const QUICK_LAUNCH_LABEL_OVERRIDES = {
+  zen: 'Zen mode — no timer, no stats',
+};
+
 export function deriveModePaletteEntries(registry) {
   const navigateEntries = registry
     .filter((m) => m.navSurface)
@@ -64,7 +72,7 @@ export function deriveModePaletteEntries(registry) {
     .filter((m) => m.quickLaunch)
     .map((m) => ({
       id: m.id,
-      label: m.id === 'zen' ? 'Zen mode — no timer, no stats' : `Practice with a ${m.name.toLowerCase()}`,
+      label: QUICK_LAUNCH_LABEL_OVERRIDES[m.id] ?? `Practice with a ${m.name.toLowerCase()}`,
       icon: m.quickLaunchIcon ?? m.icon,
       group: 'Practice',
       route: m.route,

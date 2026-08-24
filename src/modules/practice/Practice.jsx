@@ -438,7 +438,7 @@ export default function Practice() {
         />
 
         <SessionSummary
-          open={Boolean(result) && mode !== 'zen'}
+          open={Boolean(result) && !!getMode(mode)?.scored}
           result={result ? { ...result, isPB: state._lastAward?.isPB } : null}
           award={state._lastAward}
           freshAchievements={state._fresh ?? []}
@@ -595,7 +595,7 @@ function Controls({
           Edit text
         </Button>
       ) : null}
-      {['time', 'words', 'zen'].includes(mode) ? (
+      {getMode(mode)?.difficulties ? (
         <Segmented size="sm" label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
       ) : null}
 
