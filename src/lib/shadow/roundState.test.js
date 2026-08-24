@@ -161,28 +161,28 @@ describe('deriveContestState — §8.4 priority: Committed > Guarding > Exposed 
   it('Guarding outranks a concurrent Exposed window', () => {
     const events = [
       { seq: 0, player: 0, round: 1, cardIndex: 0, lane: 'guard', outcome: 'complete', tStart: 0, tEnd: 100, keystrokes: 4, errors: 0, ikiStats: [80, 5], moveId: 'guard', chars: 4 },
-      { seq: 1, player: 0, round: 1, cardIndex: 1, lane: 'guard', outcome: 'complete', tStart: 200, tEnd: 600, keystrokes: 5, errors: 0, ikiStats: [90, 10], moveId: 'parry', chars: 5 },
+      { seq: 1, player: 0, round: 1, cardIndex: 1, lane: 'guard', outcome: 'complete', tStart: 150, tEnd: 600, keystrokes: 5, errors: 0, ikiStats: [90, 10], moveId: 'parry', chars: 5 },
     ];
-    // at t=300: Guard window (100..1300) and Exposed window (600..1200) overlap
-    expect(deriveContestState(events, 0, 300)).toBe(CONTEST.GUARDING);
+    // at t=800: Guard window [100,1300) and Exposed window [600,1200) genuinely overlap
+    expect(deriveContestState(events, 0, 800)).toBe(CONTEST.GUARDING);
   });
 
   it('Guarding outranks a concurrent Staggered window', () => {
     const events = [
       { seq: 0, player: 0, round: 1, cardIndex: 0, lane: 'guard', outcome: 'complete', tStart: 0, tEnd: 100, keystrokes: 4, errors: 0, ikiStats: [80, 5], moveId: 'guard', chars: 4 },
-      { seq: 1, player: 0, round: 1, cardIndex: 1, lane: 'strike', outcome: 'expire', tStart: 200, tEnd: 600, keystrokes: 7, errors: 0, ikiStats: [120, 15], moveId: 'slash', chars: 7 },
+      { seq: 1, player: 0, round: 1, cardIndex: 1, lane: 'strike', outcome: 'expire', tStart: 0, tEnd: 700, keystrokes: 7, errors: 0, ikiStats: [120, 15], moveId: 'slash', chars: 7 },
     ];
-    // at t=400: Guard window (100..1300) and Staggered window (600..1300) overlap
-    expect(deriveContestState(events, 0, 400)).toBe(CONTEST.GUARDING);
+    // at t=1000: Guard window [100,1300) and Staggered window [700,1400) genuinely overlap
+    expect(deriveContestState(events, 0, 1000)).toBe(CONTEST.GUARDING);
   });
 
   it('Exposed outranks a concurrent Staggered window', () => {
     const events = [
-      { seq: 0, player: 0, round: 1, cardIndex: 0, lane: 'guard', outcome: 'complete', tStart: 0, tEnd: 400, keystrokes: 5, errors: 0, ikiStats: [80, 5], moveId: 'parry', chars: 5 },
-      { seq: 1, player: 0, round: 1, cardIndex: 1, lane: 'strike', outcome: 'expire', tStart: 500, tEnd: 900, keystrokes: 7, errors: 0, ikiStats: [120, 15], moveId: 'slash', chars: 7 },
+      { seq: 0, player: 0, round: 1, cardIndex: 0, lane: 'guard', outcome: 'complete', tStart: 0, tEnd: 200, keystrokes: 5, errors: 0, ikiStats: [80, 5], moveId: 'parry', chars: 5 },
+      { seq: 1, player: 0, round: 1, cardIndex: 1, lane: 'strike', outcome: 'expire', tStart: 0, tEnd: 500, keystrokes: 7, errors: 0, ikiStats: [120, 15], moveId: 'slash', chars: 7 },
     ];
-    // at t=800: Exposed window (400..1000) and Staggered window (900..1600) overlap
-    expect(deriveContestState(events, 0, 800)).toBe(CONTEST.EXPOSED);
+    // at t=650: Exposed window [200,800) and Staggered window [500,1200) genuinely overlap
+    expect(deriveContestState(events, 0, 650)).toBe(CONTEST.EXPOSED);
   });
 
   it('Committed outranks a concurrent Exposed window', () => {
