@@ -31,7 +31,7 @@
 - `src/lib/modes/derive.test.js`
 - `src/lib/modes/sessionContract.js` — `buildSessionPayload`
 - `src/lib/modes/sessionContract.test.js`
-- `src/lib/modes/stickmanExpressibility.test.js` — the SC-A1…A5 proof (Task 9)
+- `src/lib/modes/stickmanExpressibility.test.js` — the SC-A1/A2/A4 + MR-5 proof (Task 9); SC-A3 is out of scope for this plan (see Task 9)
 - `vitest.config.js` — test runner config, separate from `vite.config.js` so build config never has to think about test config
 
 **Modified:**
@@ -1171,7 +1171,7 @@ git commit -m "refactor: consolidate the three recordSession call sites into bui
 
 ---
 
-### Task 9: The stickman entry — prove SC-A1…A5
+### Task 9: The stickman entry — prove SC-A1…A5 (SC-A3 ruled out of scope; see deviation note below — SC-A1, SC-A2, SC-A4 proven, SC-A5 partially discharged)
 
 **Files:**
 - Create: `src/lib/modes/stickmanExpressibility.test.js`
@@ -1182,7 +1182,12 @@ git commit -m "refactor: consolidate the three recordSession call sites into bui
 
 This does **not** add a live Shadow Battle nav entry — `/shadow` doesn't exist yet, and shipping a nav link to a 404 would be its own defect. Instead it constructs a candidate entry shaped exactly like Shadow Battle will need (per `docs/08-PRD-shadow-battle.md` §7, §19.1, §22.2, §26.3) as a **test fixture**, feeds it through every function this plan built, and asserts each one handles it correctly with zero source changes to `registry.js`'s schema, `derive.js`, `sessionContract.js`, `AppShell.jsx`, `CommandPalette.jsx` or `gamification.js`. If any assertion here fails, this plan's registry design has a real gap that must be fixed before the Shadow Battle implementation plans build on it.
 
-> **Deviation from an earlier draft of this task.** An earlier version of the SC-A4 and SC-A2/EX-7 tests below asserted properties of hand-written object literals the test itself had just declared, never calling `kindFactorFor` or `buildSessionPayload` at all — passing vacuously even if those functions were deleted. The versions below call the real functions. Because `getMode` and `kindFactorFor` read the module-scope `MODE_REGISTRY` directly (no injected-registry parameter), and `STICKMAN_ENTRY` is deliberately never pushed into that array (mutating shared module state read by every other test file is worse than not testing), SC-A4 calls `kindFactorFor('shadow')` against today's registry and proves the *lookup mechanism* is generic (id/kind-keyed, safe fallback for an unknown kind) rather than proving the post-registration return value — combined with `registry.test.js`'s existing coverage that the same mechanism resolves registered kinds correctly, that is the honest, real proof available without registering the entry. SC-A2/EX-7 calls `buildSessionPayload` for real against an already-registered mode (`battle`) with Shadow-Battle-shaped `meta`, proving the `...meta` passthrough generalizes beyond Battlefield's own field names, plus a real collision check against the 12-key session contract.
+> **Deviations from earlier drafts of this task, across two review rounds.** Round 1: an earlier version of the SC-A4 and SC-A2/EX-7 tests asserted properties of hand-written object literals the test itself had just declared, never calling `kindFactorFor` or `buildSessionPayload` at all — passing vacuously even if those functions were deleted. Round 2 (this version) fixes three further defects a second review found in the round-1 rewrite:
+> 1. The EX-7 "no collision" assertion still never referenced the function's real output (`payload`) — it compared two literals declared in the test, so it passed for any implementation, including a broken one. Replaced with a real call using a deliberately colliding `meta` key (`{ wpm: 999 }`) and an assertion against the real returned payload, proving `...meta`'s actual spread precedence (it wins).
+> 2. `expect(kindFactorFor(STICKMAN_ENTRY.kind)).toBe(1)` pinned today's unregistered fallback as a hardcoded expectation — the day Shadow Battle actually registers a `'shadow'` kind, this line would flip to failing inside the file that calls itself the extensibility programme's acceptance test, reading as a false regression. Replaced with `expect(kindFactorFor(STICKMAN_ENTRY.kind)).toBe(registered ? STICKMAN_ENTRY.xpRule.kindFactor : 1)`, which is correct in both states and never needs editing.
+> 3. **A mislabel, not a code defect: SC-A3 is about room/contest schema (§17.3, = EX-6), not navigation.** The nav test was labeled "SC-A3 / MR-5"; it proves MR-5 only. The mode registry models no room/contest concept, so no registry-entry exercise can prove or disprove SC-A3 — it is out of scope for this plan and is discharged instead by Shadow Battle's own backend design (separate `shadow_rooms` tables rather than widening `battle_rooms`, `docs/08-PRD-shadow-battle.md` §26.2), in a future plan. Consequence, stated plainly: **SC-A5 (defined as "prove SC-A1–A4") is NOT fully discharged by this plan.** A1, A2 and A4 are proven; A3 remains open until the Shadow Battle backend plan ships.
+>
+> Two more fixes bundled in: the vacuous `expect(STICKMAN_ENTRY.xpRule.kindFactor).toBe(1.20)` line (proved nothing beyond the fixture's own declaration) is deleted, folded into prose; and the EX-7 test's comment no longer claims the 5-key Shadow-shaped `meta` "exercises a different code path" than Task 8's 2-key Battlefield case — a bare object spread is field-set-agnostic by construction, so its real value is documenting that Shadow Battle's field names ride the existing, already-proven mechanism, not proving a new one.
 
 - [ ] **Step 1: Write the test**
 
@@ -1195,23 +1200,47 @@ import { buildSessionPayload } from './sessionContract.js';
 import { xpForSession } from '../gamification.js';
 
 /**
- * SC-A1..A5 (docs/01-PRD.md §17): the registry must be able to describe a
- * mode that is 2-player, real-time, and not scored on passage completion —
- * without core-code changes. Shadow Battle (docs/08-PRD-shadow-battle.md) is
- * that mode; this fixture is its shape, not its live registration.
+ * Registry extensibility proof for the mode registry (Tasks 1-8). Read
+ * alongside docs/01-PRD.md §17.3, which defines SC-A5 as "prove SC-A1-A4":
  *
- * A note on what this file can and cannot prove: `getMode` and
- * `kindFactorFor` (registry.js:82-89) read the module-scope `MODE_REGISTRY`
- * directly — neither takes an injected registry. STICKMAN_ENTRY is not
- * pushed into that array, because doing so would either widen those
- * functions' signatures (scope creep outside this task) or mutate shared
- * module state that every other test file importing registry.js also reads
- * (state leakage across files is worse than either). So wherever a real
- * function's *lookup by id/kind* would need STICKMAN_ENTRY to already be
- * registered, this file calls the real function against the registry as it
- * stands today and proves the lookup mechanism is generic (id/kind-keyed,
- * not a hardcoded enum) rather than proving the post-registration return
- * value. Each test below says explicitly which of the two it is.
+ *   - SC-A1 (the schema can describe a 2-player, real-time, non-passage
+ *     mode) — proven below.
+ *   - SC-A2 (the session contract accommodates a mode-specific result
+ *     payload without a schema change) — proven below.
+ *   - SC-A3 (room/contest concepts must not be hardcoded to "one shared
+ *     passage, everyone finishes") — OUT OF SCOPE for this file and this
+ *     plan. The mode registry models no room/contest concept at all, so no
+ *     registry-entry exercise can prove or disprove it. SC-A3/EX-6 is
+ *     discharged by Shadow Battle's own backend design instead — separate
+ *     `shadow_rooms`/`shadow_players`/etc. tables rather than widening
+ *     `battle_rooms` (docs/08-PRD-shadow-battle.md §26.2) — by a future
+ *     plan, not this one.
+ *   - SC-A4 (XP awarding must not assume wpm × duration is the only input)
+ *     — proven below.
+ *
+ * Consequence, stated plainly: SC-A5 is NOT fully discharged by this file
+ * or this plan. A1, A2 and A4 are proven here; A3 remains open until the
+ * Shadow Battle backend plan ships and can be pointed at for its proof.
+ *
+ * MR-5 (adding a mode requires no edit to nav/palette/scoring code) is also
+ * proven below, reusing the same STICKMAN_ENTRY fixture — it lives in this
+ * file because it shares the fixture, not because it is SC-A3. An earlier
+ * draft of this file mislabeled the nav test "SC-A3 / MR-5"; it was always
+ * only MR-5, and is labeled that way now.
+ *
+ * A note on what this file can and cannot prove for A1/A2/A4: `getMode`
+ * (registry.js:82-84) and `kindFactorFor` (registry.js:86-89) read the
+ * module-scope `MODE_REGISTRY` directly — neither takes an injected
+ * registry. STICKMAN_ENTRY is not pushed into that array, because doing so
+ * would either widen those functions' signatures (scope creep outside this
+ * task) or mutate shared module state that every other test file importing
+ * registry.js also reads (state leakage across files is worse than
+ * either). So wherever a real function's *lookup by id/kind* would need
+ * STICKMAN_ENTRY to already be registered, this file calls the real
+ * function against the registry as it stands today and proves the lookup
+ * mechanism is generic (id/kind-keyed, not a hardcoded enum) rather than
+ * proving the post-registration return value. Each test below says
+ * explicitly which of the two it is.
  */
 const STICKMAN_ENTRY = {
   id: 'shadow', name: 'Shadow Battle', description: 'Two-player real-time typing combat.',
@@ -1220,18 +1249,20 @@ const STICKMAN_ENTRY = {
   multiplayer: true, requiresCloud: true, difficulties: null,
   xpRule: { kindFactor: 1.20 }, // docs/08-PRD-shadow-battle.md §19.1
   quickLaunch: false,
+  // navLabel is the short form ('Shadow') that this fixture's nav test
+  // actually exercises. docs/08-PRD-shadow-battle.md §23.2 (SB-NAV-1) says
+  // the real entry needs label: 'Shadow Battle' PLUS a dedicated
+  // `short: 'Shadow'` field for the 360px mobile tab bar — `derive.js` has
+  // no `short` concept today, and this fixture sidesteps that gap rather
+  // than proving derive.js already handles it. So "zero changes to
+  // derive.js" below holds only for the narrow claim actually tested (the
+  // item appears in nav with the right route), not for full label fidelity
+  // against SB-NAV-1 — that is a real, open schema gap for whoever
+  // registers Shadow Battle for real.
   navSurface: true, navGroup: 'Compete', navLabel: 'Shadow', navRoute: '/shadow',
 };
 
-// The exact 12-field session contract sessionContract.test.js pins for
-// `buildSessionPayload`'s output. Used below to check Shadow Battle's
-// mode-specific meta keys don't collide with it.
-const SESSION_CONTRACT_KEYS = [
-  'ts', 'kind', 'mode', 'difficulty', 'lang',
-  'wpm', 'accuracy', 'consistency', 'durationSec', 'chars', 'errors', 'keyStats',
-];
-
-describe('SC-A1..A5 — the stickman entry is expressible', () => {
+describe('SC-A1, SC-A2, SC-A4 — the stickman entry is expressible (SC-A3 out of scope; see file header)', () => {
   it('SC-A1: satisfies the same required-field shape as every real entry, describing a 2-player real-time non-passage mode', () => {
     // A shape/schema check on the fixture literal, not a function call —
     // that is the correct proof for SC-A1, which is a claim about what the
@@ -1246,10 +1277,13 @@ describe('SC-A1..A5 — the stickman entry is expressible', () => {
     expect(STICKMAN_ENTRY.scored).not.toBe('time-trial');
   });
 
-  it('SC-A3 / MR-5: appears in nav with zero changes to deriveNavGroups or AppShell', () => {
+  it('MR-5: appears in nav with zero changes to deriveNavGroups or AppShell', () => {
     // Real call: deriveNavGroups is exercised with an extended registry
     // array. Would fail if deriveNavGroups only recognised a fixed set of
     // ids/groups instead of reading navSurface/navGroup generically.
+    // This proves MR-5 (adding a mode needs no nav-code edit) only — NOT
+    // SC-A3, which is about room/contest schema and is out of scope here
+    // (see file header).
     const registry = [...MODE_REGISTRY, STICKMAN_ENTRY];
     const groups = deriveNavGroups(registry, { Train: [], Compete: [] });
     const compete = groups.find((g) => g.label === 'Compete');
@@ -1263,28 +1297,30 @@ describe('SC-A1..A5 — the stickman entry is expressible', () => {
     expect(entries.find((e) => e.id === 'shadow')).toMatchObject({ route: '/shadow', group: 'Navigate' });
   });
 
-  it('SC-A4: kindFactorFor and xpForSession resolve an unregistered kind generically, with zero changes to gamification.js', () => {
+  it('SC-A4: kindFactorFor and xpForSession resolve any registry kind generically, with zero changes to gamification.js', () => {
     // Real calls to the real functions, using STICKMAN_ENTRY.kind
-    // ('shadow') as the argument. Because MODE_REGISTRY does not yet
-    // contain a 'shadow' entry (see file-level note above), kindFactorFor
-    // returns its documented fallback (1) rather than 1.20 — that is
-    // correct, current behaviour, not a bug.
-    //
-    // What this proves: kindFactorFor is a pure id-agnostic lookup
+    // ('shadow') as the argument. MODE_REGISTRY does not contain a
+    // 'shadow' entry today, so the assertion below checks the fallback
+    // branch now — and is written to also be correct the moment Shadow
+    // Battle actually registers a 'shadow' kind, so this test never needs
+    // editing and never goes red for the wrong reason when that happens:
+    const registered = MODE_REGISTRY.some((m) => m.kind === STICKMAN_ENTRY.kind);
+    expect(kindFactorFor(STICKMAN_ENTRY.kind)).toBe(registered ? STICKMAN_ENTRY.xpRule.kindFactor : 1);
+
+    // What this proves today (registered === false): kindFactorFor is a
+    // pure id-agnostic lookup
     // (`MODE_REGISTRY.find(m => m.kind === kind)?.xpRule?.kindFactor ?? 1`),
     // not a hardcoded switch over known kinds — it accepts and safely
     // resolves an arbitrary, never-seen-before kind string instead of
-    // throwing or silently misbehaving. registry.test.js already proves
-    // the same mechanism correctly resolves registered kinds ('code' ->
-    // 1.25, 'battle' -> 1.15). Together, that is the proof that the
-    // mechanism generalises: the day STICKMAN_ENTRY (or the real Shadow
-    // Battle entry) is pushed into MODE_REGISTRY, this exact call starts
-    // returning 1.20, with zero changes to gamification.js or registry.js.
-    // The post-registration return value itself is NOT proven here — it
-    // cannot be, without registering the entry, which is out of this
-    // fixture-only task's scope.
-    expect(kindFactorFor(STICKMAN_ENTRY.kind)).toBe(1);
-    expect(STICKMAN_ENTRY.xpRule.kindFactor).toBe(1.20); // fixture shape check only
+    // throwing or silently misbehaving. registry.test.js already proves the
+    // same mechanism correctly resolves registered kinds ('code' -> 1.25,
+    // 'battle' -> 1.15). Together, that is the proof that the mechanism
+    // generalises: the day STICKMAN_ENTRY (or the real Shadow Battle entry,
+    // whose xpRule.kindFactor is 1.20 per docs/08-PRD-shadow-battle.md
+    // §19.1) is pushed into MODE_REGISTRY, `registered` flips to true and
+    // this exact call starts returning 1.20 — with zero changes to
+    // gamification.js or registry.js, and with this test staying green
+    // either way.
 
     // The downstream consumer also accepts an arbitrary registry `kind`
     // string without special-casing it: xpForSession takes `kind` as a
@@ -1298,26 +1334,28 @@ describe('SC-A1..A5 — the stickman entry is expressible', () => {
     expect(xp).toBeGreaterThan(0);
   });
 
-  it('SC-A2 / EX-7: a Shadow-Battle-shaped meta payload rides through the real buildSessionPayload untouched, with no collision against the 12-key session contract', () => {
+  it("SC-A2 / EX-7: a Shadow-Battle-shaped meta payload rides through the real buildSessionPayload untouched, and a colliding meta key's real precedence is proven", () => {
     // buildSessionPayload's mode lookup (getMode) also reads MODE_REGISTRY
     // at module scope, so a modeId of 'shadow' throws "unknown mode id"
     // today — sessionContract.test.js's own "throws for an unregistered
     // mode id" case already proves that is correct behaviour for an
     // unregistered mode, not a bug to route around.
     //
-    // To exercise the real `...meta` passthrough mechanism without
-    // widening buildSessionPayload's signature or mutating MODE_REGISTRY,
-    // this test calls the REAL function against an already-registered mode
-    // ('battle' — also multiplayer + requiresCloud, so its shape is close
-    // to Shadow Battle's) and supplies `meta` shaped exactly like a Shadow
-    // Battle `shadow_results` row (docs/08-PRD-shadow-battle.md §26.3) —
-    // not Battlefield's own roomId/rank shape that Task 8's
-    // sessionContract.test.js already covers. What's being proven here is
-    // the passthrough mechanism itself (the `...meta` spread applies to
-    // any field set, not just Battlefield's), which is exactly EX-7's
-    // claim: a mode-specific result payload rides along without a schema
-    // change. The modeId used to invoke it is a stand-in, not a claim that
-    // shadow_results data belongs to a Battlefield session.
+    // To exercise the real `...meta` passthrough without widening
+    // buildSessionPayload's signature or mutating MODE_REGISTRY, this test
+    // calls the REAL function against an already-registered mode ('battle'
+    // — also multiplayer + requiresCloud, so its shape is close to Shadow
+    // Battle's) and supplies `meta` shaped exactly like a Shadow Battle
+    // `shadow_results` row (docs/08-PRD-shadow-battle.md §26.3) — not
+    // Battlefield's own roomId/rank shape that Task 8's
+    // sessionContract.test.js already covers.
+    //
+    // Honest framing: a bare object spread is field-set-agnostic by
+    // construction, so passing a 5-key Shadow-shaped meta here doesn't
+    // exercise a different code path than Task 8's 2-key Battlefield case
+    // — its value is documenting that Shadow Battle's actual field names
+    // (roomId/roundsWon/roundsLost/frDelta/opponentKind) ride through the
+    // existing, already-proven mechanism, not proving a new one.
     const run = { wpm: 74, accuracy: 97, consistency: 88, durationSec: 180, chars: 900, errors: 12, keyStats: {} };
     const shadowMeta = { roomId: 'abc123', roundsWon: 2, roundsLost: 1, frDelta: 17, opponentKind: 'human' };
 
@@ -1326,11 +1364,21 @@ describe('SC-A1..A5 — the stickman entry is expressible', () => {
     // Every Shadow Battle meta key rode through the real spread untouched.
     expect(payload).toMatchObject(shadowMeta);
 
-    // EX-7's actual requirement is "without schema change" — prove that
-    // concretely by checking none of Shadow Battle's meta keys silently
-    // collide with (and overwrite) one of the fixed 12-key contract fields.
-    const collisions = Object.keys(shadowMeta).filter((k) => SESSION_CONTRACT_KEYS.includes(k));
-    expect(collisions).toEqual([]);
+    // EX-7's real requirement is "without schema change" — not "meta can
+    // never collide with a contract field name". Prove the actual, current
+    // precedence when a meta key DOES collide, with a real call and an
+    // assertion against the real returned payload (not two literals
+    // declared in this file): `...meta` spreads last in sessionContract.js,
+    // so a colliding meta key overwrites the fixed contract field.
+    const collisionPayload = buildSessionPayload({ modeId: 'battle', difficulty: 'hard', run, meta: { wpm: 999 } });
+    expect(collisionPayload.wpm).toBe(999);
+
+    // Shadow Battle's actual meta keys never hit this case: none of
+    // roomId/roundsWon/roundsLost/frDelta/opponentKind collide with the
+    // 12-key session contract (ts/kind/mode/difficulty/lang/wpm/accuracy/
+    // consistency/durationSec/chars/errors/keyStats). The collision case
+    // above is a hypothetical stress test of the real mechanism's
+    // precedence, not a claim about Shadow Battle's own payload.
   });
 });
 ```
@@ -1338,13 +1386,13 @@ describe('SC-A1..A5 — the stickman entry is expressible', () => {
 - [ ] **Step 2: Run it to confirm it passes on the first run**
 
 Run: `npm test`
-Expected: PASS — every assertion holds against the Task 3-7 implementation as written. (Unlike the other tasks, this test is not expected to fail first: it's verifying that the infrastructure already built handles a shape it was never specifically coded for. If anything here fails, that's a real design gap — go back and fix `registry.js`/`derive.js`'s schema, then re-run this task's test, before moving on.)
+Expected: PASS — every assertion holds against the Task 3-8 implementation as written. (Unlike the other tasks, this test is not expected to fail first: it's verifying that the infrastructure already built handles a shape it was never specifically coded for. If anything here fails, that's a real design gap — go back and fix `registry.js`/`derive.js`'s schema, then re-run this task's test, before moving on.) Note the scope correction above: passing here demonstrates SC-A1, SC-A2, SC-A4 and MR-5 — not SC-A3, which this file cannot address, so SC-A5 is only partially discharged by this task.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add src/lib/modes/stickmanExpressibility.test.js
-git commit -m "test: prove the mode registry can express Shadow Battle's shape (SC-A1..A5)"
+git commit -m "test: prove the mode registry can express Shadow Battle's shape (SC-A1/A2/A4, MR-5; SC-A3 out of scope)"
 ```
 
 ---
@@ -1366,10 +1414,10 @@ Confirm each of the following against the work above:
 - [ ] §25.4 — "`DIFFICULTIES` has exactly one definition": Task 2's regression test enforces this permanently
 - [ ] MR-3 — "Navigation, command palette and mode pickers all derive from it": nav (Task 5), palette (Task 6), Practice mode switcher (Task 7), difficulty picker (Task 2)
 - [ ] §25.4 — "A new mode added in a test touches only the registry": Task 9 adds `STICKMAN_ENTRY` touching nothing outside its own test file
-- [ ] §25.4 — "The stickman entry (SC-A5) is expressible": Task 9, all 5 assertions pass
+- [ ] §25.4 — "The stickman entry (SC-A5) is expressible": **partially.** Task 9 proves SC-A1, SC-A2 and SC-A4 (all 5 assertions pass). SC-A3 (room/contest concepts, = EX-6) is out of scope for this plan — the mode registry models no room/contest concept, so it cannot be proven or disproven by a registry-entry exercise — and is discharged instead by Shadow Battle's own backend design (separate `shadow_rooms` tables, `docs/08-PRD-shadow-battle.md` §26.2) in a future plan. Since SC-A5 is defined as "prove SC-A1–A4", **SC-A5 is not fully discharged by this plan**; A3 remains open.
 - [ ] §30.3 — "All three existing call sites use the contract": Task 8, Steps 5-7
 - [ ] §30.3 — "A hypothetical mode is added touching only the registry + a component": Task 9 demonstrates the registry half; the "+ a component" half is the Shadow Battle UI plan's job, not this one's
-- [ ] §30.3 — "The stickman entry is expressible without core changes (SC-A5)": Task 9
+- [ ] §30.3 — "The stickman entry is expressible without core changes (SC-A5)": **partially** — see the §25.4 row above; SC-A1/A2/A4 proven by Task 9, SC-A3 open
 
 - [ ] **Step 3: Final smoke pass**
 
