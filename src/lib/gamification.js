@@ -3,6 +3,8 @@
  * saved state so the same numbers can be recomputed on any device.
  */
 
+import { kindFactorFor } from './modes/registry.js';
+
 /* ── Levels ────────────────────────────────────────────────────────────────
    Quadratic curve: level n starts at 60·n·(n−1)/2 + 40·(n−1). Early levels
    arrive fast (first one inside a single session), later ones take real work. */
@@ -50,9 +52,7 @@ export function levelTitle(level) {
 export function xpForSession({ wpm, accuracy, durationSec, kind = 'text', difficulty = 'normal' }) {
   const base = Math.round(wpm * 0.9 + (durationSec / 60) * 18);
   const accuracyFactor = accuracy >= 98 ? 1.35 : accuracy >= 95 ? 1.15 : accuracy >= 90 ? 1 : 0.7;
-  // Battlefield sits between prose and code: someone is watching, which is its
-  // own kind of pressure, but the text is ordinary English.
-  const kindFactor = kind === 'code' ? 1.25 : kind === 'battle' ? 1.15 : 1;
+  const kindFactor = kindFactorFor(kind);
   const diffFactor = { easy: 0.85, normal: 1, hard: 1.2, expert: 1.45 }[difficulty] ?? 1;
   return Math.max(5, Math.round(base * accuracyFactor * kindFactor * diffFactor));
 }

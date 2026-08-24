@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getMode, MODE_REGISTRY } from './registry.js';
+import { getMode, MODE_REGISTRY, kindFactorFor } from './registry.js';
 
 const REQUIRED_FIELDS = [
   'id', 'name', 'description', 'icon', 'route', 'category',
@@ -63,5 +63,20 @@ describe('MODE_REGISTRY', () => {
     expect(getMode('zen').xpRule.kindFactor).toBe(1);
     expect(getMode('code').xpRule.kindFactor).toBe(1.25);
     expect(getMode('battle').xpRule.kindFactor).toBe(1.15);
+  });
+});
+
+describe('kindFactorFor', () => {
+  it('returns the code kind factor', () => {
+    expect(kindFactorFor('code')).toBe(1.25);
+  });
+  it('returns the battle kind factor', () => {
+    expect(kindFactorFor('battle')).toBe(1.15);
+  });
+  it('returns the text kind factor', () => {
+    expect(kindFactorFor('text')).toBe(1);
+  });
+  it('falls back to 1 for an unknown kind', () => {
+    expect(kindFactorFor('made-up-kind')).toBe(1);
   });
 });

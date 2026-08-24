@@ -60,6 +60,8 @@ export const MODE_REGISTRY = [
     id: 'battle', name: 'Battlefield', description: 'Race up to 8 players on one shared passage.',
     icon: Swords, route: '/battle', category: 'competitive', kind: 'battle',
     scored: 'time-trial', multiplayer: true, requiresCloud: true, difficulties: DIFFICULTIES,
+    // Battlefield sits between prose and code: someone is watching, which is its
+    // own kind of pressure, but the text is ordinary English.
     xpRule: { kindFactor: 1.15 }, quickLaunch: false,
     navSurface: true, navGroup: 'Compete', navLabel: 'Battle', navRoute: '/battle',
   },
@@ -67,4 +69,9 @@ export const MODE_REGISTRY = [
 
 export function getMode(id) {
   return MODE_REGISTRY.find((m) => m.id === id);
+}
+
+export function kindFactorFor(kind) {
+  const mode = MODE_REGISTRY.find((m) => m.kind === kind);
+  return mode?.xpRule?.kindFactor ?? 1;
 }
