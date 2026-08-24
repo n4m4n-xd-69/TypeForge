@@ -11,6 +11,7 @@ import { useReducedMotionSafe } from '../../lib/motion.js';
 import { finishBattle } from '../../lib/battle/api.js';
 import RaceTrack from './RaceTrack.jsx';
 import { cx, mmss } from '../../lib/format.js';
+import { buildSessionPayload } from '../../lib/modes/sessionContract.js';
 
 /**
  * The race.
@@ -60,20 +61,7 @@ export default function RaceView({ battle }) {
 
       // Battlefield counts. Same reducer every other surface uses, so XP,
       // streak, daily missions and achievements all move without a special case.
-      recordSession({
-        ts: new Date().toISOString(),
-        kind: 'battle',
-        mode: 'battle',
-        difficulty: room.difficulty,
-        lang: null,
-        wpm: run.wpm,
-        accuracy: run.accuracy,
-        consistency: run.consistency,
-        durationSec: run.durationSec,
-        chars: run.chars,
-        errors: run.errors,
-        keyStats: run.keyStats,
-      });
+      recordSession(buildSessionPayload({ modeId: 'battle', difficulty: room.difficulty, run }));
     } catch (err) {
       toast(err.message ?? 'Could not report your result.', { tone: 'error' });
     } finally {

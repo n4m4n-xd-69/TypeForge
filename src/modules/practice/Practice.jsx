@@ -22,8 +22,9 @@ import { useToast } from '../../components/ui/Toast.jsx';
 import { DIFFICULTIES, DRILLS, randomQuote, randomWords } from '../../lib/content.js';
 import { aiConfigured, generatePassage } from '../../lib/ai.js';
 import { cx, mmss, relativeTime } from '../../lib/format.js';
-import { MODE_REGISTRY } from '../../lib/modes/registry.js';
+import { getMode, MODE_REGISTRY } from '../../lib/modes/registry.js';
 import { deriveModeSegmentedOptions } from '../../lib/modes/derive.js';
+import { buildSessionPayload } from '../../lib/modes/sessionContract.js';
 
 const MODE_OPTIONS = deriveModeSegmentedOptions(MODE_REGISTRY, 'practice');
 
@@ -150,21 +151,8 @@ export default function Practice() {
   const onFinish = useCallback(
     (run) => {
       setResult(run);
-      if (mode === 'zen') return; // Zen deliberately does not score you
-      recordSession({
-        ts: new Date().toISOString(),
-        kind: 'text',
-        mode,
-        difficulty,
-        lang: null,
-        wpm: run.wpm,
-        accuracy: run.accuracy,
-        consistency: run.consistency,
-        durationSec: run.durationSec,
-        chars: run.chars,
-        errors: run.errors,
-        keyStats: run.keyStats,
-      });
+      if (!getMode(mode)?.scored) return; // Zen (and any future unscored mode) opts out here
+      recordSession(buildSessionPayload({ modeId: mode, difficulty, run }));
     },
     [mode, difficulty, recordSession],
   );

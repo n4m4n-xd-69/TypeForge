@@ -22,6 +22,7 @@ import { DIFFICULTIES, LANGUAGES, LANGUAGE_BY_ID, snippetsFor } from '../../lib/
 import { AI_REASON_COPY, aiConfigured, generateSnippet } from '../../lib/ai.js';
 import { tokenizeToChars } from '../../lib/prism.js';
 import { cx } from '../../lib/format.js';
+import { buildSessionPayload } from '../../lib/modes/sessionContract.js';
 
 export default function CodeTyping() {
   const [params, setParams] = useSearchParams();
@@ -122,20 +123,7 @@ export default function CodeTyping() {
   const onFinish = useCallback(
     (run) => {
       setResult(run);
-      recordSession({
-        ts: new Date().toISOString(),
-        kind: 'code',
-        mode: 'code',
-        difficulty,
-        lang: languageId,
-        wpm: run.wpm,
-        accuracy: run.accuracy,
-        consistency: run.consistency,
-        durationSec: run.durationSec,
-        chars: run.chars,
-        errors: run.errors,
-        keyStats: run.keyStats,
-      });
+      recordSession(buildSessionPayload({ modeId: 'code', difficulty, run, lang: languageId }));
     },
     [difficulty, languageId, recordSession],
   );
