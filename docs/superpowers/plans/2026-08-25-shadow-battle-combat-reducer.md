@@ -789,7 +789,7 @@ git commit -m "feat(shadow): add §11 Focus/Chain rules and §8.4 contest-state 
 - Test: `src/lib/shadow/combat.test.js`
 
 **Interfaces:**
-- Consumes: `LANES, MOVES, getMove` from `./moveTable.js`; `CONTEST, computeDamage, reflectedDamage` from `./damage.js`; `clampHp, clampFocus, nextChainValue, chainMilestoneBonus, strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN` from `./roundState.js`. The test file additionally imports `initialRoundState` from `./roundState.js` directly (to build starting states for `stepEvent` calls) — `combat.js` itself doesn't need it until Task 6's `reduceRound`.
+- Consumes: `LANES, MOVES, getMove` from `./moveTable.js`; `CONTEST, computeDamage, reflectedDamage, isCritical, precisionFactor, speedFactor, parMs` from `./damage.js` (the last four so the Critical check in `applyStrike` reuses Task 2's formula instead of re-deriving it); `clampHp, clampFocus, nextChainValue, chainMilestoneBonus, strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN` from `./roundState.js`. The test file additionally imports `initialRoundState` from `./roundState.js` directly (to build starting states for `stepEvent` calls) — `combat.js` itself doesn't need it until Task 6's `reduceRound`.
 - Produces (this task): `stepEvent(state, event, allEvents)` handling strike-lane `complete`/`expire`/`whiff` outcomes, tracking `koAt`. Guard-lane handling (Task 5) and `reduceRound`/`finalizeOutcome` (Task 6) come in later tasks — this task's tests call `stepEvent` directly with a hand-built `state`.
 
 - [ ] **Step 1: Write the failing test**
@@ -914,7 +914,10 @@ Expected: FAIL — `Cannot find module './combat.js'`
 ```js
 // src/lib/shadow/combat.js
 import { LANES, MOVES, getMove } from './moveTable.js';
-import { CONTEST, computeDamage, reflectedDamage } from './damage.js';
+import {
+  CONTEST, computeDamage, reflectedDamage,
+  isCritical, precisionFactor, speedFactor, parMs,
+} from './damage.js';
 import {
   clampHp, clampFocus, nextChainValue, chainMilestoneBonus,
   strikeInFlightAt, deriveContestState, FLAT_ERROR_FOCUS_GAIN,
@@ -973,10 +976,10 @@ function applyStrike(state, event, move, allEvents) {
     if (nextHp[attacker] === 0 && nextKoAt[attacker] == null) nextKoAt[attacker] = event.tEnd;
   }
 
-  const precision = event.errors === 0 ? 1.25 : event.errors === 1 ? 1.00 : event.errors === 2 ? 0.80 : 0.60;
-  const par = Math.round((60000 * (event.chars + 1)) / (5 * 60));
-  const speed = Math.min(1.40, Math.max(0.60, par / duration));
-  const wasCritical = precision === 1.25 && speed >= 1.25;
+  const wasCritical = isCritical(
+    precisionFactor(event.errors),
+    speedFactor(parMs(event.chars), duration),
+  );
 
   const nextChain = [...state.chain];
   const prevAttackerChain = nextChain[attacker];
@@ -1222,11 +1225,9 @@ git commit -m "feat(shadow): stepEvent for Guard, Parry (with §10.7 reflection)
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `src/lib/shadow/combat.test.js`:
+Add `reduceRound, finalizeOutcome, DOUBLE_KO_WINDOW_MS, ROUND_TIME_CAP_MS` to the existing `from './combat.js'` import at the top of `src/lib/shadow/combat.test.js`. Then append to the end of the file:
 
 ```js
-import { reduceRound, finalizeOutcome, DOUBLE_KO_WINDOW_MS, ROUND_TIME_CAP_MS } from './combat.js';
-
 describe('finalizeOutcome — §12.3', () => {
   it('a single KO: the other player wins', () => {
     const state = { ...initialRoundState(), koAt: [null, 1500] };
