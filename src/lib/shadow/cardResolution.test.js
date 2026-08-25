@@ -91,6 +91,20 @@ describe('resolveForPlayer — Mend (§10.3-10.4, SB-MOV-3)', () => {
     expect(resolved.strikeWord).toBe(base.strikeWord);
   });
 
+  it('a Mend candidate still rerolls to Guard/Parry when ineligible, even with Focus at 100 (Overdrive active)', () => {
+    let base = null;
+    let index = 0;
+    while (index < 200) {
+      const candidate = card(3, 1, index, 'steel');
+      if (candidate.guardMove === 'mend') { base = candidate; break; }
+      index += 1;
+    }
+    expect(base).not.toBeNull();
+    const state = stateWith({ hp: [1000, 1000], focus: [100, 0] }); // Focus 100 (Overdrive fires) AND HP 100.0 -- Mend-ineligible
+    const resolved = resolveForPlayer(3, 1, index, base, state, 0);
+    expect(['guard', 'parry']).toContain(resolved.guardMove);
+  });
+
   it('leaves a non-Mend candidate (Guard/Parry) completely alone', () => {
     let base = null;
     let index = 0;
