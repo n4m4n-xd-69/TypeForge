@@ -106,3 +106,61 @@ export function drawWordFor(move, state, band) {
   const wordPick = draw(state);
   return { word: pickWord(wordPick.u, list), state: wordPick.next };
 }
+
+// SB-MOV-1's curated, hand-picked fallback — one short (2-4 char) word per
+// starting letter, used only after 8 failed re-rolls. Guarantees SB-WRD-1
+// termination without an unbounded loop.
+export const SB_WRD_1_FALLBACK = {
+  a: 'an', b: 'by', c: 'can', d: 'day', e: 'each', f: 'for', g: 'go',
+  h: 'he', i: 'in', j: 'jam', k: 'key', l: 'let', m: 'may', n: 'new',
+  o: 'one', p: 'put', q: 'quiz', r: 'run', s: 'see', t: 'to', u: 'use',
+  v: 'van', w: 'was', x: 'xray', y: 'you', z: 'zap',
+};
+
+const ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
+
+// A fallback word guaranteed to differ from strikeFirstChar: walk to the
+// next letter in the alphabet (wrapping z -> a) and use its fallback.
+// SB_WRD_1_FALLBACK's own words each start with their own key letter, so
+// this can never collide with strikeFirstChar.
+function fallbackGuardWord(strikeFirstChar) {
+  const idx = ALPHABET.indexOf(strikeFirstChar.toLowerCase());
+  const nextLetter = ALPHABET[(idx + 1) % ALPHABET.length];
+  return SB_WRD_1_FALLBACK[nextLetter];
+}
+
+export function card(seed, round, index, band) {
+  const { move: strikeMove, state: afterStrikeMove } = resolveStrikeMove(seed, round, index, band);
+  const { word: strikeWord, state: afterStrikeWord } = drawWordFor(strikeMove, afterStrikeMove, band);
+
+  let guardMove;
+  let stateAfterGuardMove;
+  if (index === 0) {
+    guardMove = 'guard'; // SB-MOV-5
+    stateAfterGuardMove = afterStrikeWord;
+  } else {
+    const guardPick = draw(afterStrikeWord);
+    guardMove = pickWeighted(guardPick.u, GUARD_WEIGHTS);
+    stateAfterGuardMove = guardPick.next;
+  }
+
+  let { word: guardWord, state } = drawWordFor(guardMove, stateAfterGuardMove, band);
+
+  // SB-MOV-1 / SB-WRD-1: re-roll the guard word up to 8 times if it shares
+  // the strike word's first character (case-insensitive).
+  let attempts = 0;
+  while (
+    guardWord[0].toLowerCase() === strikeWord[0].toLowerCase() &&
+    attempts < 8
+  ) {
+    const rerolled = drawWordFor(guardMove, state, band);
+    guardWord = rerolled.word;
+    state = rerolled.state;
+    attempts += 1;
+  }
+  if (guardWord[0].toLowerCase() === strikeWord[0].toLowerCase()) {
+    guardWord = fallbackGuardWord(strikeWord[0]);
+  }
+
+  return { strikeMove, strikeWord, guardMove, guardWord };
+}

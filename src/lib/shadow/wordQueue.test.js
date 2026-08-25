@@ -138,3 +138,62 @@ describe('drawWordFor', () => {
     expect(Number.isInteger(state)).toBe(true);
   });
 });
+
+import { SB_WRD_1_FALLBACK, card } from './wordQueue.js';
+
+describe('SB_WRD_1_FALLBACK', () => {
+  it('has one entry per letter a-z, each 2-4 ASCII lowercase letters', () => {
+    for (const letter of 'abcdefghijklmnopqrstuvwxyz') {
+      const word = SB_WRD_1_FALLBACK[letter];
+      expect(word).toBeDefined();
+      expect(word.length).toBeGreaterThanOrEqual(2);
+      expect(word.length).toBeLessThanOrEqual(4);
+      expect(word[0]).toBe(letter);
+    }
+  });
+});
+
+describe('card — SB-MOV-5: index 0 is always Jab | Guard', () => {
+  it('across several seeds/rounds', () => {
+    for (const seed of [1, 42, 999]) {
+      const pair = card(seed, 1, 0, 'ember');
+      expect(pair.strikeMove).toBe('jab');
+      expect(pair.guardMove).toBe('guard');
+    }
+  });
+});
+
+describe('card — SB-WRD-1: strike and guard cards never share a first character', () => {
+  it('holds across a large generated sample', () => {
+    let violations = 0;
+    for (let round = 1; round <= 3; round += 1) {
+      for (let index = 0; index < 500; index += 1) {
+        const pair = card(7, round, index, 'steel');
+        if (pair.strikeWord[0].toLowerCase() === pair.guardWord[0].toLowerCase()) {
+          violations += 1;
+        }
+      }
+    }
+    expect(violations).toBe(0);
+  });
+});
+
+describe('card — determinism', () => {
+  it('the same (seed, round, index, band) always returns the same pair', () => {
+    const a = card(555, 2, 10, 'damascus');
+    const b = card(555, 2, 10, 'damascus');
+    expect(a).toEqual(b);
+  });
+
+  it('is independent of call order across different indices', () => {
+    const forward = [0, 1, 2, 3].map((i) => card(88, 1, i, 'ember'));
+    const backward = [3, 2, 1, 0].map((i) => card(88, 1, i, 'ember')).reverse();
+    expect(forward).toEqual(backward);
+  });
+});
+
+describe('card — SB-WRD-7: no player parameter, callable identically for "both players"', () => {
+  it('card() has arity 4 (seed, round, index, band) — no player slot', () => {
+    expect(card.length).toBe(4);
+  });
+});
