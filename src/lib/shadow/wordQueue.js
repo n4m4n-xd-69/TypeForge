@@ -1,4 +1,6 @@
 import { xorshift32, toU32, draw } from './prng.js';
+import { COMMON, HARDER, PUNCTUATED } from '../content.js';
+import { phraseFor } from './phraseTable.js';
 
 /**
  * The §9.4 base seeded queue. `card(seed, round, index, band)` (assembled
@@ -41,4 +43,66 @@ export function resolveStrikeMove(seed, round, index, band) {
     ? { jab: STRIKE_WEIGHTS.jab, slash: STRIKE_WEIGHTS.slash, shuriken: STRIKE_WEIGHTS.shuriken }
     : STRIKE_WEIGHTS;
   return { move: pickWeighted(u, weights), state: next };
+}
+
+// §9.3 — per-move word-length ranges.
+export const WORD_LENGTH_RANGES = {
+  jab: [3, 5], slash: [6, 9], crush: [10, 16], shuriken: [4, 8],
+  guard: [2, 4], parry: [3, 5], mend: [6, 8],
+};
+
+// §9.5 — band ratios. Only `common`/`harder` are kept: the queue only
+// consults this for Slash's COMMON-vs-HARDER choice (the one place a
+// move's bank is genuinely ambiguous per §9.3 and covered by a stated
+// PRD ratio) — Crush's HARDER-vs-phrase-table choice has no PRD-stated
+// ratio and is fixed at 50/50 by design-doc ruling, not read from here.
+export const BANDS = {
+  ember: { common: 75, harder: 20 },
+  steel: { common: 55, harder: 33 },
+  damascus: { common: 35, harder: 45 },
+};
+
+export function wordsInRange(bank, min, max) {
+  return bank.filter((w) => w.length >= min && w.length <= max);
+}
+
+export function pickWord(u, list) {
+  return list[Math.floor(u * list.length)];
+}
+
+// Draws exactly one word (plus, for crush/slash, one preceding bank-choice
+// draw) for the given move, returning the next PRNG state so the caller
+// can keep consuming the same stream.
+export function drawWordFor(move, state, band) {
+  const [min, max] = WORD_LENGTH_RANGES[move] ?? WORD_LENGTH_RANGES.crush;
+
+  if (move === 'crush') {
+    const bankPick = draw(state);
+    const wordPick = draw(bankPick.next);
+    if (bankPick.u < 0.5) {
+      const list = wordsInRange(HARDER, min, max);
+      return { word: pickWord(wordPick.u, list), state: wordPick.next };
+    }
+    return { word: phraseFor(wordPick.u, min, max), state: wordPick.next };
+  }
+
+  if (move === 'slash') {
+    const bankPick = draw(state);
+    const ratio = BANDS[band].common / (BANDS[band].common + BANDS[band].harder);
+    const bank = bankPick.u < ratio ? COMMON : HARDER;
+    const list = wordsInRange(bank, min, max);
+    const wordPick = draw(bankPick.next);
+    return { word: pickWord(wordPick.u, list), state: wordPick.next };
+  }
+
+  if (move === 'shuriken') {
+    const list = wordsInRange(PUNCTUATED, min, max);
+    const wordPick = draw(state);
+    return { word: pickWord(wordPick.u, list), state: wordPick.next };
+  }
+
+  // jab, guard, parry, mend — single-bank COMMON.
+  const list = wordsInRange(COMMON, min, max);
+  const wordPick = draw(state);
+  return { word: pickWord(wordPick.u, list), state: wordPick.next };
 }

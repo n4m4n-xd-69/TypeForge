@@ -61,3 +61,80 @@ describe('resolveStrikeMove — SB-MOV-4: Crush never appears twice consecutivel
     }
   });
 });
+
+import { WORD_LENGTH_RANGES, BANDS, wordsInRange, pickWord, drawWordFor } from './wordQueue.js';
+
+describe('WORD_LENGTH_RANGES — §9.3', () => {
+  it('matches the PRD\'s per-move length bands', () => {
+    expect(WORD_LENGTH_RANGES).toEqual({
+      jab: [3, 5], slash: [6, 9], crush: [10, 16], shuriken: [4, 8],
+      guard: [2, 4], parry: [3, 5], mend: [6, 8],
+    });
+  });
+});
+
+describe('BANDS — §9.5', () => {
+  it('matches the PRD\'s Ember/Steel/Damascus COMMON:HARDER ratios', () => {
+    expect(BANDS.ember).toEqual({ common: 75, harder: 20 });
+    expect(BANDS.steel).toEqual({ common: 55, harder: 33 });
+    expect(BANDS.damascus).toEqual({ common: 35, harder: 45 });
+  });
+});
+
+describe('wordsInRange', () => {
+  it('filters a bank to words within [min, max] length, inclusive', () => {
+    const bank = ['a', 'bb', 'ccc', 'dddd', 'eeeee'];
+    expect(wordsInRange(bank, 2, 4)).toEqual(['bb', 'ccc', 'dddd']);
+  });
+});
+
+describe('pickWord', () => {
+  it('picks by fractional index into the list', () => {
+    const list = ['a', 'b', 'c', 'd'];
+    expect(pickWord(0.0, list)).toBe('a');
+    expect(pickWord(0.24, list)).toBe('a');
+    expect(pickWord(0.25, list)).toBe('b');
+    expect(pickWord(0.99, list)).toBe('d');
+  });
+});
+
+describe('drawWordFor', () => {
+  it('jab/guard/parry/mend draw from COMMON, within their length range', () => {
+    for (const move of ['jab', 'guard', 'parry', 'mend']) {
+      const { word } = drawWordFor(move, 12345, 'steel');
+      const [min, max] = WORD_LENGTH_RANGES[move];
+      expect(word.length).toBeGreaterThanOrEqual(min);
+      expect(word.length).toBeLessThanOrEqual(max);
+    }
+  });
+
+  it('shuriken draws from PUNCTUATED, within its length range', () => {
+    const { word } = drawWordFor('shuriken', 999, 'ember');
+    const [min, max] = WORD_LENGTH_RANGES.shuriken;
+    expect(word.length).toBeGreaterThanOrEqual(min);
+    expect(word.length).toBeLessThanOrEqual(max);
+  });
+
+  it('slash draws from COMMON or HARDER (band-weighted), within its length range', () => {
+    for (let seed = 0; seed < 30; seed += 1) {
+      const { word } = drawWordFor('slash', seed, 'damascus');
+      const [min, max] = WORD_LENGTH_RANGES.slash;
+      expect(word.length).toBeGreaterThanOrEqual(min);
+      expect(word.length).toBeLessThanOrEqual(max);
+    }
+  });
+
+  it('crush draws from HARDER or the phrase table, within its length range', () => {
+    for (let seed = 0; seed < 30; seed += 1) {
+      const { word } = drawWordFor('crush', seed, 'ember');
+      const [min, max] = WORD_LENGTH_RANGES.crush;
+      expect(word.length).toBeGreaterThanOrEqual(min);
+      expect(word.length).toBeLessThanOrEqual(max);
+    }
+  });
+
+  it('returns a state usable for the next draw', () => {
+    const { state } = drawWordFor('jab', 1, 'ember');
+    expect(Number.isInteger(state)).toBe(true);
+  });
+});
