@@ -26,7 +26,7 @@ describe('resolveForPlayer — Overdrive (§10.2)', () => {
 
   it('never touches the guard slot', () => {
     const base = card(1, 1, 5, 'steel');
-    const state = stateWith({ focus: [100, 0] });
+    const state = stateWith({ focus: [100, 0], hp: [600, 1000] });
     const resolved = resolveForPlayer(1, 1, 5, base, state, 0);
     expect(resolved.guardMove).toBe(base.guardMove);
     expect(resolved.guardWord).toBe(base.guardWord);
@@ -67,7 +67,7 @@ describe('resolveForPlayer — Mend (§10.3-10.4, SB-MOV-3)', () => {
       if (candidate.guardMove === 'mend') { base = candidate; break; }
       index += 1;
     }
-    expect(base).not.toBeNull();
+    expect(base).not.toBeNull(); // sanity: found a Mend candidate to test against
     const state = stateWith({ hp: [1000, 1000], focus: [30, 0] }); // HP 100.0 -- not <70, ineligible
     const resolved = resolveForPlayer(3, 1, index, base, state, 0);
     expect(['guard', 'parry']).toContain(resolved.guardMove);
@@ -84,6 +84,7 @@ describe('resolveForPlayer — Mend (§10.3-10.4, SB-MOV-3)', () => {
       if (candidate.guardMove === 'mend') { base = candidate; break; }
       index += 1;
     }
+    expect(base).not.toBeNull(); // sanity: found a Mend candidate to test against
     const state = stateWith({ hp: [1000, 1000], focus: [30, 0] });
     const resolved = resolveForPlayer(3, 1, index, base, state, 0);
     expect(resolved.strikeMove).toBe(base.strikeMove);
@@ -98,6 +99,7 @@ describe('resolveForPlayer — Mend (§10.3-10.4, SB-MOV-3)', () => {
       if (candidate.guardMove !== 'mend') { base = candidate; break; }
       index += 1;
     }
+    expect(base).not.toBeNull(); // sanity: found a non-Mend candidate to test against
     const state = stateWith({ hp: [50, 1000], focus: [90, 0] }); // eligible-looking, irrelevant since candidate isn't Mend
     const resolved = resolveForPlayer(3, 1, index, base, state, 0);
     expect(resolved.guardMove).toBe(base.guardMove);
@@ -126,27 +128,40 @@ describe('resolveForPlayer — salted draws never desync the shared base sequenc
   });
 });
 
-describe('overrideSeed — guards against xorshift32(0) fixed point', () => {
-  it('does not degenerate when seed/round/index/player/salt XOR to 0', () => {
-    // Construct a collision: seed=5, round=3, index=6, player=0, salt=0x14
-    // toU32(5)^3^6^(0+1)^0x14 = 5^3^6^1^0x14 = 0
-    // Without seedFrom, this would call xorshift32(0)=0, draw()=>u=0 forever.
-    // With seedFrom, it substitutes a fixed nonzero constant.
-    const base = card(5, 3, 6, 'steel');
-    const state = stateWith({ focus: [100, 0] }); // Overdrive active
-    const resolved = resolveForPlayer(5, 3, 6, base, state, 0);
+describe('seedFrom — guards against xorshift32(0) fixed point', () => {
+  it('never seeds xorshift32 with 0, even when the raw XOR of parts would collide', () => {
+    // Verify by hand: 5 ^ 3 ^ 6 ^ 1 ^ 1 = 0 (a genuine collision).
+    // seedFrom(5, 3, 6, 1, 1) should substitute a fixed nonzero constant.
+    const seed = seedFrom(5, 3, 6, 1, 1);
+    expect(seed).not.toBe(0);
+    const { u } = draw(xorshift32(seed));
+    expect(u).not.toBe(0);
+  });
+});
 
-    // Verify the draw produced a valid word, not degenerated u=0 behavior
+describe('resolveForPlayer — Overdrive and Mend fire independently and simultaneously', () => {
+  it('both overrides apply when player is eligible for both (Focus=100 and HP<700/Focus>=25)', () => {
+    // Search for a seed/index whose base pair has guardMove='mend'
+    let base = null;
+    let index = 0;
+    while (index < 200) {
+      const candidate = card(7, 1, index, 'steel');
+      if (candidate.guardMove === 'mend') { base = candidate; break; }
+      index += 1;
+    }
+    expect(base).not.toBeNull(); // sanity: found a Mend candidate
+
+    // Set state: Focus=100 (Overdrive eligible) and HP=600, Focus=100 (Mend eligible: hp<700 && focus>=25)
+    const state = stateWith({ focus: [100, 0], hp: [600, 1000] });
+    const resolved = resolveForPlayer(7, 1, index, base, state, 0);
+
+    // Overdrive should override strike
+    expect(resolved.strikeMove).toBe('overdrive');
     expect(resolved.strikeWord.length).toBeGreaterThanOrEqual(14);
     expect(resolved.strikeWord.length).toBeLessThanOrEqual(24);
 
-    // Verify seedFrom was used: directly test the collision case
-    // to confirm the seed is not 0.
-    const OVERDRIVE_SALT = 0x4F564552; // 'OVER'
-    const collisionSeed = seedFrom(toU32(5), 3, 6, 0 + 1, OVERDRIVE_SALT);
-    expect(collisionSeed).not.toBe(0);
-    const testState = xorshift32(collisionSeed);
-    const { u } = draw(testState);
-    expect(u).not.toBe(0);
+    // Mend should NOT be rerolled (player is eligible: hp < 700 && focus >= 25)
+    expect(resolved.guardMove).toBe('mend');
+    expect(resolved.guardWord).toBe(base.guardWord);
   });
 });

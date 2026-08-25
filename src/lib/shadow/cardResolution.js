@@ -33,7 +33,7 @@ export function resolveForPlayer(seed, round, index, basePair, roundState, playe
     strikeWord = phraseFor(wordPick.u, 14, 24, { requirePunctuation: true });
   }
 
-  if (guardMove === 'mend' && focus !== 100 && !(hp < 700 && focus >= 25)) {
+  if (guardMove === 'mend' && !(hp < 700 && focus >= 25)) {
     const state = xorshift32(overrideSeed(seed, round, index, player, MEND_REROLL_SALT));
     const movePick = draw(state);
     guardMove = movePick.u < (0.45 / 0.70) ? 'guard' : 'parry';
