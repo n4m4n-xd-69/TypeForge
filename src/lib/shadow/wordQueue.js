@@ -1,4 +1,4 @@
-import { xorshift32, toU32, draw } from './prng.js';
+import { xorshift32, toU32, draw, seedFrom } from './prng.js';
 import { COMMON, HARDER, PUNCTUATED } from '../content.js';
 import { phraseFor } from './phraseTable.js';
 
@@ -34,7 +34,7 @@ export function pickWeighted(u, weights) {
 // own card count (tens, not thousands), so this is cheap in practice even
 // without memoization across separate top-level calls.
 export function resolveStrikeMove(seed, round, index, band) {
-  const state = xorshift32(toU32(seed) ^ round ^ index);
+  const state = xorshift32(seedFrom(toU32(seed), round, index));
   if (index === 0) return { move: 'jab', state };
 
   const prevMove = resolveStrikeMove(seed, round, index - 1, band).move;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { xorshift32, toU32 } from './prng.js';
+import { xorshift32, toU32, draw, seedFrom } from './prng.js';
 import { STRIKE_WEIGHTS, GUARD_WEIGHTS, pickWeighted, resolveStrikeMove } from './wordQueue.js';
 
 describe('STRIKE_WEIGHTS / GUARD_WEIGHTS — §10.2/10.3, fixed regardless of band', () => {
@@ -59,6 +59,25 @@ describe('resolveStrikeMove — SB-MOV-4: Crush never appears twice consecutivel
       }
       prevMove = move;
     }
+  });
+});
+
+describe('resolveStrikeMove — seedFrom guards against xorshift32(0) fixed point', () => {
+  it('does not degenerate when seed/round/index XOR to 0', () => {
+    // seed=5, round=3, index=6: toU32(5)^3^6 = 5^3^6 = 0
+    // Without seedFrom's guard, this would call xorshift32(0)=0, draw()=>u=0 forever,
+    // causing pickWeighted to always return the first move ('jab').
+    const { move, state } = resolveStrikeMove(5, 3, 6, 'ember');
+
+    // Verify the PRNG state is not 0 (i.e., seedFrom was used).
+    expect(state).not.toBe(0);
+
+    // Verify the move is properly drawn from the weighted distribution,
+    // not degenerate to 'jab' (which would be the first key every time if u=0).
+    // Calling draw(xorshift32(seedFrom(...))) should NOT give u=0.
+    const testState = xorshift32(seedFrom(toU32(5), 3, 6));
+    const { u } = draw(testState);
+    expect(u).not.toBe(0);
   });
 });
 

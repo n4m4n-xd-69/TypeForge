@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { xorshift32, toU32, draw } from './prng.js';
+import { xorshift32, toU32, draw, seedFrom } from './prng.js';
 
 describe('xorshift32', () => {
   it('matches a hand-verified reference value', () => {
@@ -51,5 +51,18 @@ describe('draw', () => {
       expect(u).toBeGreaterThanOrEqual(0);
       expect(u).toBeLessThan(1);
     }
+  });
+});
+
+describe('seedFrom', () => {
+  it('XORs its parts together when the result is nonzero', () => {
+    expect(seedFrom(1, 2, 4)).toBe(1 ^ 2 ^ 4);
+    expect(seedFrom(12345, 6789)).toBe(12345 ^ 6789);
+  });
+
+  it('substitutes a fixed nonzero constant when the XOR would be 0', () => {
+    expect(seedFrom(5, 5)).not.toBe(0);
+    expect(seedFrom(5, 5)).toBe(0x9E3779B9);
+    expect(seedFrom(0, 0, 0)).toBe(0x9E3779B9);
   });
 });

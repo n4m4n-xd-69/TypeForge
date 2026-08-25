@@ -26,3 +26,14 @@ export function draw(state) {
   const next = xorshift32(state);
   return { u: next / 4294967296, next };
 }
+
+// Combines seed components via XOR for callers building a per-card PRNG
+// seed from several parts (seed, round, index, etc.) — guards xorshift32's
+// documented zero fixed-point (see the test above) by substituting a fixed
+// nonzero constant if the XOR happens to land on exactly 0. Any call site
+// that XORs multiple parts together to seed xorshift32 should go through
+// this instead of a raw XOR.
+export function seedFrom(...parts) {
+  const combined = parts.reduce((acc, p) => (acc ^ p) >>> 0, 0);
+  return combined === 0 ? 0x9E3779B9 : combined; // arbitrary nonzero constant
+}
