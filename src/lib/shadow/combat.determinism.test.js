@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 
 // SB-CMB-2: no Math.random, no Date.now, anywhere in the reducer module set.
-const MODULES = ['combat.js', 'damage.js', 'roundState.js', 'moveTable.js', 'match.js'];
+const MODULES = [
+  'combat.js', 'damage.js', 'roundState.js', 'moveTable.js', 'match.js',
+  'prng.js', 'phraseTable.js', 'wordQueue.js', 'cardResolution.js',
+];
 
 describe('determinism guard', () => {
   for (const name of MODULES) {
