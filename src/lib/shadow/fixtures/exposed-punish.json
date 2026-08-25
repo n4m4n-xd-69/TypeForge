@@ -1,0 +1,9 @@
+{
+  "name": "exposed-punish",
+  "description": "§8.4 — a strike into a target Exposed by a failed Parry takes contest x1.25. Reuses the exact scenario verified in Task 5's combat.test.js Parry-failure unit test (parry fails since no strike is in flight when it resolves at t=50; punish starts strictly after, at t=51, to avoid retroactively counting as the strike the parry defended against).",
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 0, "tEnd": 50, "keystrokes": 5, "errors": 0, "ikiStats": [40, 5], "moveId": "parry", "chars": 5 },
+    { "seq": 1, "player": 1, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 51, "tEnd": 550, "keystrokes": 3, "errors": 0, "ikiStats": [150, 10], "moveId": "jab", "chars": 3 }
+  ],
+  "expected": { "hp": [803, 1000], "focus": [0, 4], "chain": [0, 1] }
+}

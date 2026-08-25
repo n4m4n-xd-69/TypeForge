@@ -1,0 +1,9 @@
+{
+  "name": "shuriken-vs-guard-15-percent",
+  "description": "§10.2 — Shuriken pierces Guard, reduced only 15% (guardFactor 0.85) instead of the usual 50%. Reuses the exact scenario verified in Task 4's combat.test.js Shuriken-vs-guard unit test.",
+  "events": [
+    { "seq": 0, "player": 1, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 0, "tEnd": 300, "keystrokes": 4, "errors": 0, "ikiStats": [80, 5], "moveId": "guard", "chars": 4 },
+    { "seq": 1, "player": 0, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1400, "keystrokes": 6, "errors": 0, "ikiStats": [200, 15], "moveId": "shuriken", "chars": 6 }
+  ],
+  "expected": { "hp": [1000, 926], "focus": [5, 3], "chain": [1, 1] }
+}
