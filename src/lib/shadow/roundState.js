@@ -13,7 +13,14 @@ export const TIMING = {
   GUARD_DURATION_MS: 1200,
   EXPOSED_DURATION_MS: 600,
   STAGGER_DURATION_MS: 700,
-  SHURIKEN_TRAVEL_MS: 200,
+  SHURIKEN_TRAVEL_MS: 200, // §10.5 — NOT YET WIRED: Shuriken currently
+  // resolves instantaneously at event.tEnd like every other strike. True
+  // travel-time semantics (damage/contest-state resolving at
+  // event.tEnd + SHURIKEN_TRAVEL_MS while Focus/chain still update at
+  // event.tEnd) is deferred to a future plan — implementing it correctly
+  // touches how other events look up this player's committed/guarding
+  // state, not just this constant's call site. Deferred by controller
+  // ruling during the final review of the combat-reducer plan.
   INTER_CARD_GAP_MS: 120,
 };
 

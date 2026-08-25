@@ -119,6 +119,14 @@ Edge Function's replay of the same queue. Plan 1's fixtures specify
 doesn't own. `combat.js` never looks at word content — only at the one
 derived fact (word length) the formula needs.
 
+One more thing whoever builds this resolution step needs to know: it isn't
+a strict one-pass pipeline. SB-MOV-2/SB-MOV-3 (Overdrive/Mend substitution)
+make `moveId` depend on Focus/HP state that only this reducer produces by
+folding prior events, while `stepEvent`'s committed-window lookahead wants
+the full resolved event array up front — so full resolution is a fixed
+point (resolve, fold, re-resolve against the new state, repeat until it
+stabilizes), not a single resolve-then-fold pass.
+
 `RoundState`:
 ```
 {
@@ -226,3 +234,6 @@ gather balance data from.
 - The exact Deno deployment shape for the Edge Function (bundling, cold
   start, how `shadow_rooms.seed`/`word_table_version` reach it) is Plan 4's
   problem. This design only commits to *not blocking* that path.
+- Shuriken's §10.5 200ms travel time (`TIMING.SHURIKEN_TRAVEL_MS`) is not
+  wired up — it resolves instantaneously at `event.tEnd` like every other
+  strike for now; true travel-time semantics is deferred to a future plan.
