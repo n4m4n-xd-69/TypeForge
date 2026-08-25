@@ -172,9 +172,10 @@ doesn't already trust.
 
 | File | Responsibility |
 |---|---|
-| `wordQueue.js` | `xorshift32`, `toU32`, the base `card(seed, round, index, band)` entry point, and the strike/guard weighted-selection + SB-MOV-1/4/5 logic. |
-| `cardResolution.js` | `resolveForPlayer(basePair, roundState, player)` — Overdrive override, Mend-eligibility reroll, both via salted independent draws. |
-| `phraseTable.js` | The 60-phrase table, generated once at module load, memoized; `phraseFor(minChars, maxChars, { requirePunctuation })` query function. |
+| `prng.js` | `xorshift32`, `toU32`, `draw` — the three primitives everything else consumes. Split out from `wordQueue.js` specifically so `phraseTable.js` can use the same PRNG without an import cycle (`wordQueue.js` needs `phraseTable.js` for Crush's phrase-table branch; `phraseTable.js` needs the PRNG). |
+| `wordQueue.js` | The base `card(seed, round, index, band)` entry point, and the strike/guard weighted-selection + SB-MOV-1/4/5 logic. |
+| `cardResolution.js` | `resolveForPlayer(seed, round, index, basePair, roundState, player)` — Overdrive override, Mend-eligibility reroll, both via salted independent draws. |
+| `phraseTable.js` | The 60-phrase table, generated once at module load, memoized; `phraseFor(u, minChars, maxChars, { requirePunctuation })` query function. |
 
 **Modified:** `src/lib/content.js` — the two changes in §5 above.
 
