@@ -11,6 +11,15 @@ import { COMMON } from '../content.js';
  * one index can never change what a different index, or the other
  * player's own resolution, produces. `roundState` uses the same shape
  * Plan 1's combat.js reducer state does: HP in integer tenths.
+ *
+ * PRD §10.2 also says Overdrive "stays until played or the round ends"
+ * once triggered. This module can't provide that by itself —
+ * `resolveForPlayer` is a pure function of the CURRENT `roundState`, so if
+ * Focus drops below 100 between two calls for the same index, Overdrive
+ * silently reverts. Whoever consumes this module must cache the resolved
+ * pair for an index once Overdrive fires, and keep using that cached pair
+ * rather than re-resolving, until the card is actually played or the
+ * round ends.
  */
 
 const OVERDRIVE_SALT = 0x4F564552; // 'OVER'

@@ -32,7 +32,11 @@ The only state-dependent step: if the base pair's guard candidate is Mend
 but this player isn't eligible (HP<70 & Focus≥25), swap it for a re-drawn
 Guard/Parry pick; if this player's Focus is 100, override the strike slot
 with Overdrive. Both players call this against the *same* base pair and can
-get *different* actual pairs.
+get *different* actual pairs. PRD §10.2's "stays until played or the round
+ends" stickiness for Overdrive is a consumer responsibility, not something
+`resolveForPlayer` provides — it is a pure function of the current
+`roundState`, so the caller must cache the resolved pair per index once
+Overdrive fires rather than re-resolving on every access.
 
 **Why the split matters for correctness, not just cleanliness:** if a
 state-dependent reroll consumed the next value from the *shared* base
@@ -161,10 +165,14 @@ table, two views, not two separate generation passes.
 
 After 8 failed re-rolls (guard word still shares a first character with the
 strike word), fall back to a **curated, hand-picked list**: one short
-(2-4 char) `COMMON` word per letter of the alphabet, checked in as a fixed
-26-entry array. Guarantees termination without an unbounded loop, and stays
-inside `COMMON` so it never introduces content the rest of the system
-doesn't already trust.
+(2-4 char) word per letter of the alphabet, checked in as a fixed 26-entry
+array. Guarantees termination without an unbounded loop. Every entry is a
+short (2-4 char), safe, ordinary ASCII lowercase word — some happen to
+also appear in `COMMON` (e.g. `a`→"an", `t`→"to"), others are equally
+ordinary, safe words that don't (e.g. `l`→"let", `r`→"run"). This was
+never achievable as "stays inside `COMMON`": `COMMON` has zero words
+starting with j, k, q, r, v, x, or z (seven letters), so a fallback
+confined to `COMMON` couldn't cover the alphabet at all.
 
 ## Architecture
 
