@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { xorshift32, toU32, draw, seedFrom } from './prng.js';
+import { toU32, seedFrom } from './prng.js';
 import { card } from './wordQueue.js';
 import { resolveForPlayer } from './cardResolution.js';
 
@@ -129,13 +129,23 @@ describe('resolveForPlayer — salted draws never desync the shared base sequenc
 });
 
 describe('seedFrom — guards against xorshift32(0) fixed point', () => {
-  it('never seeds xorshift32 with 0, even when the raw XOR of parts would collide', () => {
-    // Verify by hand: 5 ^ 3 ^ 6 ^ 1 ^ 1 = 0 (a genuine collision).
-    // seedFrom(5, 3, 6, 1, 1) should substitute a fixed nonzero constant.
-    const seed = seedFrom(5, 3, 6, 1, 1);
-    expect(seed).not.toBe(0);
-    const { u } = draw(xorshift32(seed));
-    expect(u).not.toBe(0);
+  it('never produces a 0 seed across many (seed, round, index, player, salt) combinations shaped like overrideSeed\'s', () => {
+    const salts = [0x4F564552, 0x4D454E44]; // OVERDRIVE_SALT, MEND_REROLL_SALT
+    let total = 0;
+    for (let seed = 1; seed <= 20; seed += 1) {
+      for (let round = 1; round <= 5; round += 1) {
+        for (let index = 0; index < 20; index += 1) {
+          for (const player of [1, 2]) { // player + 1, as overrideSeed passes it
+            for (const salt of salts) {
+              total += 1;
+              const combined = seedFrom(toU32(seed), round, index, player, salt);
+              expect(combined).not.toBe(0);
+            }
+          }
+        }
+      }
+    }
+    expect(total).toBeGreaterThan(1000);
   });
 });
 

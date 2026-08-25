@@ -216,3 +216,42 @@ describe('card — SB-WRD-7: no player parameter, callable identically for "both
     expect(card.length).toBe(4);
   });
 });
+
+describe('resolveStrikeMove — distribution (post seedFrom fix)', () => {
+  it('Crush lands close to its ~18% target share across a large sample (was ~10% before the seedFrom fix)', () => {
+    const counts = { jab: 0, slash: 0, crush: 0, shuriken: 0 };
+    let total = 0;
+    for (let seed = 1; seed <= 50; seed += 1) {
+      for (let round = 1; round <= 3; round += 1) {
+        for (let index = 1; index < 40; index += 1) { // skip index 0, it's hardcoded jab
+          const { move } = resolveStrikeMove(seed, round, index, 'steel');
+          counts[move] += 1;
+          total += 1;
+        }
+      }
+    }
+    const crushShare = counts.crush / total;
+    // PRD target is ~18%, but SB-MOV-4 (no consecutive Crush) caps the
+    // achievable maximum lower than that; allow a wide-but-meaningful band
+    // that clearly distinguishes "fixed" from the measured ~10% broken rate.
+    expect(crushShare).toBeGreaterThan(0.12);
+    expect(crushShare).toBeLessThan(0.18);
+  });
+
+  it('card(seed, round, index) does not collide with card(seed, index, round) nearly as often as before (was 91%)', () => {
+    let collisions = 0;
+    let total = 0;
+    for (let seed = 1; seed <= 30; seed += 1) {
+      for (let a = 1; a <= 8; a += 1) {
+        for (let b = 1; b <= 8; b += 1) {
+          if (a === b) continue;
+          total += 1;
+          const cardA = card(seed, a, b, 'steel');
+          const cardB = card(seed, b, a, 'steel');
+          if (JSON.stringify(cardA) === JSON.stringify(cardB)) collisions += 1;
+        }
+      }
+    }
+    expect(collisions / total).toBeLessThan(0.1); // was ~0.91 before the fix
+  });
+});

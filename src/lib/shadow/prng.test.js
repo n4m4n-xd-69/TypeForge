@@ -55,14 +55,21 @@ describe('draw', () => {
 });
 
 describe('seedFrom', () => {
-  it('XORs its parts together when the result is nonzero', () => {
-    expect(seedFrom(1, 2, 4)).toBe(1 ^ 2 ^ 4);
-    expect(seedFrom(12345, 6789)).toBe(12345 ^ 6789);
+  it('is deterministic: the same parts always fold to the same seed', () => {
+    expect(seedFrom(1, 2, 3)).toBe(seedFrom(1, 2, 3));
   });
 
-  it('substitutes a fixed nonzero constant when the XOR would be 0', () => {
-    expect(seedFrom(5, 5)).not.toBe(0);
-    expect(seedFrom(5, 5)).toBe(0x9E3779B9);
-    expect(seedFrom(0, 0, 0)).toBe(0x9E3779B9);
+  it('is order-sensitive: reordering the same parts generally changes the result — this is the property that fixes the round/index-commutativity collision', () => {
+    expect(seedFrom(1, 2, 3)).not.toBe(seedFrom(3, 2, 1));
+  });
+
+  it('never produces exactly 0 across a large sweep of varied inputs', () => {
+    for (let a = 0; a < 10; a += 1) {
+      for (let b = 0; b < 10; b += 1) {
+        for (let c = 0; c < 10; c += 1) {
+          expect(seedFrom(a, b, c)).not.toBe(0);
+        }
+      }
+    }
   });
 });
