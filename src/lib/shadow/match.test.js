@@ -97,4 +97,12 @@ describe('applyRoundOutcome — §12.2-12.3, best of 3', () => {
     state = applyRoundOutcome(state, outcome(0));
     expect(() => applyRoundOutcome(state, outcome(0))).toThrow(/completed/i);
   });
+
+  it('throws on an invalid roundOutcome instead of silently corrupting match state', () => {
+    expect(() => applyRoundOutcome(initialMatchState(), null)).toThrow();
+    // missing hpRemaining — e.g. a naive adapter defaulting a still-open
+    // round (combat.js's finalizeOutcome represents that as outcome: null)
+    // to { winner: null } must not be silently treated as a round draw.
+    expect(() => applyRoundOutcome(initialMatchState(), { winner: 0 })).toThrow();
+  });
 });

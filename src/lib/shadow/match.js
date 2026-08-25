@@ -21,6 +21,9 @@ export function initialMatchState() {
 }
 
 export function applyRoundOutcome(state, roundOutcome) {
+  if (!roundOutcome || !Array.isArray(roundOutcome.hpRemaining) || roundOutcome.hpRemaining.length !== 2) {
+    throw new Error('applyRoundOutcome requires a roundOutcome with a 2-element hpRemaining array — got: ' + JSON.stringify(roundOutcome));
+  }
   if (state.phase === 'complete') {
     throw new Error('applyRoundOutcome called on a completed match');
   }
