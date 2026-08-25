@@ -135,6 +135,29 @@ describe('stepEvent — Parry', () => {
     expect(state.hp[1]).toBe(1000 - 75);
   });
 
+  it('§10.7: a reflected strike never crits, even if the original strike would have', () => {
+    // Slash at half of par (the same speed-doubling trick used by "taking
+    // a Critical hit breaks the defender's chain" above) -> speed clamps
+    // to 1.40 -> this strike WOULD be Critical if unsuppressed. It must
+    // still be in flight when the parry resolves, so it overlaps [100,500).
+    const parry = guardLane({ player: 0, moveId: 'parry', tStart: 100, tEnd: 500 });
+    const attack = strike({ player: 1, moveId: 'slash', chars: 7, tStart: 0, tEnd: parMs(7) / 2 });
+    let state = initialRoundState();
+    const all = [parry, attack];
+    state = stepEvent(state, parry, all);
+    state = stepEvent(state, attack, all);
+
+    // Hand-traced neutral damage with crit suppressed: speed 1.40 (clamped,
+    // half of par), precision 1.25 (0 errors), chainFactor 1.00 (chain 0),
+    // contest 1.00 (neutral), crit forced to 1.00:
+    //   10 * 1.40 * 1.25 * 1.00 * 1.00 = 17.5 -> round(175) = 175 tenths
+    // Reflected at 60%: round(175 * 0.60) = 105 tenths.
+    // (Unsuppressed this strike is Critical -> neutral would be 263 tenths
+    // and reflected 158 — a materially different, larger number, so this
+    // assertion is a real discriminator between suppressed and not.)
+    expect(state.hp[1]).toBe(1000 - 105);
+  });
+
   it('failure: no Focus gain, and the fighter is Exposed for 600ms', () => {
     const parry = guardLane({ player: 0, moveId: 'parry', tStart: 0, tEnd: 50 });
     let state = stepEvent(initialRoundState(), parry, [parry]);
@@ -258,7 +281,6 @@ describe('reduceRound', () => {
     // When player 0's strike folds first (player 0 < player 1), it zeroes player 1's chain
     // due to the critical hit. Then player 1's strike folds and increments it back to 1.
     // If we reverse input order, the sort should still produce the same fold order.
-    const jab3ParMs = parMs(3); // ~160ms at par
     const criticalStrike = strike({
       player: 0, moveId: 'jab', chars: 3, seq: 0,
       tStart: 0, tEnd: 128, // well under par -> speed 1.25+ -> critical
@@ -279,5 +301,17 @@ describe('reduceRound', () => {
     // (because player 0's critical strike resolves first and zeroes it, but then
     // player 1's clean strike increments it, all deterministically)
     expect(forward.chain[1]).toBe(1);
+  });
+
+  it('§12.4: a damageMul option scales all damage in the fold (sudden-death x1.25)', () => {
+    // A clean Slash at par, chain 0, neutral deals 125 tenths with no
+    // damageMul (the first stepEvent test above). With damageMul 1.25:
+    //   10 * 1.00 * 1.25 * 1.00 * 1.00 * 1.00 * 1.25 = 15.625
+    //   -> round(156.25) = 156 tenths, i.e. exactly 1.25x 125 rounded once.
+    const event = strike({ tEnd: parMs(7) });
+    const base = reduceRound([event]);
+    const boosted = reduceRound([event], { damageMul: 1.25 });
+    expect(base.hp).toEqual([1000, 875]); // 1000 - 125
+    expect(boosted.hp).toEqual([1000, 844]); // 1000 - 156
   });
 });

@@ -58,14 +58,14 @@ export function critMul(precision, speed) {
   return isCritical(precision, speed) ? 1.50 : 1.00;
 }
 
-export function computeDamage({ base, chars, actualMs, errors, chain, contestState, guardFactor = 0.50 }) {
+export function computeDamage({ base, chars, actualMs, errors, chain, contestState, guardFactor = 0.50, suppressCrit = false, damageMul = 1.00 }) {
   const par = parMs(chars);
   const speed = speedFactor(par, actualMs);
   const precision = precisionFactor(errors);
   const chainFactor = chainMul(chain);
   const contest = contestFactor(contestState, guardFactor);
-  const crit = critMul(precision, speed);
-  const raw = base * speed * precision * chainFactor * contest * crit;
+  const crit = suppressCrit ? 1.00 : critMul(precision, speed);
+  const raw = base * speed * precision * chainFactor * contest * crit * damageMul;
   return Math.round(raw * 10);
 }
 

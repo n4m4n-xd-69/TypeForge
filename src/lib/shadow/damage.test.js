@@ -142,6 +142,41 @@ describe('computeDamage — §8.5 worked examples', () => {
   });
 });
 
+describe('computeDamage — suppressCrit (§10.7)', () => {
+  it('suppressCrit: true zeroes the crit bonus even on crit-triggering inputs', () => {
+    // Same inputs as the "Clean Slash 30% under par, chain 6, neutral ->
+    // Critical -> 31.7" worked example above (317 tenths, crit applied).
+    // Hand-traced without the crit multiplier: speed 1.30 (par / 1.30),
+    // precision 1.25, chainFactor 1.30 (chain 6), contest 1.00 (neutral):
+    //   10 * 1.30 * 1.25 * 1.30 * 1.00 = 21.125 -> round(211.25) = 211
+    const par = parMs(7);
+    const inputs = {
+      base: 10, chars: 7, actualMs: par / 1.30, errors: 0, chain: 6,
+      contestState: CONTEST.NEUTRAL,
+    };
+    const withCrit = computeDamage(inputs);
+    const suppressed = computeDamage({ ...inputs, suppressCrit: true });
+    expect(withCrit).toBe(317); // sanity: this really is the crit-triggering case
+    expect(suppressed).toBe(211);
+    expect(suppressed).not.toBe(withCrit);
+  });
+});
+
+describe('computeDamage — damageMul (§12.4)', () => {
+  it('scales the final rounded-to-tenths result by damageMul', () => {
+    // Clean Slash at par, chain 0, neutral: base computeDamage = 125
+    // tenths (the §8.5 worked example above). At damageMul 1.25:
+    // 12.5 * 1.25 = 15.625 HP -> 156.25 tenths -> round = 156.
+    const par = parMs(7);
+    const inputs = {
+      base: 10, chars: 7, actualMs: par, errors: 0, chain: 0,
+      contestState: CONTEST.NEUTRAL,
+    };
+    expect(computeDamage(inputs)).toBe(125);
+    expect(computeDamage({ ...inputs, damageMul: 1.25 })).toBe(156);
+  });
+});
+
 describe('reflectedDamage — §10.7', () => {
   it('is 60% of the fully-computed (neutral-contest) incoming damage', () => {
     // A Slash that would have dealt 12.5 HP (125 tenths) at neutral —

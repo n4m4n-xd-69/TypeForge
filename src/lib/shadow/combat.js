@@ -1,4 +1,4 @@
-import { LANES, MOVES, getMove } from './moveTable.js';
+import { LANES, getMove } from './moveTable.js';
 import {
   CONTEST, computeDamage, reflectedDamage,
   isCritical, precisionFactor, speedFactor, parMs,
@@ -16,6 +16,17 @@ import {
  * events reach this module (see the design doc's "Event resolution
  * seam"). `ikiStats` rides along on `history` entries but is not read
  * here — it's reserved for the anti-cheat plan (§21.2).
+ *
+ * A subtlety for whoever builds that resolution step (Plan 2): resolving
+ * moveId isn't always a pure function of cardIndex alone — SB-MOV-2/SB-MOV-3
+ * (Overdrive/Mend substitution) depend on Focus/HP state that only this
+ * reducer produces by folding prior events. So full resolution is a fixed
+ * point (resolve against the best-known state, fold, re-resolve against the
+ * new state, repeat until it stabilizes), not a strict one-pass pipeline —
+ * despite `stepEvent`'s own contract wanting the full resolved array up
+ * front for its committed-window lookahead. This module doesn't have to
+ * solve that; it just needs whoever calls it to know it's not as simple as
+ * "resolve once, then fold."
  */
 
 function findSuccessfulParryAgainst(allEvents, strikeEvent) {
@@ -28,7 +39,7 @@ function findSuccessfulParryAgainst(allEvents, strikeEvent) {
   );
 }
 
-function applyStrike(state, event, move, allEvents) {
+function applyStrike(state, event, move, allEvents, damageMul = 1.00) {
   const attacker = event.player;
   const defender = 1 - attacker;
   const duration = Math.max(event.tEnd - event.tStart, 1);
@@ -41,7 +52,7 @@ function applyStrike(state, event, move, allEvents) {
   const dealt = computeDamage({
     base: move.base, chars: event.chars, actualMs: duration,
     errors: event.errors, chain: state.chain[attacker],
-    contestState, guardFactor: move.guardFactor,
+    contestState, guardFactor: move.guardFactor, damageMul,
   });
 
   const nextHp = [...state.hp];
@@ -51,10 +62,14 @@ function applyStrike(state, event, move, allEvents) {
   if (nextHp[defender] === 0 && nextKoAt[defender] == null) nextKoAt[defender] = event.tEnd;
 
   if (parriedBy) {
+    // §10.7: reflections never crit — suppressCrit unconditionally, so a
+    // fast/clean strike that would have crit on the primary target can't
+    // also crit on the reflection back to the attacker.
     const neutral = computeDamage({
       base: move.base, chars: event.chars, actualMs: duration,
       errors: event.errors, chain: state.chain[attacker],
       contestState: CONTEST.NEUTRAL, guardFactor: move.guardFactor,
+      suppressCrit: true, damageMul,
     });
     const reflected = reflectedDamage(neutral);
     nextHp[attacker] = clampHp(nextHp[attacker] - reflected);
@@ -140,11 +155,11 @@ function applyGuardLane(state, event, move, allEvents) {
   return applyMend(state, event, move);
 }
 
-export function stepEvent(state, event, allEvents) {
+export function stepEvent(state, event, allEvents, damageMul = 1.00) {
   if (event.outcome === 'whiff') return applyWhiff(state, event);
   if (event.outcome === 'expire') return applyExpiry(state, event);
   const move = getMove(event.moveId);
-  if (move.lane === LANES.STRIKE) return applyStrike(state, event, move, allEvents);
+  if (move.lane === LANES.STRIKE) return applyStrike(state, event, move, allEvents, damageMul);
   return applyGuardLane(state, event, move, allEvents);
 }
 
@@ -172,9 +187,9 @@ export function finalizeOutcome(state, { timeUp = false } = {}) {
 }
 
 export function reduceRound(events, options = {}) {
-  const { timeUp = false, initialState } = options;
+  const { timeUp = false, initialState, damageMul = 1.00 } = options;
   const start = initialState ? { ...initialRoundState(), ...initialState } : initialRoundState();
   const sorted = [...events].sort((a, b) => (a.tEnd - b.tEnd) || (a.player - b.player) || (a.seq - b.seq));
-  const folded = sorted.reduce((s, e) => stepEvent(s, e, sorted), start);
+  const folded = sorted.reduce((s, e) => stepEvent(s, e, sorted, damageMul), start);
   return finalizeOutcome(folded, { timeUp });
 }
