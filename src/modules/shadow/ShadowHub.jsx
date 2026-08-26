@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, Bot, Loader2, Lock, Shield, Sparkles, Swords, Trophy, Users, Zap,
+  ArrowLeft, ArrowRight, Bot, Lock, Shield, Sparkles, Swords, Trophy, Users, Zap,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';

@@ -52,10 +52,6 @@ export async function serverTime() {
   return rpc('arena_server_time');
 }
 
-export async function lookupCode(pin) {
-  return rpc('arena_code_lookup', { p_pin: String(pin || '').trim().toUpperCase() });
-}
-
 /* ── room lifecycle ──────────────────────────────────────────────────────── */
 
 export async function createRoom({
@@ -122,23 +118,8 @@ export async function settleRound(roomId, {
   });
 }
 
-export async function settleMatch(roomId, results) {
-  return rpc('shadow_settle_match', {
-    p_room_id: roomId,
-    p_results: results,
-  });
-}
-
 export async function forfeitMatch(roomId) {
   return rpc('shadow_forfeit', { p_room_id: roomId });
-}
-
-export async function leaveRoom(roomId) {
-  return rpc('shadow_leave', { p_room_id: roomId });
-}
-
-export async function closeRoom(roomId) {
-  return rpc('shadow_close', { p_room_id: roomId });
 }
 
 /* ── data queries ────────────────────────────────────────────────────────── */
@@ -185,39 +166,4 @@ export async function fetchResults(roomId) {
     .eq('room_id', roomId);
   if (error) throw error;
   return data ?? [];
-}
-
-export async function fetchRating(userId) {
-  if (!supabase || !userId) return null;
-  const { data, error } = await supabase
-    .from('shadow_ratings')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
-}
-
-export async function fetchPublicRooms() {
-  if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('shadow_public_rooms')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function fetchLeaderboard() {
-  if (!supabase) return [];
-  const { data, error } = await supabase
-    .from('shadow_leaderboard')
-    .select('*')
-    .limit(50);
-  if (error) throw error;
-  return data ?? [];
-}
-
-export async function fetchMatchHistory(limit = 20, offset = 0) {
-  return rpc('shadow_match_history', { p_limit: limit, p_offset: offset });
 }

@@ -71,10 +71,6 @@ export function Chip({ tone = 'neutral', className, children, ...props }) {
   );
 }
 
-export function Divider({ className }) {
-  return <hr className={cx('border-0 border-t border-line', className)} />;
-}
-
 /** Loading placeholder with a single travelling highlight. */
 export function Skeleton({ className, rounded = 'rounded-sm' }) {
   return (

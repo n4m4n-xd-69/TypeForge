@@ -1,4 +1,4 @@
-import { xorshift32, toU32, draw, seedFrom } from './prng.js';
+import { toU32, draw, seedFrom } from './prng.js';
 import { parMs } from './damage.js';
 import { card } from './wordQueue.js';
 import { resolveForPlayer } from './cardResolution.js';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { xpForSession, ACHIEVEMENTS, missionsForDay, missionProgress } from './gamification.js';
+import { xpForSession, ACHIEVEMENTS, missionsForDay } from './gamification.js';
 
 describe('xpForSession', () => {
   const baseParams = { wpm: 80, accuracy: 97, durationSec: 60 };

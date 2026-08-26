@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CONTEST } from './damage.js';
 import {
-  TIMING, MAX_HP_TENTHS, MAX_FOCUS, FLAT_ERROR_FOCUS_GAIN,
+  TIMING, MAX_HP_TENTHS, MAX_FOCUS,
   CHAIN_MILESTONE_STEP, CHAIN_MILESTONE_BONUS_FOCUS,
   initialRoundState, clampHp, clampFocus, nextChainValue,
   chainMilestoneBonus, strikeInFlightAt, parrySucceeded, deriveContestState,

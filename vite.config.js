@@ -10,9 +10,9 @@ export default defineConfig({
   server: {
     port: 5173,
     open: false,
-    watch: {
-      ignored: ['**/.claude/**', '**/dist/**', '**/docs/**', '**/.git/**'],
-    },
+  watch: {
+    ignored: ['**/.claude/**', '**/dist/**', '**/.git/**'],
+  },
   },
   build: {
     target: 'es2020',
