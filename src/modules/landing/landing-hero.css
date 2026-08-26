@@ -1,0 +1,478 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   TypeForge landing hero.
+
+   Scoped to the landing route (imported by Landing.jsx) so the marketing
+   surface never leaks into the app's token system and vice versa.
+
+   The palette is sampled from the footage itself, not imposed on it: the
+   exploded keyboard in typeforge.mp4 is lit with violet→cyan edge light on
+   near-black, so the hero's accents are those two hues and its base is the
+   footage's own charcoal. Everything here is deliberately independent of
+   [data-theme] — the hero is cinematic dark even in light mode, the way a
+   film still stays dark on a white gallery wall.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.tf-hero {
+  /* Local stacking context so the screen-blended cursor light cannot pick up
+     pixels from sections further down the page. */
+  isolation: isolate;
+  background: #07080b;
+}
+
+/* ── Video plate ─────────────────────────────────────────────────────────
+   Scaled 106% around the focal point so the plate never shows a hard edge
+   against the section during composite rounding, and so the footage's
+   bottom-right corner mark falls outside the vignette's bright zone. */
+.tf-hero-video {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 62% 46%;
+  transform: scale(1.06);
+  transform-origin: 62% 46%;
+}
+
+@media (max-width: 640px) {
+  .tf-hero-video {
+    /* Portrait crop: keep the stack's centre of mass in frame. */
+    object-position: 58% 42%;
+    transform: scale(1.1);
+  }
+}
+
+/* ── Readability veils ───────────────────────────────────────────────────
+   Four passes, each with one job. Stacking them as separate layers (rather
+   than one busy gradient) keeps every decision legible in the stylesheet. */
+
+/* Left column darkening — copy sits on this. */
+.tf-veil-left {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    92deg,
+    rgb(7 8 11 / 0.94) 0%,
+    rgb(7 8 11 / 0.8) 30%,
+    rgb(7 8 11 / 0.42) 56%,
+    rgb(7 8 11 / 0.1) 76%,
+    rgb(7 8 11 / 0) 90%
+  );
+}
+
+/* Top — logo lockup legibility. */
+.tf-veil-top {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgb(7 8 11 / 0.6), rgb(7 8 11 / 0) 22%);
+}
+
+/* Bottom — CTAs and the scroll cue. */
+.tf-veil-bottom {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgb(7 8 11 / 0.88) 0%,
+    rgb(7 8 11 / 0.28) 22%,
+    rgb(7 8 11 / 0) 42%
+  );
+}
+
+/* Edge vignette — cinematic falloff; also quiets the footage's corners. */
+.tf-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(
+    115% 92% at 64% 44%,
+    rgb(7 8 11 / 0) 52%,
+    rgb(7 8 11 / 0.62) 100%
+  );
+}
+
+/* ── Grain ───────────────────────────────────────────────────────────────
+   Static fractal noise at 5% — hides gradient banding in the veils and adds
+   the film texture that flat CSS gradients never have. It is a still image,
+   so it costs one composite and no animation frame. */
+.tf-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+}
+
+/* ── Texture pattern ─────────────────────────────────────────────────────
+   A violet/cyan dot grid that slides exactly one tile period per loop, so
+   the drift is seamless forever. The layer is oversized by one tile on every
+   edge so the transform never exposes a seam, and a mask keeps it to the
+   copy side of the frame where depth is wanted. Transform-only animation:
+   one composite per frame, zero repaints. */
+.tf-texture {
+  position: absolute;
+  inset: -48px;
+  z-index: 2;
+  pointer-events: none;
+  background-image:
+    radial-gradient(rgb(167 139 250 / 0.055) 1px, transparent 1.4px),
+    radial-gradient(rgb(34 211 238 / 0.04) 1px, transparent 1.4px);
+  background-size: 26px 26px, 44px 44px;
+  background-position: 0 0, 13px 17px;
+  -webkit-mask-image: linear-gradient(100deg, rgb(0 0 0 / 0.85) 8%, rgb(0 0 0 / 0.25) 46%, transparent 68%);
+  mask-image: linear-gradient(100deg, rgb(0 0 0 / 0.85) 8%, rgb(0 0 0 / 0.25) 46%, transparent 68%);
+  animation: tf-tex-drift 46s linear infinite alternate;
+  will-change: transform;
+}
+
+@keyframes tf-tex-drift {
+  to {
+    transform: translate3d(-26px, -18px, 0);
+  }
+}
+
+/* ── Particle field ──────────────────────────────────────────────────────
+   Canvas-backed motes (see Particles in Landing.jsx). Fills the stage under
+   the content plane; the simulation itself pauses when offscreen or hidden. */
+.tf-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* ── Cursor light ────────────────────────────────────────────────────────
+   A violet/cyan pool that trails the pointer. Position is written straight
+   to `transform` from one rAF callback (see Landing.jsx) — never a React
+   state, which would re-render the hero on every mousemove. */
+.tf-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  width: 640px;
+  height: 640px;
+  /* Centres the pool on the transform point without spending the transform
+      itself on centering. */
+  margin: -320px 0 0 -320px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 700ms ease;
+  will-change: transform;
+  background:
+    radial-gradient(closest-side, rgb(139 92 246 / 0.17), transparent 72%),
+    radial-gradient(closest-side at 68% 70%, rgb(34 211 238 / 0.1), transparent 64%);
+}
+
+/* ── Entrance choreography ───────────────────────────────────────────────
+   Two primitives: `tf-rise` (fade + 14px lift, for blocks) and `tf-word`
+   (masked line reveal, for headline words). Stagger is a per-element
+   `--d` delay, so the timeline reads top-to-bottom in the markup. */
+
+@keyframes tf-rise-soft {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tf-rise {
+  opacity: 0;
+  animation: tf-rise-soft 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* Mask line: overflow-hidden strip that the word rises into. The padding /
+   negative-margin pair keeps glyph overshoot from being clipped. */
+.tf-line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.tf-word {
+  display: inline-block;
+  transform: translateY(118%);
+  animation: tf-rise-word 950ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--d, 0ms);
+  will-change: transform;
+}
+
+@keyframes tf-rise-word {
+  to {
+    transform: none;
+  }
+}
+
+/* Gradient line — violet to cyan, the footage's own edge-light hues. */
+.tf-grad {
+  background: linear-gradient(96deg, #c4b5fd 0%, #a78bfa 32%, #67e8f9 76%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Copy ──────────────────────────────────────────────────────────────── */
+
+.tf-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.6);
+}
+
+.tf-eyebrow-tick {
+  flex: none;
+  width: 26px;
+  height: 1px;
+  background: linear-gradient(90deg, #a78bfa, #22d3ee);
+  box-shadow: 0 0 12px rgb(167 139 250 / 0.8);
+}
+
+.tf-tagline {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.44);
+}
+
+@media (min-width: 640px) {
+  .tf-tagline {
+    font-size: 10px;
+    letter-spacing: 0.24em;
+  }
+}
+
+.tf-support {
+  margin-top: 22px;
+  max-width: 46ch;
+  font-size: clamp(15px, 1.35vw, 19px);
+  line-height: 1.65;
+  color: rgb(255 255 255 / 0.62);
+}
+
+/* ── CTAs ──────────────────────────────────────────────────────────────── */
+
+.tf-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 30px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    transform 220ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 220ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 220ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tf-btn:active {
+  transform: translateY(0) scale(0.985);
+}
+
+/* Primary — an off-white pill. On a frame this dark the brightest object in
+   view is the button, which is exactly the hierarchy a launch page wants. */
+.tf-btn-primary {
+  background: #f2f4f7;
+  color: #0a0b0d;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.5),
+    0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+.tf-btn-primary:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 48px -12px rgb(167 139 250 / 0.55),
+    0 6px 20px -6px rgb(34 211 238 / 0.28),
+    0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+.tf-btn .tf-arrow {
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.tf-btn-primary:hover .tf-arrow {
+  transform: translateX(4px);
+}
+
+/* Secondary — frosted glass that picks up the cyan edge on hover. */
+.tf-btn-ghost {
+  color: rgb(255 255 255 / 0.9);
+  border: 1px solid rgb(255 255 255 / 0.22);
+  background: rgb(255 255 255 / 0.05);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+.tf-btn-ghost:hover {
+  transform: translateY(-2px);
+  border-color: rgb(103 232 249 / 0.5);
+  background: rgb(255 255 255 / 0.09);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 12px 36px -12px rgb(34 211 238 / 0.25);
+}
+
+/* ── Scroll cue ──────────────────────────────────────────────────────────
+   Positioned by its wrapper in the markup (which also owns the scroll
+   fade), so the element itself only arranges its track and label. The rise
+   animation on it owns transform; nothing here fights that. */
+
+.tf-scrollcue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  color: rgb(255 255 255 / 0.42);
+  transition: color 200ms ease;
+}
+
+.tf-scrollcue:hover {
+  color: rgb(255 255 255 / 0.78);
+}
+
+.tf-scrollcue-track {
+  position: relative;
+  width: 1px;
+  height: 34px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: rgb(255 255 255 / 0.16);
+}
+
+.tf-scrollcue-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 12px;
+  border-radius: 1px;
+  background: linear-gradient(to bottom, transparent, #a78bfa 55%, #22d3ee);
+  animation: tf-drop 2.2s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+  animation-delay: 1.9s;
+}
+
+@keyframes tf-drop {
+  0% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+  18% {
+    opacity: 1;
+  }
+  75%,
+  100% {
+    transform: translateY(38px);
+    opacity: 0;
+  }
+}
+
+.tf-scrollcue-label {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+/* ── Below-fold index reveal ─────────────────────────────────────────────
+   The mode index under the hero. Rows start shifted and transparent; adding
+   .is-in to the list (one IntersectionObserver in Landing.jsx) lets each row
+   arrive on its inline transitionDelay. Transform-only, so the reveal never
+   triggers layout. */
+.tf-index-row {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Descendant, not child: the intro heading block and the rows both carry
+   .tf-index-row inside the observed section. */
+.is-in .tf-index-row {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────
+   The global rule in index.css already zeroes animation durations; these
+   declarations pin the end-state explicitly so nothing depends on a 0.01ms
+   animation having run. The cursor light is display:none — a light that
+   follows the pointer is motion, full stop. */
+@media (prefers-reduced-motion: reduce) {
+  .tf-rise,
+  .tf-word {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .tf-scrollcue-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .tf-glow {
+    display: none;
+  }
+
+  .tf-btn,
+  .tf-btn .tf-arrow {
+    transition: none;
+  }
+
+  /* The living background stands down entirely: no drifting texture, and
+     the particle canvas never mounts under reduced motion (JS gate) — this
+     rule is the belt to that suspenders. */
+  .tf-texture {
+    animation: none;
+  }
+
+  .tf-particles {
+    display: none;
+  }
+
+  /* Rows land in place immediately; the observer still runs but the
+     transition it triggers is instant, so content is never hidden waiting
+     on a scroll event that reduced-motion users may not perform. */
+  .tf-index-row {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

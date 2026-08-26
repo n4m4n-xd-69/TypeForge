@@ -35,7 +35,12 @@ export function deriveNavGroups(registry, extraItemsByGroup = {}) {
 const NAV_LABEL_OVERRIDES = {
   time: 'Start typing practice',
   code: 'Start code typing',
-  battle: 'Open Battlefield — multiplayer',
+  // The `battle` entry's navRoute is /arena, so this label has to describe the
+  // gate rather than Battlefield. A command that says "Open Battlefield" and
+  // navigates to a chooser is a command that lies about itself. CommandPalette
+  // carries separate direct entries for /battle and /shadow so both real
+  // destinations stay one keystroke away.
+  battle: 'Open the Arena — Battlefield or Shadow',
 };
 
 // The palette has always shown `zen` before `quote`, but the registry

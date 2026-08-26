@@ -64,12 +64,14 @@ describe('seedFrom', () => {
   });
 
   it('never produces exactly 0 across a large sweep of varied inputs', () => {
+    let zeros = 0;
     for (let a = 0; a < 10; a += 1) {
       for (let b = 0; b < 10; b += 1) {
         for (let c = 0; c < 10; c += 1) {
-          expect(seedFrom(a, b, c)).not.toBe(0);
+          if (seedFrom(a, b, c) === 0) zeros += 1;
         }
       }
     }
+    expect(zeros).toBe(0);
   });
 });

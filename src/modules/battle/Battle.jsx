@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2, LogIn, Swords, Timer, Trophy, Users } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Loader2, LogIn, Swords, Timer, Trophy, Users } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
 import { Card, Chip } from '../../components/ui/Primitives.jsx';
@@ -199,7 +199,13 @@ function Shell({ children }) {
   return (
     <div className="space-y-3">
       <header>
-        <p className="eyebrow">Multiplayer</p>
+        {/* The rail's Arena tab does not light up here — /arena is its own
+            route — so the way back is stated instead of implied. Same
+            affordance BattleRoom uses for its own "← Battlefield". */}
+        <Button as={Link} to="/arena" size="sm" variant="ghost" icon={ArrowLeft} className="-ml-1.5">
+          Arena
+        </Button>
+        <p className="eyebrow mt-0.5">Multiplayer</p>
         <h1 className="mt-0.5 flex items-center gap-1 text-3xl font-bold">
           Battlefield
           <Chip tone="brand">Live</Chip>

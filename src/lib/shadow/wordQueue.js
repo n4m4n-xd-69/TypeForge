@@ -46,9 +46,13 @@ export function resolveStrikeMove(seed, round, index, band) {
 }
 
 // §9.3 — per-move word-length ranges.
+// `evade` is the Jump lane's move (see moveTable.js). [4,7] puts it between
+// Guard's [2,4] and Parry's [3,5] at the short end and Mend's [6,8] at the
+// long end — long enough that a jump is a real commitment, short enough that
+// it stays the reflex option.
 export const WORD_LENGTH_RANGES = {
   jab: [3, 5], slash: [6, 9], crush: [10, 16], shuriken: [4, 8],
-  guard: [2, 4], parry: [3, 5], mend: [6, 8],
+  guard: [2, 4], parry: [3, 5], mend: [6, 8], evade: [4, 7],
 };
 
 // §9.5 — band ratios. Only `common`/`harder` are kept: the queue only

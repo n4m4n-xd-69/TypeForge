@@ -149,10 +149,38 @@ function applyMend(state, event, move) {
   return { ...state, focus: nextFocus, hp: nextHp, chain: nextChain, history: [...state.history, event] };
 }
 
+/**
+ * Evade (the Jump lane) — Focus and chain only.
+ *
+ * Mechanically the cheapest guard-lane applier: no HP change either way, no
+ * parry lookup, no damage. You gave up the counter window to not be there.
+ */
+function applyEvade(state, event, move) {
+  const p = event.player;
+  const nextFocus = [...state.focus];
+  nextFocus[p] = clampFocus(nextFocus[p] + move.focus); // unconditional +5
+  const nextChain = [...state.chain];
+  nextChain[p] = nextChainValue(nextChain[p], event.errors);
+  return { ...state, focus: nextFocus, chain: nextChain, history: [...state.history, event] };
+}
+
+/**
+ * Guard-lane dispatch.
+ *
+ * Every move id is named explicitly and an unrecognised one throws. This was
+ * previously `return applyMend(...)` as an unguarded fall-through, which meant
+ * any guard-lane move that wasn't `guard` or `parry` silently became a heal —
+ * `evade` only escaped that by having `healsHp: 0`, i.e. by luck rather than by
+ * design. `getMove` already throws on an unknown id, so a move reaching here
+ * unhandled is a table/dispatch disagreement, and failing loudly is the only
+ * safe answer for a function that decides HP.
+ */
 function applyGuardLane(state, event, move, allEvents) {
   if (move.id === 'guard') return applyGuard(state, event, move);
   if (move.id === 'parry') return applyParry(state, event, move, allEvents);
-  return applyMend(state, event, move);
+  if (move.id === 'mend') return applyMend(state, event, move);
+  if (move.id === 'evade') return applyEvade(state, event, move);
+  throw new Error(`Unhandled guard-lane move: ${move.id}`);
 }
 
 export function stepEvent(state, event, allEvents, damageMul = 1.00) {

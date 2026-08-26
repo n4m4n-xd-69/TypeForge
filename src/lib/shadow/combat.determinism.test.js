@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 const MODULES = [
   'combat.js', 'damage.js', 'roundState.js', 'moveTable.js', 'match.js',
   'prng.js', 'phraseTable.js', 'wordQueue.js', 'cardResolution.js',
+  'bot.js', 'trialEngine.js',
 ];
 
 describe('determinism guard', () => {

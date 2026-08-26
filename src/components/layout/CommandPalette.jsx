@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Braces, Home, LineChart, MessageSquare, Moon, Search, Sun, Trophy,
+  Braces, Home, LineChart, MessageSquare, Moon, Search, Sun, Swords, Trophy,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { cx } from '../../lib/format.js';
@@ -27,6 +27,12 @@ export default function CommandPalette({ open, onClose }) {
       ...MODE_PALETTE_ENTRIES.filter((e) => e.group === 'Navigate').map((e) => ({
         id: e.id, label: e.label, icon: e.icon, group: 'Navigate', run: () => navigate(e.route),
       })),
+      { id: 'shadow', label: 'Shadow Battle — 1v1 Combat', icon: Swords, group: 'Navigate', run: () => navigate('/shadow') },
+      // The registry-derived entry above now opens the /arena gate, so both
+      // sides of that fork also get a direct command. The gate is a discovery
+      // surface, not a toll booth — anyone who already knows which mode they
+      // want should never have to pass through it.
+      { id: 'battlefield', label: 'Battlefield — 8-player race', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
       // Chat gave up its nav slot to Battlefield. The floating coach reaches the
       // same model from every route, but the full page owns the thread history
       // in `chat_messages`, so it needs a way in that is not the FAB.

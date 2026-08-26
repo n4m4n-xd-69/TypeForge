@@ -1,370 +1,444 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import useTypingEngine from '../../components/typing/useTypingEngine.js';
+import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import Logo from '../../components/brand/Logo.jsx';
-import { randomWords } from '../../lib/content.js';
-import { CHAR_STATE } from '../../lib/typing.js';
-import { cx } from '../../lib/format.js';
+import './landing-hero.css';
 
 /**
- * The public front door.
+ * The public front door — a cinematic product introduction, not a page of
+ * chrome.
  *
- * Deliberately imports none of the app's shared UI. Primitives.jsx, Motion.jsx
- * and the chart module all pull dependencies this page has no use for, and the
- * landing route has the tightest budget in the product — React and
- * framer-motion alone are most of it. Everything below is plain markup and the
- * typing engine, which is the one thing the page genuinely needs.
+ * The first viewport carries exactly five things: the footage, the lockup,
+ * the headline, the supporting line and two CTAs. No navbar, no links, no
+ * footer up there — a stranger should read "typing + coding + competition"
+ * off one screen in three seconds, and every extra element competes with
+ * that read.
  *
- * The hero is not a screenshot of the product. It is the product: pressing any
- * key starts a real, scored thirty-second run against the same engine
- * /practice uses. That collapses "read about it, decide, navigate, configure,
- * type" into one action, and it demonstrates the only claim that matters
- * instead of asserting it.
+ * Layer stack, back to front (z-orders live in landing-hero.css):
+ *
+ *   video → readability veils → drifting dot texture → particle field
+ *         → grain → cursor light → content plane
+ *
+ * Motion inventory, each with a reason to exist:
+ *
+ *   - Entrance choreography (CSS, staggered via --d) typesets the first view.
+ *   - A particle field of violet/cyan motes drifts upward through the scene —
+ *     atmosphere, drawn on one canvas with no per-particle DOM.
+ *   - A dot-grid texture slides one tile-period on a 46-second loop, which
+ *     reads as depth without ever drawing attention to itself.
+ *   - Scrolling parallax-fades the content plane and kills the scroll cue
+ *     early, so leaving the hero feels like the camera moving on, not the
+ *     page breaking.
+ *   - Below the fold, the mode index reveals row-by-row on first sight.
+ *
+ * Everything honours prefers-reduced-motion: entrances land instantly, the
+ * particles never start, the texture stands still, the footage shows its
+ * poster instead of playing, and the scroll parallax is skipped entirely.
  */
 
-const DEMO_SECONDS = 30;
-
 export default function Landing() {
-  const navigate = useNavigate();
-
-  /**
-   * One passage, fixed for the life of the page — regenerating on re-render
-   * would swap the text out from under someone mid-word.
-   *
-   * The whole thing is rendered, so the length is the length. An earlier
-   * version generated seventy words and displayed the first 168 characters,
-   * which meant a fast typist ran off the end of what was on screen and the
-   * progress bar read 42% with the visible text finished. Forty-five words is
-   * about thirty seconds at 90 wpm; anyone quicker finishes early and gets
-   * their result, which is a perfectly good outcome for a demo.
-   */
-  const passage = useMemo(() => randomWords(45, 'normal'), []);
-  const [finished, setFinished] = useState(null);
-
-  const onFinish = useCallback((run) => setFinished(run), []);
-
-  const engine = useTypingEngine({
-    target: passage,
-    limitSeconds: DEMO_SECONDS,
-    onFinish,
-  });
+  const stageRef = useRef(null);
+  const glowRef = useRef(null);
 
   return (
-    <main className="mx-auto w-full max-w-[1120px] px-2 pb-16 sm:px-4">
-      <Nav />
-      <Hero engine={engine} passage={passage} finished={finished} onContinue={() => navigate('/practice')} />
-      <Pillars />
-      <Proof />
-      <Footer />
+    <main className="tf-hero min-h-dvh">
+      <Hero stageRef={stageRef} glowRef={glowRef} />
+      <ModesIndex />
+      <Foot />
     </main>
   );
 }
 
-/* ── Chrome ────────────────────────────────────────────────────────────── */
+/* ── First viewport ────────────────────────────────────────────────────── */
 
-/**
- * The landing page carries its own navigation rather than the app shell's.
- * A rail and a streak counter are answers to questions a first-time visitor
- * has not asked yet.
- */
-function Nav() {
+function Hero({ stageRef, glowRef }) {
+  const videoRef = useRef(null);
+  const planeRef = useRef(null);
+  const cueRef = useRef(null);
+
+  useVideoAutoplay(videoRef);
+  useCursorLight(stageRef, glowRef);
+  useHeroScroll(planeRef, cueRef);
+
   return (
-    <nav className="flex h-[72px] items-center justify-between">
-      <span className="flex items-center gap-1">
-        <Logo size={30} />
-        <span className="font-display text-xl font-bold tracking-[-0.03em]">TypeForge</span>
-      </span>
-      <div className="flex items-center gap-1.5">
-        <Link
-          to="/about"
-          className="hidden min-h-[44px] items-center rounded-sm px-1.5 text-sm font-medium text-ink-2 transition-colors duration-fast hover:text-ink sm:flex"
-        >
-          About
-        </Link>
-        <Link
-          to="/practice"
-          className="inline-flex min-h-[44px] items-center rounded-sm bg-brand-solid px-2 text-sm font-semibold text-brand-ink shadow-e1 transition-[filter] duration-fast hover:brightness-[1.08]"
-        >
-          Start typing
-        </Link>
+    <section ref={stageRef} className="relative h-dvh min-h-[620px] overflow-hidden">
+      <video
+        ref={videoRef}
+        className="tf-hero-video"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster="/vid/typeforge-poster.jpg"
+        disablePictureInPicture
+        aria-hidden="true"
+        tabIndex={-1}
+      >
+        <source src="/vid/typeforge.mp4" type="video/mp4" />
+      </video>
+
+      {/* Readability veils + living texture. Purely presentational layers. */}
+      <div className="tf-veil-left" aria-hidden />
+      <div className="tf-veil-top" aria-hidden />
+      <div className="tf-veil-bottom" aria-hidden />
+      <div className="tf-vignette" aria-hidden />
+      <div className="tf-texture" aria-hidden />
+      <Particles stageRef={stageRef} />
+      <div className="tf-grain" aria-hidden />
+      <div ref={glowRef} className="tf-glow" aria-hidden />
+
+      {/* Content plane. The scroll parallax writes transform/opacity here —
+          never on the children, whose entrance animations own those exact
+          properties on themselves. */}
+      <div
+        ref={planeRef}
+        className="relative z-10 flex h-full flex-col px-5 pb-28 pt-6 sm:px-10 sm:pt-8 lg:px-16"
+      >
+        <header className="tf-rise" style={{ '--d': '60ms' }}>
+          <Link to="/" className="inline-flex items-center gap-2.5 rounded-sm">
+            <Logo size={30} />
+            <span className="font-display text-xl font-bold tracking-[-0.03em] text-white">
+              TypeForge
+            </span>
+          </Link>
+          <p className="tf-tagline mt-2">Type faster. Code sharper. Battle harder.</p>
+        </header>
+
+        <div className="my-auto w-full max-w-[900px] pt-14">
+          <p className="tf-eyebrow tf-rise" style={{ '--d': '150ms' }}>
+            <span className="tf-eyebrow-tick" aria-hidden />
+            The next generation of typing
+          </p>
+
+          {/**
+           * The headline is four masked words, not two lines of text: each
+           * word rises into its own overflow-hidden strip on a staggered
+           * delay, so the entrance reads as typeset rather than slid in.
+           */}
+          <h1
+            className="mt-5 font-display font-bold uppercase text-white"
+            style={{ fontSize: 'clamp(38px, 6.6vw, 88px)', lineHeight: 1.04, letterSpacing: '-0.03em' }}
+          >
+            <span className="tf-line">
+              <span className="tf-word" style={{ '--d': '230ms' }}>Type</span>{' '}
+              <span className="tf-word" style={{ '--d': '310ms' }}>faster.</span>
+            </span>
+            <span className="tf-line">
+              <span className="tf-word tf-grad" style={{ '--d': '390ms' }}>Play</span>{' '}
+              <span className="tf-word tf-grad" style={{ '--d': '470ms' }}>harder.</span>
+            </span>
+          </h1>
+
+          <p className="tf-support tf-rise" style={{ '--d': '580ms' }}>
+            Master your keyboard. Sharpen your code.
+            <br />
+            Challenge your limits.
+          </p>
+
+          <div
+            className="tf-rise mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4"
+            style={{ '--d': '700ms' }}
+          >
+            {/** Primary goes to real practice — the product, not an
+                intermediate pitch page. Secondary opens the competitive
+                fork, where battle and shadow battle both live. */}
+            <Link to="/practice" className="tf-btn tf-btn-primary">
+              Start Typing
+              <ArrowRight size={17} strokeWidth={2.4} className="tf-arrow" aria-hidden />
+            </Link>
+            <Link to="/arena" className="tf-btn tf-btn-ghost">
+              Enter the Arena
+            </Link>
+          </div>
+        </div>
       </div>
-    </nav>
-  );
-}
 
-/* ── Hero ──────────────────────────────────────────────────────────────── */
-
-function Hero({ engine, passage, finished, onContinue }) {
-  return (
-    <section className="pt-8 sm:pt-12">
-      <h1 className="max-w-[15ch] font-display text-4xl font-bold leading-[1.02] tracking-[-0.035em] sm:text-5xl">
-        Type faster.
-        <br />
-        <span className="text-brand">Prove it.</span>
-      </h1>
-
-      <p className="mt-2.5 max-w-[52ch] text-lg leading-relaxed text-ink-2">
-        A typing-performance platform for people who type for a living. Drill prose and real code,
-        find out which keys are costing you, and race other people on a clock nobody can cheat.
-      </p>
-
-      <TypingDemo engine={engine} passage={passage} finished={finished} onContinue={onContinue} />
-
-      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-ink-3">
-        <span>No account needed</span>
-        <Dot />
-        <span>Works offline</span>
-        <Dot />
-        <span>Your data stays on your device</span>
-      </p>
+      {/** The wrapper exists because .tf-rise's forwards fill owns opacity on
+          the anchor — scroll fading needs a parent whose opacity is free.
+          The wrapper positions; the anchor rises once and then just glows. */}
+      <div
+        ref={cueRef}
+        className="pointer-events-none absolute inset-x-0 bottom-4 z-10 flex justify-center"
+      >
+        <a href="#modes" className="tf-scrollcue tf-rise pointer-events-auto" style={{ '--d': '980ms' }}>
+          <span className="sr-only">Scroll to explore</span>
+          <span className="tf-scrollcue-track" aria-hidden>
+            <span className="tf-scrollcue-dot" aria-hidden />
+          </span>
+          <span className="tf-scrollcue-label" aria-hidden>
+            Scroll to explore
+          </span>
+        </a>
+      </div>
     </section>
   );
 }
 
-function Dot() {
-  return <span className="text-ink-3/50" aria-hidden>·</span>;
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+/**
+ * Keeps the muted-autoplay promise (retry on visibility if a webview refused
+ * it once) and withholds playback entirely from reduced-motion users: they
+ * get the poster — a still of the same keyboard — instead of motion.
+ */
+function useVideoAutoplay(videoRef) {
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const attempt = () => video.play().catch(() => {});
+    attempt();
+    document.addEventListener('visibilitychange', attempt);
+    return () => document.removeEventListener('visibilitychange', attempt);
+  }, []);
 }
 
 /**
- * The demo.
- *
- * Uses the real engine, so the numbers on screen are the numbers the product
- * would record. When the run ends it shows the result and hands over to
- * /practice rather than looping — the point has been made, and repeating it
- * would keep someone on a marketing page instead of in the app.
+ * Scroll-linked exit: as the visitor leaves the hero, the content plane
+ * drifts up slightly slower than the page and dissolves, and the scroll cue
+ * disappears within the first 130px where it has already done its job.
+ * One rAF-batched write pair per scroll burst, passive listener, and none of
+ * it runs at all under reduced motion.
  */
-function TypingDemo({ engine, passage, finished, onContinue }) {
-  const boxRef = useRef(null);
-  const { states, status, live, onKeyDown } = engine;
+function useHeroScroll(planeRef, cueRef) {
+  useEffect(() => {
+    const plane = planeRef.current;
+    const cue = cueRef.current;
+    if (!plane) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
 
-  const focus = useCallback(() => boxRef.current?.focus(), []);
+    let frame = 0;
+    const paint = () => {
+      frame = 0;
+      const y = window.scrollY;
+      const fade = Math.max(0, 1 - y / 480);
+      plane.style.transform = `translate3d(0, ${(y * -0.07).toFixed(1)}px, 0)`;
+      plane.style.opacity = (0.35 + 0.65 * fade).toFixed(3);
+      if (cue) cue.style.opacity = Math.max(0, 1 - y / 130).toFixed(3);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
 
-  /**
-   * Tab passes straight through here.
-   *
-   * The engine treats it as indentation, which is right on a code snippet and
-   * wrong on a marketing page: someone tabbing through the page to reach the
-   * CTA would silently start a run and put a space in it. Prose needs no
-   * indentation, so the demo declines the key entirely and lets focus move.
-   */
-  const handleKeyDown = useCallback(
-    (event) => {
-      if (event.key === 'Tab') return;
-      onKeyDown(event);
-    },
-    [onKeyDown],
-  );
-
-  if (finished) return <DemoResult result={finished} onContinue={onContinue} />;
-
-  return (
-    <div className="mt-4 overflow-hidden rounded-lg border border-line bg-surface shadow-e2">
-      <div className="flex items-center justify-between border-b border-line px-2.5 py-1.5">
-        <span className="eyebrow">30-second run</span>
-        <LiveReadout live={live} running={status === 'running'} />
-      </div>
-
-      <div
-        ref={boxRef}
-        tabIndex={0}
-        role="textbox"
-        aria-label="Typing demo"
-        aria-describedby="demo-hint"
-        aria-readonly="false"
-        aria-multiline="true"
-        onKeyDown={handleKeyDown}
-        onPointerDown={(e) => {
-          /* pointerdown rather than mousedown so a touch reaches it too, and
-             preventDefault so the browser does not assign focus itself and
-             then take it back on the synthesised click. */
-          e.preventDefault();
-          focus();
-        }}
-        className="cursor-text px-2.5 py-3 outline-none sm:px-4"
-      >
-        <p className="max-w-[62ch] whitespace-pre-wrap break-words font-mono text-type-s sm:text-type-m">
-          {[...passage].map((ch, i) => (
-            <Char key={i} ch={ch} state={states[i]} />
-          ))}
-        </p>
-
-        {/* In the flow rather than floating over the passage. Absolutely
-            positioning it inside the box put it on top of the last line, so
-            the prompt telling you to start obscured the thing you start on. */}
-        <p id="demo-hint" className="mt-2 h-[20px] text-xs font-medium text-ink-3">
-          {status === 'idle'
-            ? 'Press any key to start. Shift+Tab to leave.'
-            : status === 'running'
-              ? 'Keep going'
-              : ''}
-        </p>
-      </div>
-
-      <div className="h-[2px] w-full bg-line">
-        <div
-          className="h-full origin-left bg-brand-solid transition-transform duration-slow ease-out"
-          style={{ transform: `scaleX(${live.progress || 0})` }}
-        />
-      </div>
-    </div>
-  );
+    window.addEventListener('scroll', onScroll, { passive: true });
+    paint();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [planeRef, cueRef]);
 }
 
 /**
- * A character.
+ * A violet/cyan pool that trails the pointer over the stage.
  *
- * Every state carries something that is not colour. `wrong` and `pending`
- * separate by 1.06:1 on colour alone, so an underline does the work a hue
- * cannot — and it is an underline rather than a weight change because weight
- * reflows the line and would move the caret mid-word.
+ * Written straight to `transform`/`opacity` from one rAF callback — never a
+ * React state, which would re-render the whole hero on every mousemove. Opts
+ * itself out for coarse pointers and reduced-motion users, in which cases
+ * the .tf-glow layer simply stays dark.
  */
-function Char({ ch, state }) {
-  return (
-    <span
-      className={cx(
-        state === CHAR_STATE.CORRECT && 'text-ink',
-        state === CHAR_STATE.WRONG &&
-          'rounded-[2px] bg-bad/15 text-bad underline decoration-bad decoration-2 underline-offset-4',
-        state === CHAR_STATE.CORRECTED &&
-          'text-ink-2 underline decoration-warn decoration-dotted decoration-2 underline-offset-4',
-        (state === CHAR_STATE.PENDING || !state) && 'text-ink-3',
-      )}
-    >
-      {ch}
-    </span>
-  );
-}
+function useCursorLight(stageRef, glowRef) {
+  useEffect(() => {
+    const stage = stageRef.current;
+    const glow = glowRef.current;
+    if (!stage || !glow) return undefined;
+    if (!window.matchMedia('(pointer: fine)').matches) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
 
-function LiveReadout({ live, running }) {
-  return (
-    <span className="flex items-center gap-2 font-mono text-sm tabular-nums">
-      <Stat label="wpm" value={Math.round(live.wpm)} accent={running} />
-      <Stat label="acc" value={`${Math.round(live.accuracy)}%`} />
-      <Stat label="left" value={`${Math.ceil(live.remaining ?? 30)}s`} />
-    </span>
-  );
-}
+    let frame = 0;
+    let x = 0;
+    let y = 0;
 
-function Stat({ label, value, accent = false }) {
-  return (
-    <span className="flex items-baseline gap-0.5">
-      <span className={cx('font-medium', accent ? 'text-brand' : 'text-ink')}>{value}</span>
-      <span className="text-2xs uppercase tracking-[0.08em] text-ink-3">{label}</span>
-    </span>
-  );
+    const paint = () => {
+      frame = 0;
+      glow.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    };
+
+    const onMove = (event) => {
+      const rect = stage.getBoundingClientRect();
+      x = event.clientX - rect.left;
+      y = event.clientY - rect.top;
+      glow.style.opacity = '1';
+      if (!frame) frame = requestAnimationFrame(paint);
+    };
+
+    const onLeave = () => {
+      if (frame) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+      glow.style.opacity = '0';
+    };
+
+    stage.addEventListener('pointermove', onMove, { passive: true });
+    stage.addEventListener('pointerleave', onLeave);
+    return () => {
+      stage.removeEventListener('pointermove', onMove);
+      stage.removeEventListener('pointerleave', onLeave);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [stageRef, glowRef]);
 }
 
 /**
- * The result.
+ * Ambient mote field — the footage's edge-light colours as drifting sparks.
  *
- * Leads with the diagnosis rather than the score, because the score is what
- * every typing test already gives you and the diagnosis is the reason this
- * product exists.
+ * One canvas, zero per-particle DOM: count scales with area (capped at 90),
+ * every mote is a plain arc with additive blending for glow, and the whole
+ * simulation is velocity-per-second so a dropped frame never speeds anything
+ * up. Drawing skips while the tab is hidden or the stage scrolled away, the
+ * canvas resizes with the stage, and reduced-motion users never see it
+ * mount at all.
  */
-function DemoResult({ result, onContinue }) {
-  const worst = useMemo(() => {
-    const entries = Object.entries(result.keyStats ?? {})
-      .map(([key, s]) => ({ key, rate: s.wrong / Math.max(1, s.total), wrong: s.wrong }))
-      .filter((k) => k.wrong > 0)
-      .sort((a, b) => b.rate - a.rate);
-    return entries.slice(0, 3);
-  }, [result]);
-
-  return (
-    <div className="mt-4 overflow-hidden rounded-lg border border-line bg-surface shadow-e2">
-      <div className="grid gap-2 border-b border-line px-2.5 py-3 sm:grid-cols-4 sm:px-4">
-        <Metric label="wpm" value={Math.round(result.wpm)} accent />
-        <Metric label="accuracy" value={`${Math.round(result.accuracy)}%`} />
-        <Metric label="consistency" value={`${Math.round(result.consistency)}%`} />
-        <Metric label="errors" value={result.errors} />
-      </div>
-
-      <div className="px-2.5 py-2.5 sm:px-4">
-        {worst.length ? (
-          <p className="text-sm text-ink-2">
-            <span className="font-semibold text-ink">Your weakest keys: </span>
-            {worst.map((k, i) => (
-              <span key={k.key}>
-                {i > 0 ? ', ' : ''}
-                <code className="rounded-xs bg-raised px-0.5 font-mono text-ink">
-                  {k.key === ' ' ? 'space' : k.key}
-                </code>{' '}
-                <span className="text-bad">{Math.round(k.rate * 100)}%</span>
-              </span>
-            ))}
-            . TypeForge drills those specifically.
-          </p>
-        ) : (
-          <p className="text-sm text-ink-2">
-            Clean run — no key missed more than once. TypeForge tracks every keystroke, so the
-            moment one starts costing you it shows up here.
-          </p>
-        )}
-
-        <button
-          onClick={onContinue}
-          className="mt-2.5 inline-flex min-h-[44px] items-center rounded-sm bg-brand-solid px-2.5 text-sm font-semibold text-brand-ink shadow-e1 transition-[filter] duration-fast hover:brightness-[1.08]"
-        >
-          Keep going →
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function Metric({ label, value, accent = false }) {
-  return (
-    <div>
-      <p className={cx('font-mono text-3xl font-medium leading-none tabular-nums', accent && 'text-brand')}>
-        {value}
-      </p>
-      <p className="mt-0.5 text-2xs uppercase tracking-[0.09em] text-ink-3">{label}</p>
-    </div>
-  );
-}
-
-/* ── Explanation ───────────────────────────────────────────────────────── */
-
-const PILLARS = [
-  {
-    name: 'Practice',
-    line: 'Six modes',
-    body: 'Timed sprints, fixed word counts, quotes, targeted drills, your own text, and an unscored zen mode for when you just want to type.',
-  },
-  {
-    name: 'Code',
-    line: 'Eleven languages',
-    body: 'Real snippets with syntax highlighting and auto-indent. The characters that actually slow developers down are brackets, arrows and semicolons — so those are what you drill.',
-  },
-  {
-    name: 'Compete',
-    line: 'Live races',
-    body: 'Two to eight players on one passage and one clock. The server owns the timer and recomputes every result, so a fast run is a fast run.',
-  },
-  {
-    name: 'Progress',
-    line: 'Per-key diagnosis',
-    body: 'Every keystroke is recorded. Speed, accuracy and consistency over time, plus the specific keys costing you the most — and a drill that targets them.',
-  },
+const MOTE_COLORS = [
+  [167, 139, 250], // violet
+  [103, 232, 249], // cyan
+  [242, 244, 247], // off-white, rare
 ];
 
-function Pillars() {
+function Particles({ stageRef }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const stage = stageRef.current;
+    if (!canvas || !stage) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return undefined;
+
+    let motes = [];
+    let frame = 0;
+    let visible = true;
+    let last = performance.now();
+
+    const spawn = (w, h, anywhere) => ({
+      x: Math.random() * w,
+      y: anywhere ? Math.random() * h : h + 8,
+      r: 0.6 + Math.random() * 1.4,
+      vy: 6 + Math.random() * 14,
+      drift: 4 + Math.random() * 10,
+      phase: Math.random() * Math.PI * 2,
+      c: MOTE_COLORS[Math.random() < 0.12 ? 2 : (Math.random() < 0.55 ? 0 : 1)],
+    });
+
+    const resize = () => {
+      const rect = stage.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.max(1, Math.round(rect.width * dpr));
+      canvas.height = Math.max(1, Math.round(rect.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const count = Math.min(90, Math.round((rect.width * rect.height) / 22000));
+      motes = Array.from({ length: count }, () => spawn(rect.width, rect.height, true));
+    };
+
+    const tick = (now) => {
+      frame = requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (!visible || document.hidden) return;
+
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (const m of motes) {
+        m.y -= m.vy * dt;
+        m.x += Math.sin(m.phase += dt * 1.4) * m.drift * dt;
+        if (m.y < -10) Object.assign(m, spawn(w, h, false));
+        const alpha = 0.22 + 0.3 * (0.5 + 0.5 * Math.sin(m.phase * 2.6));
+        ctx.fillStyle = `rgba(${m.c[0]},${m.c[1]},${m.c[2]},${alpha.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+    };
+
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+    }, { threshold: 0 });
+    io.observe(stage);
+    window.addEventListener('resize', resize);
+
+    resize();
+    frame = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(frame);
+      io.disconnect();
+      window.removeEventListener('resize', resize);
+    };
+  }, [stageRef]);
+
+  return <canvas ref={canvasRef} className="tf-particles" aria-hidden="true" />;
+}
+
+/* ── Below the fold ────────────────────────────────────────────────────── */
+
+/**
+ * The progressive reveal promised by the scroll cue: what TypeForge is,
+ * as six addressable destinations rather than feature cards. An index —
+ * numbered rows on hairlines — keeps the launch-page tone while giving
+ * every row somewhere real to go.
+ */
+const MODES = [
+  { n: '01', name: 'Typing Practice', route: '/practice', line: 'Six modes, from fifteen-second sprints to zen.' },
+  { n: '02', name: 'Code Practice', route: '/code', line: 'Real snippets across eleven languages, symbols included.' },
+  { n: '03', name: 'Battle', route: '/battle', line: 'Live races — two to eight players, one passage, one clock.' },
+  { n: '04', name: 'Shadow Battle', route: '/shadow', line: 'Asynchronous duels against forged rivals who fight back.' },
+  { n: '05', name: 'Leaderboards', route: '/achievements', line: 'Where you stand — verified server-side, not self-reported.' },
+  { n: '06', name: 'Progression', route: '/dashboard', line: 'Per-key diagnosis, trends, levels. Your typing, measured.' },
+];
+
+function ModesIndex() {
+  const sectionRef = useReveal();
+
   return (
-    <section className="mt-16 border-t border-line pt-8">
-      <h2 className="font-display text-2xl font-bold tracking-[-0.02em]">
-        A loop, not a leaderboard.
+    <section
+      id="modes"
+      ref={sectionRef}
+      className="mx-auto w-full max-w-[1120px] px-5 pb-24 pt-20 sm:px-10 lg:px-16 lg:pt-28"
+    >
+      <p className="eyebrow tf-index-row" style={{ transitionDelay: '0ms' }}>The forge</p>
+      <h2
+        className="tf-index-row mt-3 max-w-[22ch] font-display text-3xl font-bold tracking-[-0.02em] text-ink sm:text-4xl"
+        style={{ transitionDelay: '70ms' }}
+      >
+        Six disciplines. One keyboard.
       </h2>
-      <p className="mt-1 max-w-[58ch] text-base text-ink-2">
-        Measure, diagnose, drill, compete, measure again. Every part of the product sits on one of
-        those steps — and anything that did not was removed.
+      <p
+        className="tf-index-row mt-3 max-w-[52ch] text-base leading-relaxed text-ink-2"
+        style={{ transitionDelay: '140ms' }}
+      >
+        Everything after the first keystroke. Pick a discipline — or let the drill find your weakest
+        keys for you.
       </p>
 
-      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {PILLARS.map((p) => (
-          <li key={p.name} className="rounded-md border border-line bg-surface p-3">
-            <p className="eyebrow">{p.line}</p>
-            <h3 className="mt-0.5 font-display text-xl font-bold tracking-[-0.02em]">{p.name}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-ink-2">{p.body}</p>
+      <ul className="mt-10 border-b border-line">
+        {MODES.map((mode, i) => (
+          <li key={mode.route} className="tf-index-row" style={{ transitionDelay: `${i * 70}ms` }}>
+            <Link
+              to={mode.route}
+              className="group grid grid-cols-[auto_1fr_auto] items-center gap-4 border-t border-line py-5 transition-colors duration-fast hover:bg-subtle sm:gap-6 sm:py-6"
+            >
+              <span className="font-mono text-xs tabular-nums text-ink-3">{mode.n}</span>
+              <span>
+                <span className="block font-display text-xl font-bold tracking-[-0.02em] text-ink transition-colors duration-fast group-hover:text-brand sm:text-2xl">
+                  {mode.name}
+                </span>
+                <span className="mt-1 block max-w-[56ch] text-sm leading-relaxed text-ink-2">
+                  {mode.line}
+                </span>
+              </span>
+              <ArrowUpRight
+                size={20}
+                strokeWidth={2.2}
+                aria-hidden
+                className="-translate-x-1 translate-y-1 text-ink-3 opacity-0 transition-all duration-base group-hover:translate-x-0 group-hover:translate-y-0 group-hover:text-brand group-hover:opacity-100"
+              />
+            </Link>
           </li>
         ))}
       </ul>
@@ -373,42 +447,48 @@ function Pillars() {
 }
 
 /**
- * The honest version of a social-proof band.
- *
- * No user counts, no testimonials, no logos. The product is new and inventing
- * any of those would be a lie told on the first screen. What it can say
- * truthfully is how it works, so that is what it says.
+ * One-shot scroll reveal for the index. Hand-rolled rather than pulled from
+ * framer-motion: this route is the product's front door and carries the
+ * tightest bundle budget in the app, and fourteen lines beat a 40 kB chunk
+ * dependency for one fade.
  */
-function Proof() {
-  return (
-    <section className="mt-16 grid gap-2 border-t border-line pt-8 sm:grid-cols-3">
-      {[
-        ['Nothing to sign up for', 'Every mode, every statistic and your whole history work with no account and no network. Sign in only when you want it on a second device.'],
-        ['The clock is not yours', 'In a race the start time and the final words-per-minute are both computed in the database. Your browser reports a number; it is kept, but it is not the one that ranks you.'],
-        ['Accuracy is the multiplier', 'Experience points scale with how clean the run was, not how fast. Mashing keys cannot level you up, and a clean slow run beats a fast one with a typo.'],
-      ].map(([title, body]) => (
-        <div key={title}>
-          <h3 className="text-base font-semibold">{title}</h3>
-          <p className="mt-0.5 text-sm leading-relaxed text-ink-3">{body}</p>
-        </div>
-      ))}
-    </section>
-  );
+function useReveal() {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    if (!('IntersectionObserver' in window)) {
+      el.classList.add('is-in');
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('is-in');
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '0px 0px -12% 0px', threshold: 0.05 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return ref;
 }
 
-function Footer() {
+/* ── Foot ──────────────────────────────────────────────────────────────── */
+
+/** Deliberately minimal: identity and date. The modes above are the nav. */
+function Foot() {
   return (
-    <footer className="mt-16 flex flex-col gap-2 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
-      <span className="flex items-center gap-1 text-sm text-ink-3">
-        <Logo size={20} />
+    <footer className="mx-auto flex w-full max-w-[1120px] flex-col gap-2 border-t border-line px-5 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10 lg:px-16">
+      <span className="flex items-center gap-1.5 text-sm text-ink-3">
+        <Logo size={18} />
         <span className="font-display font-bold text-ink-2">TypeForge</span>
       </span>
-      <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-3">
-        <Link to="/practice" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">Typing</Link>
-        <Link to="/code" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">Code</Link>
-        <Link to="/battle" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">Battle</Link>
-        <Link to="/about" className="inline-flex min-h-[44px] items-center transition-colors duration-fast hover:text-ink-2">About</Link>
-      </nav>
+      <p className="text-xs text-ink-3">Built for people who type for a living. © 2026</p>
     </footer>
   );
 }

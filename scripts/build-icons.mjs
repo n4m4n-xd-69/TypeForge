@@ -24,7 +24,7 @@ const OUT = 'public';
    duplicated so a shape change here is impossible to forget. */
 const src = fs.readFileSync('src/components/brand/Logo.jsx', 'utf8');
 const pick = (name) => {
-  const m = src.match(new RegExp(`export const ${name} =\\s*([\\s\\S]*?);\\n`));
+  const m = src.match(new RegExp(`export const ${name} =\\s*([\\s\\S]*?);\\r?\\n`));
   if (!m) throw new Error(`Logo.jsx no longer exports ${name}`);
   return m[1].trim();
 };

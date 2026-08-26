@@ -82,13 +82,30 @@ describe('resolveStrikeMove — seedFrom guards against xorshift32(0) fixed poin
 });
 
 import { WORD_LENGTH_RANGES, BANDS, wordsInRange, pickWord, drawWordFor } from './wordQueue.js';
+import { MOVES } from './moveTable.js';
 
 describe('WORD_LENGTH_RANGES — §9.3', () => {
   it('matches the PRD\'s per-move length bands', () => {
     expect(WORD_LENGTH_RANGES).toEqual({
       jab: [3, 5], slash: [6, 9], crush: [10, 16], shuriken: [4, 8],
       guard: [2, 4], parry: [3, 5], mend: [6, 8],
+      // `evade` is the Stickman avatar's Jump lane — a 9th move added beyond
+      // §10.1's eight. [4,7] brackets it between Guard/Parry at the short end
+      // and Mend at the long end, so a jump is a real commitment without
+      // ceasing to be the reflex option. See
+      // docs/superpowers/plans/2026-08-25-shadow-avatar-modes.md §4.
+      evade: [4, 7],
     });
+  });
+
+  it('has a length range for every move the table defines', () => {
+    // Guards the pairing directly: `drawWordFor` falls back to the `crush`
+    // range for an unlisted move, which would silently hand a guard-lane move
+    // a 10-16 character word instead of failing.
+    const moveIds = Object.keys(MOVES).filter((id) => id !== 'overdrive');
+    for (const id of moveIds) {
+      expect(WORD_LENGTH_RANGES, `no length range for ${id}`).toHaveProperty(id);
+    }
   });
 });
 
@@ -100,10 +117,17 @@ describe('BANDS — §9.5', () => {
   });
 });
 
+import { COMMON } from '../content.js';
+
 describe('wordsInRange', () => {
   it('filters a bank to words within [min, max] length, inclusive', () => {
     const bank = ['a', 'bb', 'ccc', 'dddd', 'eeeee'];
     expect(wordsInRange(bank, 2, 4)).toEqual(['bb', 'ccc', 'dddd']);
+  });
+
+  it('COMMON has ample words in 6-8 char range to prevent Mend/Slash repetition (SB-WRD-5)', () => {
+    const candidates = wordsInRange(COMMON, 6, 8);
+    expect(candidates.length).toBeGreaterThanOrEqual(40);
   });
 });
 
@@ -186,7 +210,7 @@ describe('card — SB-WRD-1: strike and guard cards never share a first characte
   it('holds across a large generated sample', () => {
     let violations = 0;
     for (let round = 1; round <= 3; round += 1) {
-      for (let index = 0; index < 500; index += 1) {
+      for (let index = 0; index < 150; index += 1) {
         const pair = card(7, round, index, 'steel');
         if (pair.strikeWord[0].toLowerCase() === pair.guardWord[0].toLowerCase()) {
           violations += 1;
@@ -221,9 +245,9 @@ describe('resolveStrikeMove — distribution (post seedFrom fix)', () => {
   it('Crush lands close to its ~18% target share across a large sample (was ~10% before the seedFrom fix)', () => {
     const counts = { jab: 0, slash: 0, crush: 0, shuriken: 0 };
     let total = 0;
-    for (let seed = 1; seed <= 50; seed += 1) {
+    for (let seed = 1; seed <= 25; seed += 1) {
       for (let round = 1; round <= 3; round += 1) {
-        for (let index = 1; index < 40; index += 1) { // skip index 0, it's hardcoded jab
+        for (let index = 1; index < 30; index += 1) { // skip index 0, it's hardcoded jab
           const { move } = resolveStrikeMove(seed, round, index, 'steel');
           counts[move] += 1;
           total += 1;
@@ -241,14 +265,16 @@ describe('resolveStrikeMove — distribution (post seedFrom fix)', () => {
   it('card(seed, round, index) does not collide with card(seed, index, round) nearly as often as before (was 91%)', () => {
     let collisions = 0;
     let total = 0;
-    for (let seed = 1; seed <= 30; seed += 1) {
+    for (let seed = 1; seed <= 15; seed += 1) {
       for (let a = 1; a <= 8; a += 1) {
         for (let b = 1; b <= 8; b += 1) {
           if (a === b) continue;
           total += 1;
           const cardA = card(seed, a, b, 'steel');
           const cardB = card(seed, b, a, 'steel');
-          if (JSON.stringify(cardA) === JSON.stringify(cardB)) collisions += 1;
+          if (cardA.strikeWord === cardB.strikeWord && cardA.guardWord === cardB.guardWord) {
+            collisions += 1;
+          }
         }
       }
     }

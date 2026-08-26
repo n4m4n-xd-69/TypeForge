@@ -18,8 +18,13 @@ describe('deriveNavGroups', () => {
     expect(groups[0].items.map((i) => i.to)).toEqual(['/', '/practice', '/code']);
     expect(groups[0].items[1]).toMatchObject({ to: '/practice', label: 'Typing' });
     expect(groups[0].items[2]).toMatchObject({ to: '/code', label: 'Code' });
-    expect(groups[1].items.map((i) => i.to)).toEqual(['/battle', '/dashboard', '/achievements']);
-    expect(groups[1].items[0]).toMatchObject({ to: '/battle', label: 'Battle' });
+    // Compete's lead item is the /arena gate rather than /battle directly. The
+    // registry's `battle` entry still owns `route: '/battle'` — only its
+    // navRoute/navLabel moved, the same surface-vs-identity split `time` uses
+    // to put /practice in the rail instead of /practice?mode=time. See
+    // docs/superpowers/plans/2026-08-25-arena-gate-nav.md.
+    expect(groups[1].items.map((i) => i.to)).toEqual(['/arena', '/dashboard', '/achievements']);
+    expect(groups[1].items[0]).toMatchObject({ to: '/arena', label: 'Arena' });
   });
 
   it('a new navSurface entry appears with zero changes to this function or its caller', () => {
@@ -42,10 +47,17 @@ describe('deriveNavGroups', () => {
   // led). It also used `icon: m.icon` unconditionally, which would swap
   // the Typing tab's icon from Keyboard to Clock (registry.js's `time`
   // entry uses Clock for its own identity, matching the /practice mode
-  // switcher). These tests pin the full old literal byte-for-byte,
-  // including icon identity and item order, using the exact extras
-  // AppShell.jsx passes.
-  it('matches the pre-registry NAV_GROUPS literal exactly, including icon identity and order', () => {
+  // switcher). These tests pin the full literal, including icon identity
+  // and item order, using the exact extras AppShell.jsx passes.
+  //
+  // One documented departure from the pre-registry literal: Compete's lead
+  // item is now `{ to: '/arena', label: 'Arena' }` rather than
+  // `{ to: '/battle', label: 'Battle' }`. The icon (Swords) and the position
+  // (leading) are unchanged — only the destination and the word moved, when
+  // that tab stopped meaning "Battlefield" and started meaning "pick a
+  // competitive mode". See
+  // docs/superpowers/plans/2026-08-25-arena-gate-nav.md.
+  it('matches the NAV_GROUPS literal exactly, including icon identity and order', () => {
     const extras = {
       Train: [{ to: '/', label: 'Home', icon: Home, end: true, lead: true }],
       Compete: [
@@ -67,7 +79,7 @@ describe('deriveNavGroups', () => {
       {
         label: 'Compete',
         items: [
-          { to: '/battle', label: 'Battle', icon: Swords },
+          { to: '/arena', label: 'Arena', icon: Swords },
           { to: '/dashboard', label: 'Progress', icon: LineChart },
           { to: '/achievements', label: 'Rewards', icon: Trophy },
         ],
@@ -92,7 +104,9 @@ describe('deriveNavGroups', () => {
     const groups = deriveNavGroups(registryOnlyCompete, extras);
     const compete = groups.find((g) => g.label === 'Compete');
 
-    expect(compete.items.map((i) => i.to)).toEqual(['/first', '/battle', '/last']);
+    // '/arena' is the `battle` entry's navRoute — this test is about ordering,
+    // not about which route that entry points at.
+    expect(compete.items.map((i) => i.to)).toEqual(['/first', '/arena', '/last']);
   });
 });
 
@@ -101,8 +115,13 @@ describe('deriveModePaletteEntries', () => {
     const entries = deriveModePaletteEntries(MODE_REGISTRY);
 
     const navigate = entries.filter((e) => e.group === 'Navigate');
-    expect(navigate.map((e) => e.route)).toEqual(['/practice', '/code', '/battle']);
-    expect(navigate.map((e) => e.label)).toEqual(['Start typing practice', 'Start code typing', 'Open Battlefield — multiplayer']);
+    // The `battle` entry resolves to `navRoute ?? route`, and its navRoute is
+    // the /arena gate — so both the route and its label describe the gate here.
+    // CommandPalette.jsx carries separate direct commands for /battle and
+    // /shadow, which are hand-added rather than derived (SB-NAV-5 tracks
+    // deriving them) and so are out of this function's scope.
+    expect(navigate.map((e) => e.route)).toEqual(['/practice', '/code', '/arena']);
+    expect(navigate.map((e) => e.label)).toEqual(['Start typing practice', 'Start code typing', 'Open the Arena — Battlefield or Shadow']);
     // The palette's "Typing" entry has always shown Keyboard, not the Time
     // mode's own identity icon (Clock) — same surface-vs-identity split as
     // the nav rail's `navIcon` from Task 5. Code/Battle icons already match

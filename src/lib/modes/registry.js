@@ -87,7 +87,16 @@ export const MODE_REGISTRY = [
     // Battlefield sits between prose and code: someone is watching, which is its
     // own kind of pressure, but the text is ordinary English.
     xpRule: { kindFactor: 1.15 }, quickLaunch: false,
-    navSurface: true, navGroup: 'Compete', navLabel: 'Battle', navRoute: '/battle',
+    // navRoute overrides route here, the same surface-vs-identity split the
+    // `time` entry uses above: `route` is this mode's own destination
+    // (/battle, still what getMode('battle').route returns and what every
+    // scoring path reads), but the nav rail's one competitive tab represents
+    // the whole Compete surface — Battlefield *and* Shadow Battle — so it
+    // points at the /arena gate that lets you choose between them. Naming it
+    // "Arena" rather than "Battle" is what discharges SB-NAV-2, and holding
+    // the nav at six items is what makes SB-NAV-1's `short` field unnecessary.
+    // See docs/superpowers/plans/2026-08-25-arena-gate-nav.md §1.
+    navSurface: true, navGroup: 'Compete', navLabel: 'Arena', navRoute: '/arena',
   },
 ];
 

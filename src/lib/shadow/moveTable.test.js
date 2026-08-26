@@ -45,6 +45,51 @@ describe('moveTable', () => {
     });
   });
 
+  /**
+   * The 9th move, added for the Stickman avatar's Jump lane
+   * (docs/superpowers/plans/2026-08-25-shadow-avatar-modes.md §4.1). A
+   * divergence from §10.1's eight, recorded deliberately rather than by
+   * loosening the assertion above.
+   */
+  it('defines Evade, the Jump lane, as a guard-lane move', () => {
+    expect(MOVES.evade).toEqual({
+      id: 'evade', name: 'Evade', lane: LANES.GUARD,
+      base: 0, focus: 5, committed: false, guardFactor: null,
+      resetsChain: false, healsHp: 0,
+    });
+  });
+
+  /**
+   * Pins the table size explicitly. Previously the count lived only in a test
+   * *name* ("the 8 MVP moves"), so a 9th move could be added with every
+   * assertion still green and nothing pointing out that the documented set had
+   * changed. Now the number is an assertion.
+   */
+  it('holds exactly nine moves, five strike and four guard', () => {
+    expect(Object.keys(MOVES).sort()).toEqual(
+      ['crush', 'evade', 'guard', 'jab', 'mend', 'overdrive', 'parry', 'shuriken', 'slash'],
+    );
+    const byLane = (lane) => Object.values(MOVES).filter((m) => m.lane === lane).map((m) => m.id).sort();
+    expect(byLane(LANES.STRIKE)).toEqual(['crush', 'jab', 'overdrive', 'shuriken', 'slash']);
+    expect(byLane(LANES.GUARD)).toEqual(['evade', 'guard', 'mend', 'parry']);
+  });
+
+  /** Every move must carry the full field set — no partial entries. */
+  it('every move carries the same nine fields', () => {
+    const fields = ['id', 'name', 'lane', 'base', 'focus', 'committed', 'guardFactor', 'resetsChain', 'healsHp'];
+    for (const move of Object.values(MOVES)) {
+      for (const field of fields) {
+        expect(move, `${move.id} is missing ${field}`).toHaveProperty(field);
+      }
+      expect(Object.keys(move).sort()).toEqual([...fields].sort());
+    }
+  });
+
+  /** Only Mend heals. Evade in particular must not, or the Jump lane becomes a free Mend. */
+  it('Mend is the only move that heals', () => {
+    expect(Object.values(MOVES).filter((m) => m.healsHp > 0).map((m) => m.id)).toEqual(['mend']);
+  });
+
   it('getMove returns the move by id', () => {
     expect(getMove('slash').base).toBe(10);
   });

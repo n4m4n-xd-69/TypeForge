@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MODE_REGISTRY, REQUIRED_MODE_FIELDS, kindFactorFor } from './registry.js';
 import { deriveModePaletteEntries, deriveNavGroups } from './derive.js';
@@ -183,5 +185,19 @@ describe('SC-A1, SC-A2, SC-A4 — the stickman entry is expressible (SC-A3 out o
     // consistency/durationSec/chars/errors/keyStats). The collision case
     // above is a hypothetical stress test of the real mechanism's
     // precedence, not a claim about Shadow Battle's own payload.
+  });
+
+  it('SC-A3 / SC-A5: 0010_shadow_battle.sql provides dedicated duel tables rather than widening battle_rooms, leaving 0009 untouched', () => {
+    const migrationPath = resolve(process.cwd(), 'supabase/migrations/0010_shadow_battle.sql');
+    expect(existsSync(migrationPath)).toBe(true);
+
+    const migrationSql = readFileSync(migrationPath, 'utf8');
+    expect(migrationSql).toContain('create table if not exists public.shadow_rooms');
+    expect(migrationSql).toContain('create table if not exists public.shadow_players');
+    expect(migrationSql).toContain('create table if not exists public.shadow_events');
+
+    const bfMigrationPath = resolve(process.cwd(), 'supabase/migrations/0009_battlefield.sql');
+    const bfSql = readFileSync(bfMigrationPath, 'utf8');
+    expect(bfSql).not.toContain('shadow_rooms');
   });
 });

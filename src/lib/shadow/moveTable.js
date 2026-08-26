@@ -51,6 +51,26 @@ export const MOVES = {
     base: 0, focus: -25, committed: true, guardFactor: null,
     resetsChain: false, healsHp: 120,
   },
+  /**
+   * Evade — the Jump lane (9th move, a divergence from §10.1's eight).
+   *
+   * The Stickman avatar presents three lanes (Fight / Shield / Jump), but the
+   * reducer has two. Jump resolves as a GUARD-lane move rather than a third
+   * mechanical lane, because a third lane would mean surgery on
+   * `stepEvent`'s dispatch and would invalidate the combat fixtures — and
+   * because a jump *is* defensive, so nothing is lost by classing it there.
+   *
+   * `focus: 5` sits deliberately between Guard (+3, cheap and safe) and
+   * Parry (+10, high risk / high reward): evading is safer than parrying and
+   * worth more than blocking, because it costs you the counter window.
+   *
+   * See docs/superpowers/plans/2026-08-25-shadow-avatar-modes.md §4.1.
+   */
+  evade: {
+    id: 'evade', name: 'Evade', lane: LANES.GUARD,
+    base: 0, focus: 5, committed: false, guardFactor: null,
+    resetsChain: false, healsHp: 0,
+  },
 };
 
 export function getMove(id) {

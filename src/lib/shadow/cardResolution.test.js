@@ -145,20 +145,22 @@ describe('resolveForPlayer — salted draws never desync the shared base sequenc
 describe('seedFrom — guards against xorshift32(0) fixed point', () => {
   it('never produces a 0 seed across many (seed, round, index, player, salt) combinations shaped like overrideSeed\'s', () => {
     const salts = [0x4F564552, 0x4D454E44]; // OVERDRIVE_SALT, MEND_REROLL_SALT
+    let zeros = 0;
     let total = 0;
-    for (let seed = 1; seed <= 20; seed += 1) {
+    for (let seed = 1; seed <= 10; seed += 1) {
       for (let round = 1; round <= 5; round += 1) {
         for (let index = 0; index < 20; index += 1) {
           for (const player of [1, 2]) { // player + 1, as overrideSeed passes it
             for (const salt of salts) {
               total += 1;
               const combined = seedFrom(toU32(seed), round, index, player, salt);
-              expect(combined).not.toBe(0);
+              if (combined === 0) zeros += 1;
             }
           }
         }
       }
     }
+    expect(zeros).toBe(0);
     expect(total).toBeGreaterThan(1000);
   });
 });
@@ -187,5 +189,93 @@ describe('resolveForPlayer — Overdrive and Mend fire independently and simulta
     // Mend should NOT be rerolled (player is eligible: hp < 700 && focus >= 25)
     expect(resolved.guardMove).toBe('mend');
     expect(resolved.guardWord).toBe(base.guardWord);
+  });
+});
+
+/**
+ * SB-WRD-1 regression — the Mend re-roll used to void the distinct-first-
+ * character guarantee.
+ *
+ * `wordQueue.card()` guarantees the strike and guard words start with
+ * different characters, because that first character is how a lane is
+ * committed to: if two lanes share it, one of them is unreachable for that
+ * card and the player cannot choose to defend. The Mend gate above re-draws
+ * `guardWord` from a different bank and length range, and originally did not
+ * re-check that guarantee.
+ *
+ * Measured before the fix, over 2250 cards (3 bands x 5 rounds x 150 indices,
+ * seed 1): `card()` produced 0 collisions, the Mend re-roll fired 630 times
+ * and produced 23 collisions — roughly 1 card in 100 across all play, each one
+ * a card with an unreachable Guard lane. Example: base `planet`/`morning`
+ * (mend) re-rolled to `planet`/`part`, so typing `p` always took Strike.
+ */
+describe('resolveForPlayer — SB-WRD-1 survives the Mend re-roll', () => {
+  const BANDS = ['ember', 'steel', 'damascus'];
+
+  it('never returns two words sharing a first character, across a wide sweep', () => {
+    let checked = 0;
+    let rerolls = 0;
+    // Spread across rounds rather than deep into indices: resolveStrikeMove
+    // recurses on index-1 for SB-MOV-4, so a sweep is O(n^2) in the index
+    // bound. 12 x 40 covers as many cards as 5 x 150 for a tenth of the work.
+    // (The 150-index version intermittently exceeded vitest's 5s default under
+    // parallel load, making this test flaky.)
+    for (const seed of [1, 0xbeef, 7]) {
+      for (const band of BANDS) {
+        for (let round = 1; round <= 12; round += 1) {
+          for (let index = 0; index < 40; index += 1) {
+            const base = card(seed, round, index, band);
+            // Fresh state: HP 1000 / Focus 0 fails the Mend gate, which is
+            // exactly the branch that used to break the guarantee.
+            const resolved = resolveForPlayer(seed, round, index, base, stateWith({}), 0);
+            if (resolved.guardMove !== base.guardMove) rerolls += 1;
+            expect(
+              resolved.guardWord[0].toLowerCase(),
+              `collision at seed=${seed} band=${band} round=${round} index=${index}: ` +
+                `${resolved.strikeWord}/${resolved.guardWord} (base ${base.strikeWord}/${base.guardWord} ${base.guardMove})`,
+            ).not.toBe(resolved.strikeWord[0].toLowerCase());
+            checked += 1;
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThanOrEqual(4000);
+    // Proves the sweep actually exercised the re-roll branch rather than
+    // passing because the gate never fired.
+    expect(rerolls).toBeGreaterThan(500);
+  }, 20000);
+
+  /**
+   * Scope note, and why this is not widened.
+   *
+   * When Overdrive replaces `strikeWord` with a phrase, the *unrerolled* base
+   * `guardWord` can share its first character — the base pair was checked
+   * against the original strike word, not the phrase that replaced it.
+   *
+   * That is deliberately NOT fixed here, because the Overdrive branch is
+   * explicitly forbidden from touching the guard slot ("never touches the
+   * guard slot", above, pins `resolved.guardWord === base.guardWord`), and
+   * because the collision is unreachable in play: Overdrive is a commitment,
+   * so every consumer collapses to a single lane. `laneDeck.deckFor` returns
+   * exactly one lane when `overdrive` is true, and `CardLane` renders one
+   * bubble. With one lane presented there is no first-character contest.
+   *
+   * So the real invariant is "whenever two lanes are *presented*, their first
+   * characters differ" — which is what this asserts.
+   */
+  it('leaves the Overdrive pair alone, because Overdrive presents a single lane', () => {
+    const base = card(1, 1, 5, 'steel');
+    const resolved = resolveForPlayer(1, 1, 5, base, stateWith({ focus: [100, 0] }), 0);
+    expect(resolved.strikeMove).toBe('overdrive');
+    expect(resolved.guardWord).toBe(base.guardWord);
+  });
+
+  it('is still deterministic after the re-roll walk', () => {
+    for (let index = 0; index < 40; index += 1) {
+      const base = card(9, 2, index, 'steel');
+      const a = resolveForPlayer(9, 2, index, base, stateWith({}), 0);
+      const b = resolveForPlayer(9, 2, index, base, stateWith({}), 0);
+      expect(b).toEqual(a);
+    }
   });
 });

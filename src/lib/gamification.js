@@ -107,6 +107,16 @@ export const ACHIEVEMENTS = [
   { id: 'battle-first', name: 'First Blood', hint: 'Finish a Battlefield', icon: 'Swords', tier: 'bronze', test: (s) => s.battles >= 1 },
   { id: 'battle-win', name: 'Champion', hint: 'Win a Battlefield', icon: 'Crown', tier: 'silver', test: (s) => s.battleWins >= 1 },
   { id: 'battle-win-5', name: 'Undisputed', hint: 'Win 5 Battlefields', icon: 'Crown', tier: 'gold', test: (s) => s.battleWins >= 5 },
+  { id: 'shadow-first', name: 'Into the Dark', hint: 'Finish a Shadow Battle', icon: 'Sparkles', tier: 'bronze', test: (s) => (s.shadowBattles || 0) >= 1 || s.sessions.some((x) => x.kind === 'shadow') },
+  { id: 'shadow-win', name: 'First Shadow', hint: 'Win a Shadow Battle', icon: 'Swords', tier: 'bronze', test: (s) => (s.shadowWins || 0) >= 1 || s.sessions.some((x) => x.kind === 'shadow' && x.roundsWon > x.roundsLost) },
+  { id: 'shadow-flawless', name: 'Untouched', hint: 'Win a round without taking damage', icon: 'Shield', tier: 'silver', test: (s) => (s.shadowFlawless || 0) >= 1 || s.sessions.some((x) => x.kind === 'shadow' && x.flawlessRounds >= 1) },
+  { id: 'shadow-parry-10', name: 'Read the Blade', hint: 'Land 10 parries', icon: 'Zap', tier: 'silver', test: (s) => (s.shadowParries || 0) >= 10 || s.sessions.some((x) => (x.parries || 0) >= 10) },
+  { id: 'shadow-chain-15', name: 'Unbroken Chain', hint: 'Reach a chain of 15 in one round', icon: 'Link', tier: 'gold', test: (s) => (s.shadowBestChain || 0) >= 15 || s.sessions.some((x) => (x.bestChain || 0) >= 15) },
+  { id: 'shadow-overdrive', name: 'Full Burn', hint: 'Land an Overdrive for 50+ damage', icon: 'Flame', tier: 'gold', test: (s) => (s.shadowOverdrives || 0) >= 1 || s.sessions.some((x) => x.overdriveLanded) },
+  { id: 'shadow-comeback', name: 'From the Ashes', hint: 'Win a match after losing round one', icon: 'Flame', tier: 'gold', test: (s) => (s.shadowComebacks || 0) >= 1 },
+  { id: 'shadow-rank-quench', name: 'Quenched', hint: 'Reach Quench tier', icon: 'Trophy', tier: 'gold', test: (s) => (s.shadowFr || 1200) >= 1400 },
+  { id: 'shadow-rank-damascus', name: 'Folded Steel', hint: 'Reach Damascus tier', icon: 'Crown', tier: 'legend', test: (s) => (s.shadowFr || 1200) >= 1800 },
+  { id: 'shadow-win-25', name: 'Duellist', hint: 'Win 25 Shadow Battles', icon: 'Crown', tier: 'legend', test: (s) => (s.shadowWins || 0) >= 25 || s.sessions.filter((x) => x.kind === 'shadow' && x.roundsWon > x.roundsLost).length >= 25 },
 ];
 
 export const TIER_STYLES = {
@@ -125,6 +135,10 @@ const MISSION_POOL = [
   { id: 'code-2', label: 'Type 2 code snippets', goal: 2, xp: 55, metric: 'codeRuns' },
   { id: 'pb', label: 'Beat your personal best WPM', goal: 1, xp: 80, metric: 'personalBests' },
   { id: 'chars-800', label: 'Type 800 characters', goal: 800, xp: 45, metric: 'chars' },
+  { id: 'shadow-rounds-3', label: 'Win 3 Shadow rounds', goal: 3, xp: 60, metric: 'shadowRoundsWon' },
+  { id: 'shadow-clean-40', label: 'Land 40 clean words in Shadow Battle', goal: 40, xp: 55, metric: 'shadowCleanWords' },
+  { id: 'shadow-parry-3', label: 'Land 3 parries', goal: 3, xp: 65, metric: 'shadowParries' },
+  { id: 'shadow-chain-10', label: 'Reach a chain of 10', goal: 1, xp: 50, metric: 'shadowChain10' },
 ];
 
 /** Deterministic per-day pick, so the same three missions survive a refresh. */
@@ -152,6 +166,7 @@ export function missionProgress(mission, today) {
 export const EMPTY_DAY = {
   sessions: 0, seconds: 0, chars: 0, codeRuns: 0,
   accurateRuns: 0, personalBests: 0, xp: 0,
+  shadowRoundsWon: 0, shadowCleanWords: 0, shadowParries: 0, shadowChain10: 0,
 };
 
 /**
