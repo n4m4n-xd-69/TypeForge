@@ -106,14 +106,14 @@ damage at the keyboard:
 - **Practice footprint** — a calendar month you can page back through
 - **Skill radar** across speed, accuracy, consistency and volume
 - **Keys costing you most** — per-key error rates, with at least 8 attempts recorded
-- **Coach's read** — an AI note on what to work on next, with an offline fallback
+- **Forge AI's read** — an AI note on what to work on next, with an offline fallback
 
 ### 🏆 Gamification
 
 | | |
 |:--|:--|
 | **XP & levels** | A quadratic curve across 9 named ranks, from *Tapper* to *Phantom* |
-| **30+ badges** | Four tiers — bronze, silver, gold, legend — across practice, code, battle and shadow |
+| **29 badges** | Four tiers — bronze, silver, gold, legend — across practice, code, battle and shadow |
 | **Daily missions** | Three per day, picked deterministically so a refresh cannot reroll them |
 | **Streaks** | Counted honestly — practise today or yesterday, or it resets |
 | **Leaderboards** | XP and Shadow ratings, computed server-side |
@@ -160,8 +160,8 @@ damage at the keyboard:
 
 <img src="assets/screenshots/chat.png" alt="Forge AI chat with thread list and streaming answers" width="92%" />
 
-<sub>Every page carries Forge AI in the corner: it reads your runs before answering, shows its
-working as a step trace, then offers the next move as a one-click action.</sub>
+<sub>Most pages carry Forge AI in the corner: it reads your runs before answering, shows its
+working as a shimmering verb, then offers the next move as a one-click action.</sub>
 
 <br /><br />
 
@@ -185,7 +185,7 @@ working as a step trace, then offers the next move as a one-click action.</sub>
 
 ## 🤖 Forge AI — your agentic coach
 
-Every surface carries a floating agent that does more than chat:
+Most surfaces carry a floating agent that does more than chat (the landing page and the full chat page use their own dedicated UI instead):
 
 - **Reads before it speaks** — your session history, weakest keys and streak are gathered into
   its context, and the gathering is *shown* as an animated step trace while the answer streams in
@@ -219,7 +219,7 @@ flowchart LR
 
     G --> I[Dashboard]
     G --> J[Rewards]
-    I --> K[Coach's read]
+    I --> K[Forge AI's read]
     J --> L[XP · badges · missions]
     G -.optional.-> M[(Cloud sync)]
 
@@ -285,7 +285,7 @@ flowchart TD
 | Module | Responsibility |
 |:--|:--|
 | **Typing engine** | Keystrokes on `keydown`, not through an `<input>` — so Enter, Tab and Backspace behave predictably and code can auto-consume indentation. Counters live in refs; only what renders lives in state. |
-| **Combat engine** | Deterministic, seeded reducer driving Shadow Battle — damage, parries, chains, Overdrive — with 298 passing tests around it and full replay-ability. |
+| **Combat engine** | Deterministic, seeded reducer driving Shadow Battle — damage, parries, chains, Overdrive — with full replay-ability and 388 tests across the engine, combat and sync. |
 | **Gamification** | Pure functions over saved state, so XP, level and streak recompute identically on any device. |
 | **AI integration** | Provider priority with **hedged failover** — the next attempt starts while the previous is still running, so a slow model costs a hedge delay rather than a full timeout. Every helper degrades to a local reading instead of throwing. |
 | **Charts** | Recharts, one measure per chart. Two measures of different scale get two charts, because a second y-axis is a lie about shared scale. |
@@ -433,7 +433,7 @@ slowest model first.
 | Practice text | Falls back to the bundled word banks and quote library |
 | Code analysis | A locally computed reading from the source text, labelled as such |
 | Suggested questions | Derived locally from the snippet's structure |
-| Coach's read | A rule-based note from your own statistics |
+| Forge AI's read | A rule-based note from your own statistics |
 | Forge AI | Clearly disabled, with the reason stated |
 
 Worked examples are deliberately **absent** offline: running a snippet is the only honest

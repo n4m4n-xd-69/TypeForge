@@ -91,7 +91,7 @@ export default function AIChat() {
   const active = threads.find((t) => t.id === activeId);
 
   /**
-   * Who the coach is talking to, in ~40 tokens of aggregates.
+   * Who Forge AI is talking to, in ~40 tokens of aggregates.
    *
    * Aggregates only — never raw sessions or per-key detail. Rebuilt as the
    * numbers move, so advice tracks improvement rather than whatever was true
@@ -276,7 +276,7 @@ export default function AIChat() {
             <p className="truncate text-2xs text-ink-3">
               {stats.sessionCount
                 ? `Level ${stats.level.level} · ${Math.round(stats.wpm)} WPM · ${Math.round(stats.accuracy)}%`
-                : 'Your coach, with your stats in hand'}
+                : 'Forge AI, with your stats in hand'}
             </p>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-0.5">
@@ -370,9 +370,9 @@ export default function AIChat() {
               }
             }}
             rows={1}
-            placeholder={ready ? 'Ask anything…  (Shift+Enter for a new line)' : 'AI is not configured'}
+            placeholder={ready ? (busy ? 'Forge AI is thinking…' : 'Ask anything…  (Shift+Enter for a new line)') : 'AI is not configured'}
             aria-label="Message"
-            disabled={!ready}
+            disabled={!ready || busy}
             className="max-h-[140px] min-h-[40px] min-w-0 flex-1 resize-none rounded-md bg-subtle/60 px-2 py-1 text-sm leading-relaxed outline-none transition-colors placeholder:text-ink-3 focus:bg-subtle disabled:opacity-50"
             onInput={(e) => {
               e.target.style.height = 'auto';
@@ -449,29 +449,34 @@ const Bubble = memo(function Bubble({ message, canRegenerate, canEdit, onRegener
   const text = typeof message.text === 'string' ? message.text : (message.text?.detail ?? '');
 
   return (
-    <div className="mr-6">
-      <div
-        className={cx(
-          'rounded-lg rounded-bl-sm border px-2 py-1.5',
-          message.failed ? 'border-warn/50 bg-warn/10' : 'border-line bg-surface/60',
-        )}
-      >
-        <Markdown text={text} compact />
-        {message.stopped ? (
-          <p className="mt-1 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">Stopped</p>
-        ) : null}
-      </div>
-      <div className="mt-0.5 flex items-center gap-1 px-0.5">
-        <CopyButton text={text} />
-        {canRegenerate ? (
-          <button
-            type="button"
-            onClick={onRegenerate}
-            className="flex items-center gap-0.5 text-2xs font-bold text-ink-3 transition-colors hover:text-ink-2"
-          >
-            <RefreshCw size={11} aria-hidden /> Regenerate
-          </button>
-        ) : null}
+    <div className="mr-6 flex items-start gap-2">
+      <span className="mt-0.5 grid h-[28px] w-[28px] shrink-0 place-items-center">
+        <ForgeAvatar size={28} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div
+          className={cx(
+            'rounded-lg rounded-tl-none border px-2.5 py-2',
+            message.failed ? 'border-warn/50 bg-warn/10' : 'border-line bg-surface/60',
+          )}
+        >
+          <Markdown text={text} compact />
+          {message.stopped ? (
+            <p className="mt-1 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">Stopped</p>
+          ) : null}
+        </div>
+        <div className="mt-0.5 flex items-center gap-1 px-0.5">
+          <CopyButton text={text} />
+          {canRegenerate ? (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              className="flex items-center gap-0.5 text-2xs font-bold text-ink-3 transition-colors hover:text-ink-2"
+            >
+              <RefreshCw size={11} aria-hidden /> Regenerate
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -504,27 +509,43 @@ function CopyButton({ text }) {
  */
 function Live({ thinking, partial }) {
   return (
-    <div className="mr-6 rounded-lg rounded-bl-sm border border-line bg-surface/60 px-2 py-1.5">
-      {thinking && !partial ? <LiveThinking text={thinking} /> : null}
-      {partial ? (
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{partial}</p>
-      ) : !thinking ? (
-        <div className="space-y-1">
-          <Skeleton className="h-1.5 w-[62%]" />
-          <Skeleton className="h-1.5 w-[44%]" />
-        </div>
-      ) : null}
+    <div className="mr-6 flex items-start gap-2">
+      <span className="mt-0.5 grid h-[28px] w-[28px] shrink-0 place-items-center">
+        <ForgeAvatar size={28} />
+      </span>
+      <div className="min-w-0 flex-1 rounded-lg rounded-tl-none border border-line bg-surface/60 px-2.5 py-2">
+        {thinking && !partial ? <LiveThinking text={thinking} /> : null}
+        {partial ? (
+          <>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-ink-2">{partial}</p>
+            <div aria-live="polite" className="sr-only" role="status">
+              {partial}
+            </div>
+          </>
+        ) : !thinking ? (
+          <div className="space-y-1">
+            <Skeleton className="h-1.5 w-[62%]" />
+            <Skeleton className="h-1.5 w-[44%]" />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 function EmptyState({ ready, onPick, reduce, starters }) {
   return (
-    <div className="py-4 text-center">
-      <span className="mx-auto grid h-[46px] w-[46px] place-items-center rounded-lg bg-brand-wash text-brand">
-        <MessageSquare size={22} aria-hidden />
-      </span>
-      <h2 className="mt-1.5 text-lg font-bold">
+    <div className="py-6 text-center">
+      <div className="relative mx-auto w-fit">
+        <span aria-hidden className="absolute inset-x-4 bottom-0 h-5 rounded-full bg-brand/35 blur-xl" />
+        <ForgeAvatar
+          size={96}
+          className="relative block"
+          animate={reduce ? undefined : { y: [0, -6, 0] }}
+          transition={reduce ? undefined : { duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+      <h2 className="mt-3 text-lg font-bold">
         {ready ? 'What are we working on?' : 'AI is not configured'}
       </h2>
       <p className="mx-auto mt-0.5 max-w-[46ch] text-sm text-ink-3">
@@ -534,7 +555,7 @@ function EmptyState({ ready, onPick, reduce, starters }) {
       </p>
 
       {ready ? (
-        <div className="mx-auto mt-2.5 grid max-w-[620px] gap-1 sm:grid-cols-2">
+        <div className="mx-auto mt-3.5 grid max-w-[620px] gap-1.5 sm:grid-cols-2">
           {starters.map((s, i) => (
             <motion.button
               key={s.text}
@@ -544,10 +565,10 @@ function EmptyState({ ready, onPick, reduce, starters }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: reduce ? 0 : 0.05 * i, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               whileHover={reduce ? undefined : { y: -2 }}
-              className="flex items-start gap-1 rounded-md border border-line bg-surface/50 px-1.5 py-1.5 text-left text-xs font-semibold leading-relaxed text-ink-2 transition-colors hover:border-line-strong hover:bg-subtle hover:text-ink"
+              className="flex items-start gap-1.5 rounded-md border border-line bg-surface/50 px-2 py-2 text-left text-xs font-semibold leading-relaxed text-ink-2 transition-colors hover:border-line-strong hover:bg-subtle hover:text-ink"
             >
-              <span aria-hidden>{s.icon}</span>
-              {s.text}
+              <span aria-hidden className="text-sm">{s.icon}</span>
+              <span>{s.text}</span>
             </motion.button>
           ))}
         </div>

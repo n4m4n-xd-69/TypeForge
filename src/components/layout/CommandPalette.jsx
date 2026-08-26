@@ -33,10 +33,10 @@ export default function CommandPalette({ open, onClose }) {
       // surface, not a toll booth — anyone who already knows which mode they
       // want should never have to pass through it.
       { id: 'battlefield', label: 'Battlefield — 8-player race', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
-      // Chat gave up its nav slot to Battlefield. The floating coach reaches the
+      // Chat gave up its nav slot to Battlefield. The floating Forge AI reaches the
       // same model from every route, but the full page owns the thread history
       // in `chat_messages`, so it needs a way in that is not the FAB.
-      { id: 'chat', label: 'Open the AI coach page', icon: MessageSquare, group: 'Navigate', run: () => navigate('/chat') },
+      { id: 'chat', label: 'Open the Forge AI page', icon: MessageSquare, group: 'Navigate', run: () => navigate('/chat') },
       { id: 'dashboard', label: 'Open Progress dashboard', icon: LineChart, group: 'Navigate', run: () => navigate('/dashboard') },
       { id: 'rewards', label: 'Open Rewards', icon: Trophy, group: 'Navigate', run: () => navigate('/achievements') },
       { id: 'theme', label: `Switch to ${isDark ? 'light' : 'dark'} theme`, icon: isDark ? Sun : Moon, group: 'Settings', run: toggle },

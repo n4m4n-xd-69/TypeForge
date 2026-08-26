@@ -39,11 +39,17 @@ export default function Practice() {
   const { toast } = useToast();
   const { settings } = state;
 
-  const [mode, setMode] = useState(params.get('mode') ?? 'time');
+  /* URL params can pre-select mode, drill, and duration so links from
+     Forge AI and elsewhere land directly on the intended exercise. */
+  const initialMode = params.get('mode') ?? 'time';
+  const initialDrill = params.get('drill');
+  const initialDuration = params.get('duration') ? parseInt(params.get('duration'), 10) : null;
+
+  const [mode, setMode] = useState(initialMode);
   const [difficulty, setDifficulty] = useState('normal');
-  const [duration, setDuration] = useState(60);
+  const [duration, setDuration] = useState(initialDuration ?? 60);
   const [wordCount, setWordCount] = useState(25);
-  const [drillId, setDrillId] = useState(DRILLS[0].id);
+  const [drillId, setDrillId] = useState(initialDrill ?? DRILLS[0].id);
   const [customText, setCustomText] = useState('');
   const [customOpen, setCustomOpen] = useState(false);
   const [seed, setSeed] = useState(0);
@@ -199,7 +205,9 @@ export default function Practice() {
   }, [engine, next, result]);
 
   useEffect(() => {
-    if (params.get('mode')) setParams({}, { replace: true });
+    if (params.get('mode') || params.get('drill') || params.get('duration')) {
+      setParams({}, { replace: true });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -16,6 +16,7 @@ import { useReducedMotionSafe } from '../../lib/motion.js';
 import { useStats, useStore } from '../../lib/store.jsx';
 import { keyLabel, weakestKeys } from '../../lib/typing.js';
 import { cx, greeting } from '../../lib/format.js';
+import { DRILLS } from '../../lib/content.js';
 import './chat-glass.css';
 
 /**
@@ -82,12 +83,14 @@ export default function ChatFab() {
   useScrollAnchor({ scrollRef, endRef, deps: [messages.length, partial, thinking], streaming: busy, reduce });
 
   /* Escape closes, and only when nothing else has claimed the key — a modal
-     open over this should get it first. */
+     open over this should get it first. The check excludes this panel's own
+     role="dialog" so Escape works when Forge AI is the topmost dialog. */
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
-      if (document.querySelector('[role="dialog"]')) return;
+      const otherDialog = document.querySelector('[role="dialog"]:not(.forge-panel)');
+      if (otherDialog) return;
       e.preventDefault();
       setOpen(false);
     };
@@ -104,13 +107,26 @@ export default function ChatFab() {
   /* Redundant on /chat, and its send button sits exactly where the FAB does. */
   if (pathname.startsWith('/chat')) return null;
 
+  /** Map weak keys to the drill that targets them. */
+  const drillForWeakKeys = (keys) => {
+    const keySet = new Set(keys.map((k) => k.toLowerCase()));
+    const drillScores = DRILLS.map((d) => {
+      const drillKeys = d.keys.toLowerCase().split('');
+      const matches = drillKeys.filter((k) => keySet.has(k)).length;
+      return { id: d.id, name: d.name, matches };
+    });
+    drillScores.sort((a, b) => b.matches - a.matches);
+    return drillScores[0]?.id ?? 'home-row';
+  };
+
   /** Surfaces Forge AI can act on. The empty state shows them as a grid; the
       same set narrows to contextual picks once an answer has landed. */
+  const weakDrillId = weak.length ? drillForWeakKeys(weak) : null;
   const capabilities = [
-    weak.length
-      ? { to: '/practice?mode=drill', label: `Drill ${weak.slice(0, 2).join(' ')}`, icon: Target }
+    weakDrillId
+      ? { to: `/practice?mode=drill&drill=${weakDrillId}`, label: `Drill ${weak.slice(0, 2).join(' ')}`, icon: Target }
       : { to: '/practice', label: 'Take baseline', icon: Zap },
-    { to: '/practice?mode=time', label: '30s sprint', icon: Zap },
+    { to: '/practice?mode=time&duration=30', label: '30s sprint', icon: Zap },
     state.settings.lastLanguage
       ? { to: '/code', label: `Code · ${state.settings.lastLanguage}`, icon: Braces }
       : { to: '/code', label: 'Code session', icon: Braces },
@@ -160,7 +176,7 @@ export default function ChatFab() {
             /* NOTE: no `.glass` here — that legacy class paints a near-opaque
                fill that would sit under the forge-panel optics and kill the
                translucency. forge-panel::before IS the surface. */
-            className="forge-panel fixed bottom-[74px] right-2 z-[46] flex w-[min(440px,calc(100vw-16px))] flex-col h-[min(652px,calc(100dvh-118px))]"
+            className="forge-panel fixed bottom-[74px] right-2 z-[46] flex w-[min(440px,calc(100vw-16px))] flex-col h-[min(652px,calc(100dvh-132px))]"
             role="dialog"
             aria-label="Forge AI"
           >
@@ -293,38 +309,55 @@ export default function ChatFab() {
                 </div>
               ) : null}
 
-              {messages.map((m, i) =>
-                m.role === 'user' ? (
-                  <p key={i} className="ml-5 rounded-md rounded-br-[3px] bg-brand-solid px-1.5 py-1 text-[13px] font-semibold text-brand-ink shadow-e1">
-                    {m.text}
-                  </p>
-                ) : (
-                  <div key={i} className="mr-2 rounded-md rounded-bl-[3px] border border-white/[0.08] bg-white/[0.05] px-1.5 py-1 backdrop-blur-md">
-                    <Markdown text={typeof m.text === 'string' ? m.text : (m.text?.detail ?? '')} compact />
-                  </div>
-                ),
-              )}
+              {!atHome ? (
+                <>
+                  {messages.map((m, i) =>
+                    m.role === 'user' ? (
+                      <p key={i} className="ml-5 rounded-md rounded-br-[3px] bg-brand-solid px-1.5 py-1 text-[13px] font-semibold text-brand-ink shadow-e1">
+                        {m.text}
+                      </p>
+                    ) : (
+                      <div key={i} className="mr-2 flex items-start gap-1.5">
+                        <span className="mt-0.5 grid h-[24px] w-[24px] shrink-0 place-items-center">
+                          <ForgeAvatar size={24} />
+                        </span>
+                        <div className="min-w-0 flex-1 rounded-md rounded-tl-none border border-white/[0.08] bg-white/[0.05] px-1.5 py-1 backdrop-blur-md">
+                          <Markdown text={typeof m.text === 'string' ? m.text : (m.text?.detail ?? '')} compact />
+                        </div>
+                      </div>
+                    ),
+                  )}
 
-              {busy ? (
-                partial ? (
-                  <div className="mr-2 rounded-md rounded-bl-[3px] border border-white/[0.08] bg-white/[0.05] px-1.5 py-1 backdrop-blur-md">
-                    <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">
-                      {partial}
-                      <span
-                        aria-hidden
-                        className="ml-0.5 inline-block h-[13px] w-[7px] translate-y-[2px] rounded-[2px] bg-brand motion-safe:animate-pulse"
-                      />
-                    </p>
-                  </div>
-                ) : (
-                  /* Pre-first-token: the visible half of agentic behaviour —
-                     the trace of context Forge AI actually gathers locally,
-                     narrated Claude Code-style while it works. */
-                  <AgentTrace weak={weak} stats={stats} reduce={reduce} />
-                )
-              ) : null}
+                  {busy ? (
+                    partial ? (
+                      <>
+                        <div className="mr-2 flex items-start gap-1.5">
+                          <span className="mt-0.5 grid h-[24px] w-[24px] shrink-0 place-items-center">
+                            <ForgeAvatar size={24} />
+                          </span>
+                          <div className="min-w-0 flex-1 rounded-md rounded-tl-none border border-white/[0.08] bg-white/[0.05] px-1.5 py-1 backdrop-blur-md">
+                            <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-ink-2">
+                              {partial}
+                              <span
+                                aria-hidden
+                                className="ml-0.5 inline-block h-[13px] w-[7px] translate-y-[2px] rounded-[2px] bg-brand motion-safe:animate-pulse"
+                              />
+                            </p>
+                          </div>
+                        </div>
+                        <div aria-live="polite" className="sr-only" role="status">
+                          {partial}
+                        </div>
+                      </>
+                    ) : (
+                      /* Pre-first-token: the visible half of agentic behaviour —
+                         the trace of context Forge AI actually gathers locally,
+                         narrated Claude Code-style while it works. */
+                      <AgentTrace weak={weak} stats={stats} reduce={reduce} />
+                    )
+                  ) : null}
 
-              {canAct ? (
+                  {canAct ? (
                 <motion.div
                   initial={reduce ? false : { opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -370,8 +403,10 @@ export default function ChatFab() {
                     </button>
                   </span>
                 </motion.div>
-              ) : null}
-              <div ref={endRef} />
+) : null}
+                <div ref={endRef} />
+              </>
+            ) : null}
             </div>
 
             <form
@@ -384,8 +419,8 @@ export default function ChatFab() {
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                disabled={!ready}
-                placeholder={ready ? 'Task Forge AI…' : 'AI is not configured'}
+                disabled={!ready || busy}
+                placeholder={ready ? (busy ? 'Forge AI is thinking…' : 'Task Forge AI…') : 'AI is not configured'}
                 aria-label="Ask Forge AI"
                 className="h-[34px] min-w-0 flex-1 rounded-md bg-subtle/60 px-1.5 text-sm outline-none placeholder:text-ink-3 focus:bg-subtle focus:ring-1 focus:ring-brand/30 disabled:opacity-50"
               />
@@ -444,12 +479,8 @@ export default function ChatFab() {
                 aria-hidden
                 className="absolute inset-x-2 -bottom-1 h-4 rounded-full bg-brand/40 blur-lg"
               />
-              <motion.img
-                src="/brand/forge-ai.gif"
-                width={66}
-                height={66}
-                alt=""
-                draggable={false}
+              <ForgeAvatar
+                size={66}
                 className="relative block"
                 animate={reduce ? undefined : { y: [0, -5, 0] }}
                 transition={reduce ? undefined : { duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
@@ -492,93 +523,43 @@ function AgentStatus({ busy, partial, thinking, stats, weak }) {
 }
 
 /**
- * The step trace shown between "sent" and "first token".
+ * Simple loading indicator shown between "sent" and "first token".
  *
- * These steps are not theatre: each names context the system prompt has
- * genuinely been built from, rendered in the order a run of tools would
- * report them. Steps advance on a timer while the network does its work;
- * the whole block yields to streamed text the moment the first token lands.
+ * Since the AI provider doesn't expose granular progress events, we show a
+ * single shimmering verb rather than simulating step completion. The verb
+ * rotates through a small set while the request is in flight.
  */
 const LOADER_VERBS = ['Thinking', 'Reading your runs', 'Forging', 'Checking patterns', 'Polishing'];
 
-function AgentTrace({ weak, stats, reduce }) {
-  const steps = [
-    { label: 'Reading session history', detail: stats.sessionCount ? `${stats.sessionCount} runs` : 'no runs yet' },
-    { label: 'Checking weak keys', detail: weak.length ? weak.slice(0, 3).join(' ') : 'none recorded' },
-    { label: 'Streak check', detail: `${stats.streak}-day · Lv ${stats.level.level}` },
-    { label: 'Drafting plan' },
-  ];
-  const [step, setStep] = useState(0);
+function AgentTrace({ reduce }) {
   const [verb, setVerb] = useState(0);
 
   useEffect(() => {
-    if (reduce) {
-      setStep(steps.length - 1);
-      return undefined;
-    }
-    setStep(0);
-    const stepTimer = setInterval(() => {
-      setStep((s) => Math.min(s + 1, steps.length - 1));
-    }, 650);
+    if (reduce) return undefined;
     const verbTimer = setInterval(() => {
       setVerb((v) => (v + 1) % LOADER_VERBS.length);
     }, 950);
-    return () => {
-      clearInterval(stepTimer);
-      clearInterval(verbTimer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => clearInterval(verbTimer);
   }, [reduce]);
 
   return (
-    <div className="mr-2 rounded-md rounded-bl-[3px] border border-white/[0.08] bg-white/[0.04] px-1.5 py-1.5 backdrop-blur-md" aria-label="Gathering context">
-      {/* Claude Code-style status line: spinning spark + shimmering gerund. */}
-      <p className="mb-1 flex items-center gap-1 text-2xs font-bold">
-        <motion.span
-          aria-hidden
-          className="inline-flex text-brand"
-          animate={reduce ? undefined : { rotate: 360 }}
-          transition={reduce ? undefined : { duration: 2.2, repeat: Infinity, ease: 'linear' }}
-        >
-          <Sparkles size={11} strokeWidth={2.4} />
-        </motion.span>
-        <span className="forge-shimmer">{LOADER_VERBS[verb]}…</span>
-      </p>
-      <ul className="space-y-0.5">
-        {steps.map((s, i) => {
-          const active = i === step && i < steps.length - 1;
-          const settled = i < step;
-          return (
-            <li key={s.label} className={cx('flex items-center gap-1 text-2xs', settled ? 'text-ink-3' : active ? 'text-ink' : 'text-ink-3/60')}>
-              <span
-                className={cx(
-                  'grid h-[13px] w-[13px] shrink-0 place-items-center rounded-[4px]',
-                  settled ? 'bg-brand/15 text-brand' : active ? 'border border-brand/50 text-brand' : 'border border-line-strong text-ink-3/50',
-                )}
-                aria-hidden
-              >
-                {settled ? (
-                  <Check size={8} strokeWidth={3.2} />
-                ) : active ? (
-                  <motion.span
-                    className="h-[5px] w-[5px] rounded-full bg-brand"
-                    animate={reduce ? undefined : { opacity: [1, 0.25, 1] }}
-                    transition={reduce ? undefined : { duration: 0.7, repeat: Infinity }}
-                  />
-                ) : (
-                  <span className="h-[4px] w-[4px] rounded-full bg-current" />
-                )}
-              </span>
-              {active ? (
-                <span className="forge-shimmer font-semibold">{s.label}</span>
-              ) : (
-                <span className={cx('font-semibold', settled && 'line-through decoration-ink-3/40')}>{s.label}</span>
-              )}
-              {s.detail ? <span className="truncate font-mono text-[9px] opacity-70">{s.detail}</span> : null}
-            </li>
-          );
-        })}
-      </ul>
+    <div className="mr-2 flex items-start gap-1.5">
+      <span className="mt-0.5 grid h-[24px] w-[24px] shrink-0 place-items-center">
+        <ForgeAvatar size={24} />
+      </span>
+      <div className="min-w-0 flex-1 rounded-md rounded-tl-none border border-white/[0.08] bg-white/[0.04] px-1.5 py-1.5 backdrop-blur-md" aria-label="Gathering context">
+        <p className="flex items-center gap-1 text-2xs font-bold">
+          <motion.span
+            aria-hidden
+            className="inline-flex text-brand"
+            animate={reduce ? undefined : { rotate: 360 }}
+            transition={reduce ? undefined : { duration: 2.2, repeat: Infinity, ease: 'linear' }}
+          >
+            <Sparkles size={11} strokeWidth={2.4} />
+          </motion.span>
+          <span className="forge-shimmer">{LOADER_VERBS[verb]}…</span>
+        </p>
+      </div>
     </div>
   );
 }

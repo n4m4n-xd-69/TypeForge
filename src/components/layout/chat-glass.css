@@ -50,6 +50,21 @@
     inset 0 0 0 1px rgb(255 122 47 / 0.08);        /* hairline brand containment */
 }
 
+/* Light mode override — lighter surface with appropriate rim/edge treatment. */
+[data-theme='light'] .forge-panel::before {
+  background: linear-gradient(
+    168deg,
+    rgb(245 245 244 / 0.55) 0%,
+    rgb(255 255 255 / 0.72) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(0 0 0 / 0.06),               /* top specular line */
+    inset 0 -1px 0 rgb(0 0 0 / 0.04),              /* bottom catch */
+    inset 1px 0 0 rgb(0 0 0 / 0.03),               /* left whisper */
+    inset -1px 0 0 rgb(194 65 12 / 0.12),          /* brand-tinted right edge */
+    inset 0 0 0 1px rgb(194 65 12 / 0.10);         /* hairline brand containment */
+}
+
 /* ── Working-state shimmer ─────────────────────────────────────────────────
    Claude Code-style loader typography: the active verb shimmers by sliding a
    brand-orange band through clipped text while the agent works. Text stays
@@ -96,6 +111,9 @@
     -webkit-backdrop-filter: none;
     background: rgb(12 13 17 / 0.97);
   }
+  [data-theme='light'] .forge-panel::before {
+    background: rgb(255 255 255 / 0.97);
+  }
 }
 
 /* Engines without backdrop-filter at all: keep the panel readable with a
@@ -103,5 +121,8 @@
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .forge-panel::before {
     background: rgb(13 14 18 / 0.94);
+  }
+  [data-theme='light'] .forge-panel::before {
+    background: rgb(255 255 255 / 0.94);
   }
 }
