@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Swords, Users, Shield, Copy, Check, ArrowLeft, Loader2, Play } from 'lucide-react';
+import { Copy, Check, ArrowLeft, Loader2, Play } from 'lucide-react';
 import { useShadowRoom } from '../../lib/shadow/useShadowRoom.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useStore } from '../../lib/store.jsx';

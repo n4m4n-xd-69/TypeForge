@@ -273,13 +273,6 @@
   .no-scrollbar {
     scrollbar-width: none;
   }
-
-  /* Wide content scrolls inside its own container so the page body never
-     scrolls sideways. */
-  .scroll-x {
-    @apply overflow-x-auto;
-    scrollbar-width: thin;
-  }
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

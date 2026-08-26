@@ -87,14 +87,8 @@ export function keyLabel(ch) {
   return ch;
 }
 
-/** Physical rows, used by the keyboard visualiser and the finger map. */
-export const KEY_ROWS = [
-  ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"],
-  ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
-];
-
+/** The eight keys your resting fingers claim. Used by the keyboard visualiser
+ *  and the finger map. */
 export const HOME_KEYS = new Set(['a', 's', 'd', 'f', 'j', 'k', 'l', ';']);
 
 const SHIFTED = {
