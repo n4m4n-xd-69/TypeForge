@@ -13,8 +13,11 @@ const CodeTyping = lazy(() => import('./modules/code/CodeTyping.jsx'));
 const Dashboard = lazy(() => import('./modules/dashboard/Dashboard.jsx'));
 const Achievements = lazy(() => import('./modules/achievements/Achievements.jsx'));
 const AIChat = lazy(() => import('./modules/chat/AIChat.jsx'));
+const Arena = lazy(() => import('./modules/arena/Arena.jsx'));
 const Battle = lazy(() => import('./modules/battle/Battle.jsx'));
 const BattleRoom = lazy(() => import('./modules/battle/BattleRoom.jsx'));
+const ShadowHub = lazy(() => import('./modules/shadow/ShadowHub.jsx'));
+const ShadowRoom = lazy(() => import('./modules/shadow/ShadowRoom.jsx'));
 const Profile = lazy(() => import('./modules/profile/Profile.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
 const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
@@ -50,6 +53,14 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/achievements" element={<Achievements />} />
           <Route path="/chat" element={<AIChat />} />
+          {/* The rail's Compete entry lands here, not on a mode. Both
+              competitive modes are real destinations of their own, so the gate
+              is a fork rather than a hub: /battle and /shadow stay directly
+              addressable, which is what keeps a shared room PIN, Home's action
+              cards and ResultsView's "Play again" from having to detour through
+              a choice the user already made.
+              See docs/superpowers/plans/2026-08-25-arena-gate-nav.md. */}
+          <Route path="/arena" element={<Arena />} />
           {/* One route for every phase of a room, per PRD-BATTLEFIELD §16.1: the
               phase is a function of the room's status, which is durable, so a
               refresh mid-match reconstructs the right screen instead of relying
@@ -57,6 +68,8 @@ export default function App() {
               create-or-join hub. */}
           <Route path="/battle" element={<Battle />} />
           <Route path="/battle/:pin" element={<BattleRoom />} />
+          <Route path="/shadow" element={<ShadowHub />} />
+          <Route path="/shadow/:pin" element={<ShadowRoom />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
           {/* Reached from the account menu rather than the nav: the mobile

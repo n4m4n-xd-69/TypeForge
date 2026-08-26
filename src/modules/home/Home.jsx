@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight, Award, Braces, CalendarCheck, Flame, Keyboard, Sparkles, Target, Trophy, Zap,
+  ArrowRight, Award, Braces, CalendarCheck, Flame, Keyboard, Sparkles, Swords, Target, Trophy, Zap,
 } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Counter from '../../components/ui/Counter.jsx';
@@ -50,8 +50,8 @@ export default function Home() {
         onCode={() => navigate('/code')}
       />
 
-      {/* Two primary actions */}
-      <section className="grid gap-2 md:grid-cols-2">
+      {/* Primary actions */}
+      <section className="grid gap-2 md:grid-cols-3">
         <ActionCard
           to="/practice"
           eyebrow="Prose"
@@ -69,6 +69,15 @@ export default function Home() {
           icon={Braces}
           accent="from-[#6bb8d6]/35"
           stat={`${LANGUAGES.length} languages`}
+        />
+        <ActionCard
+          to="/shadow"
+          eyebrow="Combat 1v1"
+          title="Shadow Battle"
+          blurb="Real-time martial arts word combat with 60fps stickman duels, parries, and Overdrive finishers."
+          icon={Swords}
+          accent="from-[#f43f5e]/35"
+          stat="PvP & AI Bots"
         />
       </section>
 
@@ -210,19 +219,73 @@ export default function Home() {
 
 /* ── Hero ──────────────────────────────────────────────────────────────── */
 
+/**
+ * The greeting card plays the same footage the public landing does, as a
+ * self-contained cinematic plate: the video and its readability scrims sit
+ * under the content, and every colour inside the card is pinned to
+ * light-on-dark rather than theme tokens — a film still is dark on a white
+ * gallery wall too, and half-theme text over footage would fail contrast in
+ * whichever theme the scrim wasn't tuned for.
+ */
+const HERO_VIDEO_POSTER = '/vid/typeforge-poster.jpg';
+const HERO_VIDEO_SRC = '/vid/typeforge.mp4';
+
 function Hero({ name, stats, onStart, onCode }) {
   const fresh = stats.isNew;
+  const videoRef = useRef(null);
+
+  /**
+   * Autoplay is kept explicitly (some embedded webviews refuse it once), and
+   * withheld entirely for reduced-motion users: ambient footage is motion,
+   * so they get the poster frame — a still of the same keyboard — instead.
+   */
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    const attempt = () => video.play().catch(() => {});
+    attempt();
+    document.addEventListener('visibilitychange', attempt);
+    return () => document.removeEventListener('visibilitychange', attempt);
+  }, []);
 
   return (
     /* Grid, not an absolutely-positioned overlay. The level panel used to be
        centred with `top-1/2` inside an `overflow-hidden` card, so whenever it
        was taller than the hero its lower half was simply cut off. As a grid
        column it defines its own row height and can never clip. */
-    <section className="relative overflow-hidden rounded-xl border border-line bg-surface px-2.5 py-4 sm:px-5 sm:py-6">
-      <div className="relative grid items-center gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
+    <section className="relative isolate overflow-hidden rounded-xl border border-line bg-[#07080b] px-2.5 py-4 sm:px-5 sm:py-6">
+      <video
+        ref={videoRef}
+        className="absolute inset-0 h-full w-full origin-[62%_46%] scale-[1.06] object-cover object-[62%_46%]"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        poster={HERO_VIDEO_POSTER}
+        disablePictureInPicture
+        aria-hidden="true"
+        tabIndex={-1}
+      >
+        <source src={HERO_VIDEO_SRC} type="video/mp4" />
+      </video>
+
+      {/* Readability scrims — left-weighted where the copy sits, vignette at
+          the edges. Decorative, non-interactive, under the content plane. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[linear-gradient(92deg,rgb(7_8_11/0.92)_0%,rgb(7_8_11/0.72)_38%,rgb(7_8_11/0.44)_68%,rgb(7_8_11/0.3)_100%)]"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[radial-gradient(120%_105%_at_68%_42%,transparent_52%,rgb(7_8_11/0.55)_100%)]"
+      />
+
+      <div className="relative z-10 grid items-center gap-3 xl:grid-cols-[minmax(0,1fr)_260px]">
       <div className="min-w-0 max-w-[720px]">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <span className="inline-flex items-center gap-0.5 rounded-full border border-line bg-surface/80 px-1 py-px text-2xs font-bold uppercase tracking-[0.1em] text-brand">
+          <span className="inline-flex items-center gap-0.5 rounded-full border border-white/25 bg-black/35 px-1 py-px text-2xs font-bold uppercase tracking-[0.1em] text-brand backdrop-blur-sm">
             <Sparkles size={11} aria-hidden />
             {fresh ? 'Welcome to TypeForge' : longDate()}
           </span>
@@ -232,11 +295,11 @@ function Hero({ name, stats, onStart, onCode }) {
               someone who skipped onboarding — neither needs the pitch, and
               repeating it here would make the dashboard read like an advert
               for the thing they are already inside. */}
-          <h1 className="mt-1.5 font-display text-4xl font-bold leading-[1.05] tracking-[-0.035em] sm:text-5xl">
+          <h1 className="mt-1.5 font-display text-4xl font-bold leading-[1.05] tracking-[-0.035em] text-white sm:text-5xl">
             {fresh ? 'Set your baseline.' : `${greeting()}${name ? `, ${name}` : ''}.`}
           </h1>
 
-          <p className="mt-1.5 max-w-[54ch] text-base leading-relaxed text-ink-2">
+          <p className="mt-1.5 max-w-[54ch] text-base leading-relaxed text-white/70">
             {fresh
               ? 'One sixty-second run is enough to draw the first chart and tell you which keys are costing you.'
               : 'Keep your eyes on the screen. Your fingers already know the way — the numbers below are just proof.'}
@@ -250,7 +313,7 @@ function Hero({ name, stats, onStart, onCode }) {
               Code typing
             </Button>
             {!fresh ? (
-              <span className="ml-1 flex items-center gap-0.5 text-sm font-bold text-ink-3">
+              <span className="ml-1 flex items-center gap-0.5 text-sm font-bold text-white/70">
                 <Flame size={15} className="text-brand" aria-hidden />
                 {stats.streak}-day streak
               </span>
@@ -258,7 +321,7 @@ function Hero({ name, stats, onStart, onCode }) {
           </div>
 
           {fresh ? (
-            <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-3">
+            <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm text-white/60">
               {['Live WPM, accuracy and consistency', 'Syntax-aware code drills', 'XP, levels and daily missions', 'Works offline'].map(
                 (f) => (
                   <li key={f} className="flex items-center gap-0.5">
@@ -272,28 +335,31 @@ function Hero({ name, stats, onStart, onCode }) {
         </motion.div>
       </div>
 
-        {/* Level panel — a real grid column, hidden below xl where it would crowd. */}
+        {/* Level panel — a real grid column, hidden below xl where it would crowd.
+            Dark glass over the footage rather than .glass-raised, which resolved
+            to nothing: the class was never defined in index.css, so this panel
+            has been rendering on its border alone. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="glass-raised hidden self-center rounded-lg border border-line p-2 xl:block"
+          className="hidden self-center rounded-lg border border-white/15 bg-black/45 p-2 backdrop-blur-md xl:block"
         >
           <div className="flex items-baseline justify-between gap-1">
-            <p className="eyebrow">Level {stats.level.level}</p>
-            <p className="font-mono text-2xs text-ink-3 tnum">{stats.xp.toLocaleString()} XP</p>
+            <p className="font-mono text-2xs font-medium uppercase tracking-[0.1em] text-white/50">Level {stats.level.level}</p>
+            <p className="font-mono text-2xs text-white/60 tnum">{stats.xp.toLocaleString()} XP</p>
           </div>
-          <p className="mt-0.5 text-xl font-bold leading-tight">{levelTitle(stats.level.level)}</p>
-          <ProgressBar value={stats.level.progress} className="mt-1.5" label="Level progress" />
-          <p className="mt-0.5 text-2xs text-ink-3">{stats.level.toNext} XP to next level</p>
-          <div className="mt-2 grid grid-cols-2 gap-1 border-t border-line pt-1.5">
+          <p className="mt-0.5 text-xl font-bold leading-tight text-white">{levelTitle(stats.level.level)}</p>
+          <ProgressBar value={stats.level.progress} className="mt-1.5 !bg-white/20" label="Level progress" />
+          <p className="mt-0.5 text-2xs text-white/50">{stats.level.toNext} XP to next level</p>
+          <div className="mt-2 grid grid-cols-2 gap-1 border-t border-white/15 pt-1.5">
             <div>
-              <p className="font-mono text-lg font-medium leading-none tnum">{Math.round(stats.wpm)}</p>
-              <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">wpm</p>
+              <p className="font-mono text-lg font-medium leading-none text-white tnum">{Math.round(stats.wpm)}</p>
+              <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-white/50">wpm</p>
             </div>
             <div>
-              <p className="font-mono text-lg font-medium leading-none tnum">{Math.round(stats.accuracy)}%</p>
-              <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">accuracy</p>
+              <p className="font-mono text-lg font-medium leading-none text-white tnum">{Math.round(stats.accuracy)}%</p>
+              <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.08em] text-white/50">accuracy</p>
             </div>
           </div>
         </motion.div>

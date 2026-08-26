@@ -1,0 +1,9 @@
+{
+  "name": "85-clean-slash-guarded",
+  "description": "PRD §8.5 row 2 — same, opponent guarding -> 6.3. The guard event resolves at t=800 so its 1200ms window (800..2000) still covers the Slash's at-par resolution at t=1600 — Guard's own duration is short, but the window has to be timed to still be open when the Slash lands, not centered on when Guard itself completes.",
+  "events": [
+    { "seq": 0, "player": 1, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 0, "tEnd": 800, "keystrokes": 4, "errors": 0, "ikiStats": [80, 5], "moveId": "guard", "chars": 4 },
+    { "seq": 1, "player": 0, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1600, "keystrokes": 7, "errors": 0, "ikiStats": [120, 15], "moveId": "slash", "chars": 7 }
+  ],
+  "expected": { "hp": [1000, 937] }
+}

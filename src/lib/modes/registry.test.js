@@ -1,0 +1,77 @@
+import { describe, expect, it } from 'vitest';
+import { getMode, MODE_REGISTRY, kindFactorFor, REQUIRED_MODE_FIELDS } from './registry.js';
+
+describe('MODE_REGISTRY', () => {
+  it('has exactly the 8 existing modes', () => {
+    expect(MODE_REGISTRY.map((m) => m.id).sort()).toEqual(
+      ['battle', 'code', 'custom', 'drill', 'quote', 'time', 'words', 'zen'].sort(),
+    );
+  });
+
+  it('every entry has every MR-2-required field', () => {
+    for (const mode of MODE_REGISTRY) {
+      for (const field of REQUIRED_MODE_FIELDS) {
+        expect(mode, `${mode.id} is missing ${field}`).toHaveProperty(field);
+      }
+    }
+  });
+
+  it('every id is unique', () => {
+    const ids = MODE_REGISTRY.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('routes match the existing app routes', () => {
+    expect(getMode('time').route).toBe('/practice?mode=time');
+    expect(getMode('words').route).toBe('/practice?mode=words');
+    expect(getMode('quote').route).toBe('/practice?mode=quote');
+    expect(getMode('drill').route).toBe('/practice?mode=drill');
+    expect(getMode('custom').route).toBe('/practice?mode=custom');
+    expect(getMode('zen').route).toBe('/practice?mode=zen');
+    expect(getMode('code').route).toBe('/code');
+    expect(getMode('battle').route).toBe('/battle');
+  });
+
+  it('zen is the only unscored mode, matching current behaviour', () => {
+    expect(MODE_REGISTRY.filter((m) => m.scored === false).map((m) => m.id)).toEqual(['zen']);
+  });
+
+  it('battle is the only multiplayer mode', () => {
+    expect(MODE_REGISTRY.filter((m) => m.multiplayer).map((m) => m.id)).toEqual(['battle']);
+  });
+
+  it('getMode returns undefined for an unknown id', () => {
+    expect(getMode('nonexistent')).toBeUndefined();
+  });
+
+  it('only time, words, zen, code, and battle have non-null difficulties', () => {
+    const withDifficulties = MODE_REGISTRY.filter((m) => m.difficulties !== null).map((m) => m.id).sort();
+    expect(withDifficulties).toEqual(['battle', 'code', 'time', 'words', 'zen']);
+  });
+
+  it('kindFactor values match the spec', () => {
+    expect(getMode('time').xpRule.kindFactor).toBe(1);
+    expect(getMode('words').xpRule.kindFactor).toBe(1);
+    expect(getMode('quote').xpRule.kindFactor).toBe(1);
+    expect(getMode('drill').xpRule.kindFactor).toBe(1);
+    expect(getMode('custom').xpRule.kindFactor).toBe(1);
+    expect(getMode('zen').xpRule.kindFactor).toBe(1);
+    expect(getMode('code').xpRule.kindFactor).toBe(1.25);
+    expect(getMode('battle').xpRule.kindFactor).toBe(1.15);
+  });
+});
+
+describe('kindFactorFor', () => {
+  it('returns the code kind factor', () => {
+    expect(kindFactorFor('code')).toBe(1.25);
+  });
+  it('returns the battle kind factor', () => {
+    expect(kindFactorFor('battle')).toBe(1.15);
+  });
+  it('returns the text kind factor', () => {
+    expect(kindFactorFor('text')).toBe(1);
+  });
+  it('falls back to 1 for an unknown kind', () => {
+    expect(kindFactorFor('made-up-kind')).toBe(1);
+  });
+});

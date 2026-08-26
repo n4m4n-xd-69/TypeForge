@@ -1,0 +1,7 @@
+{
+  "name": "time-cap-tied",
+  "description": "§12.3 — 90s cap reached, HP identical -> round draw",
+  "options": { "timeUp": true, "initialState": { "hp": [550, 550] } },
+  "events": [],
+  "expected": { "outcome": { "type": "time-draw", "winner": null } }
+}

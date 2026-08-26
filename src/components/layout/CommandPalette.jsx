@@ -2,13 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Braces, Home, Keyboard, LineChart, MessageSquare, Moon, Search, Sun,
-  Swords, Trophy, Zap,
+  Braces, Home, LineChart, MessageSquare, Moon, Search, Sun, Swords, Trophy,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { cx } from '../../lib/format.js';
 import { useTheme } from '../../lib/theme.jsx';
 import { LANGUAGES } from '../../lib/content.js';
+import { MODE_REGISTRY } from '../../lib/modes/registry.js';
+import { deriveModePaletteEntries } from '../../lib/modes/derive.js';
+
+const MODE_PALETTE_ENTRIES = deriveModePaletteEntries(MODE_REGISTRY);
 
 /** ⌘K launcher. Everything reachable in two keystrokes. */
 export default function CommandPalette({ open, onClose }) {
@@ -21,9 +24,15 @@ export default function CommandPalette({ open, onClose }) {
   const commands = useMemo(
     () => [
       { id: 'home', label: 'Go to Home', icon: Home, group: 'Navigate', run: () => navigate('/') },
-      { id: 'practice', label: 'Start typing practice', icon: Keyboard, group: 'Navigate', run: () => navigate('/practice') },
-      { id: 'code', label: 'Start code typing', icon: Braces, group: 'Navigate', run: () => navigate('/code') },
-      { id: 'battle', label: 'Open Battlefield — multiplayer', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
+      ...MODE_PALETTE_ENTRIES.filter((e) => e.group === 'Navigate').map((e) => ({
+        id: e.id, label: e.label, icon: e.icon, group: 'Navigate', run: () => navigate(e.route),
+      })),
+      { id: 'shadow', label: 'Shadow Battle — 1v1 Combat', icon: Swords, group: 'Navigate', run: () => navigate('/shadow') },
+      // The registry-derived entry above now opens the /arena gate, so both
+      // sides of that fork also get a direct command. The gate is a discovery
+      // surface, not a toll booth — anyone who already knows which mode they
+      // want should never have to pass through it.
+      { id: 'battlefield', label: 'Battlefield — 8-player race', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
       // Chat gave up its nav slot to Battlefield. The floating coach reaches the
       // same model from every route, but the full page owns the thread history
       // in `chat_messages`, so it needs a way in that is not the FAB.
@@ -31,8 +40,9 @@ export default function CommandPalette({ open, onClose }) {
       { id: 'dashboard', label: 'Open Progress dashboard', icon: LineChart, group: 'Navigate', run: () => navigate('/dashboard') },
       { id: 'rewards', label: 'Open Rewards', icon: Trophy, group: 'Navigate', run: () => navigate('/achievements') },
       { id: 'theme', label: `Switch to ${isDark ? 'light' : 'dark'} theme`, icon: isDark ? Sun : Moon, group: 'Settings', run: toggle },
-      { id: 'zen', label: 'Zen mode — no timer, no stats', icon: Zap, group: 'Practice', run: () => navigate('/practice?mode=zen') },
-      { id: 'quote', label: 'Practice with a quote', icon: Keyboard, group: 'Practice', run: () => navigate('/practice?mode=quote') },
+      ...MODE_PALETTE_ENTRIES.filter((e) => e.group === 'Practice').map((e) => ({
+        id: e.id, label: e.label, icon: e.icon, group: 'Practice', run: () => navigate(e.route),
+      })),
       ...LANGUAGES.map((l) => ({
         id: `lang-${l.id}`,
         label: `Code typing — ${l.name}`,

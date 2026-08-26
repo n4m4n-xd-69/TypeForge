@@ -1,0 +1,9 @@
+{
+  "name": "85-overdrive-neutral",
+  "description": "PRD §8.5 row 6 — Overdrive, clean, at par, chain 10, neutral -> 56.3",
+  "options": { "initialState": { "focus": [100, 0], "chain": [10, 0] } },
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 3800, "keystrokes": 18, "errors": 0, "ikiStats": [200, 15], "moveId": "overdrive", "chars": 18 }
+  ],
+  "expected": { "hp": [1000, 437], "focus": [0, 0], "chain": [0, 0] }
+}

@@ -11,7 +11,8 @@
 -- aggregate rows the caller cannot select individually — which is the whole
 -- point of a view like this.
 
-create or replace view public.leaderboard as
+drop view if exists public.leaderboard;
+create view public.leaderboard as
   select
     p.display_name,
     p.xp,

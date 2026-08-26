@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Clock, Eye, EyeOff, Hash, Keyboard as KeyboardIcon, KeyboardOff, Leaf, Maximize2,
-  Minimize2, PenLine, Quote, RotateCcw, Settings2, SkipForward, Sparkles, Volume2, VolumeX,
+  Eye, EyeOff, Keyboard as KeyboardIcon, KeyboardOff, Maximize2,
+  Minimize2, PenLine, RotateCcw, Settings2, SkipForward, Sparkles, Volume2, VolumeX,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
@@ -19,27 +19,18 @@ import useTypingEngine from '../../components/typing/useTypingEngine.js';
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import { HAND_GUIDE_LIMIT, useStore, useStats } from '../../lib/store.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
-import { DRILLS, randomQuote, randomWords } from '../../lib/content.js';
+import { DIFFICULTIES, DRILLS, randomQuote, randomWords } from '../../lib/content.js';
 import { aiConfigured, generatePassage } from '../../lib/ai.js';
 import { cx, mmss, relativeTime } from '../../lib/format.js';
+import { getMode, MODE_REGISTRY } from '../../lib/modes/registry.js';
+import { deriveModeSegmentedOptions } from '../../lib/modes/derive.js';
+import { buildSessionPayload } from '../../lib/modes/sessionContract.js';
 
-const MODES = [
-  { value: 'time', label: 'Time', icon: Clock },
-  { value: 'words', label: 'Words', icon: Hash },
-  { value: 'quote', label: 'Quote', icon: Quote },
-  { value: 'drill', label: 'Drill', icon: KeyboardIcon },
-  { value: 'custom', label: 'Custom', icon: PenLine },
-  { value: 'zen', label: 'Zen', icon: Leaf },
-];
+const MODE_OPTIONS = deriveModeSegmentedOptions(MODE_REGISTRY, 'practice');
 
 const DURATIONS = [15, 30, 60, 120];
 const WORD_COUNTS = [10, 25, 50, 100];
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'hard', label: 'Hard' },
-  { value: 'expert', label: 'Expert' },
-];
+const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d.id, label: d.name }));
 
 export default function Practice() {
   const [params, setParams] = useSearchParams();
@@ -160,21 +151,8 @@ export default function Practice() {
   const onFinish = useCallback(
     (run) => {
       setResult(run);
-      if (mode === 'zen') return; // Zen deliberately does not score you
-      recordSession({
-        ts: new Date().toISOString(),
-        kind: 'text',
-        mode,
-        difficulty,
-        lang: null,
-        wpm: run.wpm,
-        accuracy: run.accuracy,
-        consistency: run.consistency,
-        durationSec: run.durationSec,
-        chars: run.chars,
-        errors: run.errors,
-        keyStats: run.keyStats,
-      });
+      if (!getMode(mode)?.scored) return; // Zen (and any future unscored mode) opts out here
+      recordSession(buildSessionPayload({ modeId: mode, difficulty, run }));
     },
     [mode, difficulty, recordSession],
   );
@@ -460,7 +438,7 @@ export default function Practice() {
         />
 
         <SessionSummary
-          open={Boolean(result) && mode !== 'zen'}
+          open={Boolean(result) && !!getMode(mode)?.scored}
           result={result ? { ...result, isPB: state._lastAward?.isPB } : null}
           award={state._lastAward}
           freshAchievements={state._fresh ?? []}
@@ -581,7 +559,7 @@ function Controls({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <Segmented options={MODES} value={mode} onChange={setMode} size="sm" label="Practice mode" />
+      <Segmented options={MODE_OPTIONS} value={mode} onChange={setMode} size="sm" label="Practice mode" />
 
       <span className="mx-0.5 hidden h-2 w-px bg-line sm:block" aria-hidden />
 
@@ -617,8 +595,8 @@ function Controls({
           Edit text
         </Button>
       ) : null}
-      {['time', 'words', 'zen'].includes(mode) ? (
-        <Segmented size="sm" label="Difficulty" options={DIFFICULTIES} value={difficulty} onChange={setDifficulty} />
+      {getMode(mode)?.difficulties ? (
+        <Segmented size="sm" label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
       ) : null}
 
       <div className="ml-auto flex items-center gap-0.5">

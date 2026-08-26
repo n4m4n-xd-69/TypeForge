@@ -1,0 +1,7 @@
+{
+  "name": "time-cap-differs",
+  "description": "§12.3 — 90s cap reached, HP differs -> higher HP wins the round",
+  "options": { "timeUp": true, "initialState": { "hp": [700, 400] } },
+  "events": [],
+  "expected": { "outcome": { "type": "time", "winner": 0 } }
+}

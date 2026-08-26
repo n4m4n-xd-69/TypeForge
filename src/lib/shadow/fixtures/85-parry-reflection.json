@@ -1,0 +1,9 @@
+{
+  "name": "85-parry-reflection",
+  "description": "PRD §8.5 row 7 — any strike into a successful Parry: 0 dealt, ~7.5 taken",
+  "events": [
+    { "seq": 0, "player": 0, "round": 1, "cardIndex": 0, "lane": "guard", "outcome": "complete", "tStart": 100, "tEnd": 500, "keystrokes": 5, "errors": 0, "ikiStats": [90, 10], "moveId": "parry", "chars": 5 },
+    { "seq": 1, "player": 1, "round": 1, "cardIndex": 1, "lane": "strike", "outcome": "complete", "tStart": 0, "tEnd": 1600, "keystrokes": 7, "errors": 0, "ikiStats": [120, 15], "moveId": "slash", "chars": 7 }
+  ],
+  "expected": { "hp": [1000, 925], "focus": [10, 6] }
+}

@@ -154,6 +154,18 @@ export default {
           from: { transform: 'translateX(-110%)' },
           to: { transform: 'translateX(210%)' },
         },
+        /* Wrong-input feedback for the combat surfaces.
+           `animate-shake` was referenced by CardLane for a whiff long before
+           this existed, so the shake silently never happened. Small amplitude
+           and a hard stop: this has to read as "that did not land" in
+           peripheral vision without moving text far enough to be unreadable. */
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '20%': { transform: 'translateX(-5px)' },
+          '40%': { transform: 'translateX(4px)' },
+          '60%': { transform: 'translateX(-3px)' },
+          '80%': { transform: 'translateX(2px)' },
+        },
       },
       animation: {
         'fade-up': 'fade-up 280ms cubic-bezier(0.2,0,0,1) both',
@@ -161,6 +173,7 @@ export default {
         blink: 'blink 1s steps(2, start) infinite',
         'pop-in': 'pop-in 180ms cubic-bezier(0.34,1.56,0.64,1) both',
         'forge-sweep': 'forge-sweep 420ms cubic-bezier(0.2,0,0,1) both',
+        shake: 'shake 220ms cubic-bezier(0.2,0,0,1) both',
       },
     },
   },

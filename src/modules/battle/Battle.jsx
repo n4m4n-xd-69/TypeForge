@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2, LogIn, Swords, Timer, Trophy, Users } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Loader2, LogIn, Swords, Timer, Trophy, Users } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
 import Segmented from '../../components/ui/Segmented.jsx';
 import { Card, Chip } from '../../components/ui/Primitives.jsx';
@@ -13,13 +13,9 @@ import { signInAnonymously } from '../../lib/supabase.js';
 import { createBattle, joinBattle } from '../../lib/battle/api.js';
 import { LENGTH_PRESETS, pickBattlePassage, presetById } from '../../lib/battle/passage.js';
 import { cx } from '../../lib/format.js';
+import { DIFFICULTIES } from '../../lib/content.js';
 
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'hard', label: 'Hard' },
-  { value: 'expert', label: 'Expert' },
-];
+const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d.id, label: d.name }));
 
 /**
  * The Battlefield hub: open one, or join one.
@@ -131,7 +127,7 @@ export default function Battle() {
               <p className="-mt-1 text-2xs text-ink-3">{presetById(preset).hint}</p>
 
               <Field label="Difficulty">
-                <Segmented size="sm" label="Difficulty" options={DIFFICULTIES} value={difficulty} onChange={setDifficulty} />
+                <Segmented size="sm" label="Difficulty" options={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} />
               </Field>
 
               <Field label="Players">
@@ -203,7 +199,13 @@ function Shell({ children }) {
   return (
     <div className="space-y-3">
       <header>
-        <p className="eyebrow">Multiplayer</p>
+        {/* The rail's Arena tab does not light up here — /arena is its own
+            route — so the way back is stated instead of implied. Same
+            affordance BattleRoom uses for its own "← Battlefield". */}
+        <Button as={Link} to="/arena" size="sm" variant="ghost" icon={ArrowLeft} className="-ml-1.5">
+          Arena
+        </Button>
+        <p className="eyebrow mt-0.5">Multiplayer</p>
         <h1 className="mt-0.5 flex items-center gap-1 text-3xl font-bold">
           Battlefield
           <Chip tone="brand">Live</Chip>
