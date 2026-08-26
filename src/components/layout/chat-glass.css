@@ -1,0 +1,107 @@
+/* ───────────────────────────────────────────────────────────────────────────
+   Forge AI panel surface.
+
+   Liquid Glass 2.0 per the LiqGlassX recipe, Tier 1 (CSS backdrop-filter) —
+   the workhorse tier, no displacement-map dependency. Five ingredients:
+
+     1. Translucency + blur + saturate + brightness lift   ✓ ::before layer
+     2. Refraction                                          ✗ consciously
+        skipped — Tier 2 edge lensing is Chromium-only and this panel carries
+        dense text; a lens under body text violates the skill's own rule.
+     3. Chromatic aberration                                ✗ follows from (2).
+     4. Specular light                                      ✓ directional top
+        rim + faint bottom catch + side whispers, never a uniform border.
+     5. Motion                                              ✓ handled by
+        framer-motion at the call site (entrance/settle), not here.
+
+   Deliberately squarer than the old card: 14px radius reads "instrument",
+   not "toy". Content sits above the glass on z-index so text never blurs.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.forge-panel {
+  position: relative;
+  border-radius: 14px;
+  /* Deep drop shadow only — the glass layers carry their own inner light. */
+  box-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.65);
+}
+
+/* The optical surface. Separate layer so tint, blur and rim stay tunable
+   independently of the content above them. Blur sits at the "sheet" end of
+   the LiqGlassX scale (24px) because the whole chat area is meant to read as
+   one deep pane of glass over the page. */
+.forge-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  backdrop-filter: blur(24px) saturate(150%) brightness(105%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%) brightness(105%);
+  background: linear-gradient(
+    168deg,
+    rgb(40 42 50 / 0.34) 0%,
+    rgb(13 14 19 / 0.52) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),         /* top specular line */
+    inset 0 -1px 0 rgb(255 255 255 / 0.07),        /* bottom catch */
+    inset 1px 0 0 rgb(255 255 255 / 0.05),         /* left whisper */
+    inset -1px 0 0 rgb(255 122 47 / 0.10),         /* brand-tinted right edge */
+    inset 0 0 0 1px rgb(255 122 47 / 0.08);        /* hairline brand containment */
+}
+
+/* ── Working-state shimmer ─────────────────────────────────────────────────
+   Claude Code-style loader typography: the active verb shimmers by sliding a
+   brand-orange band through clipped text while the agent works. Text stays
+   selectable; under reduced motion it resolves to solid brand colour. */
+.forge-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--ink-2)) 38%,
+    #ff7a2f 50%,
+    rgb(var(--ink-2)) 62%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: forge-shimmer-slide 1.7s linear infinite;
+}
+
+@keyframes forge-shimmer-slide {
+  from { background-position: 200% 0; }
+  to { background-position: -120% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forge-shimmer {
+    animation: none;
+    background: none;
+    color: #ff7a2f;
+    -webkit-text-fill-color: #ff7a2f;
+  }
+}
+
+/* Content plane rides above the glass — crisp text over blurred backdrop. */
+.forge-panel > * {
+  position: relative;
+  z-index: 10;
+}
+
+/* Honour reduced transparency: near-opaque surface, blur off. */
+@media (prefers-reduced-transparency: reduce) {
+  .forge-panel::before {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgb(12 13 17 / 0.97);
+  }
+}
+
+/* Engines without backdrop-filter at all: keep the panel readable with a
+   solid surface rather than letting raw page content bleed through untinted. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .forge-panel::before {
+    background: rgb(13 14 18 / 0.94);
+  }
+}

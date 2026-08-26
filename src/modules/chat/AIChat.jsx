@@ -5,6 +5,7 @@ import {
   RefreshCw, Search, Send, Square, Trash2,
 } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
+import ForgeAvatar from '../../components/brand/ForgeAvatar.jsx';
 import { Chip, Skeleton } from '../../components/ui/Primitives.jsx';
 import Markdown from '../../components/ui/Markdown.jsx';
 import { aiConfigured } from '../../lib/ai.js';
@@ -21,7 +22,7 @@ import {
 } from '../../lib/chatStore.js';
 
 const BASE_SYSTEM =
-  'You are the coach inside TypeForge, a typing and code-typing platform. Answer in a friendly, ' +
+  'You are Forge AI, the agent inside TypeForge, a typing and code-typing platform. Answer in a friendly, ' +
   'direct voice. Prefer short paragraphs and concrete examples. When the question is about code, ' +
   'show a small runnable snippet in a fenced block. Keep answers under 250 words unless asked to ' +
   'go deeper. Use markdown headings only when an answer genuinely has sections. ' +
@@ -267,8 +268,8 @@ export default function AIChat() {
       {/* ── Conversation ────────────────────────────────────────────── */}
       <div className="glass relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-line">
         <header className="flex shrink-0 items-center gap-1 border-b border-line/70 px-2 py-1.5">
-          <span className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-brand-wash text-brand">
-            <MessageSquare size={14} strokeWidth={2.4} aria-hidden />
+          <span className="grid h-[26px] w-[26px] shrink-0 place-items-center">
+            <ForgeAvatar size={24} />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-bold leading-tight">{active?.title ?? 'New chat'}</p>
