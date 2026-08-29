@@ -31,10 +31,25 @@ import {
 
 const DAY = 86_400_000;
 
+/* `all` deliberately excludes removed accounts: a removed account is gone as
+   far as the roster is concerned, and leaving it in the default view makes the
+   list grow forever with rows nobody acts on. `removed` brings them back when
+   an operator needs to audit or restore one. */
 const STATUS_FILTER = [
   { value: 'all', label: 'Any status' },
   { value: 'active', label: 'Active' },
   { value: 'suspended', label: 'Suspended' },
+  { value: 'deleted', label: 'Removed' },
+];
+
+/* The app signs people in anonymously so it works before anyone commits to an
+   account, and each guest is a real auth.users row. Counting those as users
+   reports session churn as growth, so the roster defaults to registered
+   accounts and guests are an explicit choice. */
+const ACCOUNT_FILTER = [
+  { value: 'registered', label: 'Registered' },
+  { value: 'guest', label: 'Guests' },
+  { value: 'all', label: 'Everyone' },
 ];
 
 const ACTIVITY_FILTER = [
@@ -44,10 +59,39 @@ const ACTIVITY_FILTER = [
   { value: 'never', label: 'Never signed in' },
 ];
 
+const BULK = {
+  suspend: {
+    status: 'suspended',
+    verb: 'Suspend',
+    confirm: 'Suspend all',
+    tone: 'danger',
+    requireReason: true,
+    description:
+      'Each account is suspended separately and each gets its own audit entry. Suspended people are shown the reason and can appeal.',
+  },
+  reactivate: {
+    status: 'active',
+    verb: 'Reactivate',
+    confirm: 'Reactivate all',
+    tone: 'default',
+    requireReason: false,
+    description: 'Restores full access and clears the suspension notice.',
+  },
+  delete: {
+    status: 'deleted',
+    verb: 'Remove',
+    confirm: 'Remove from roster',
+    tone: 'danger',
+    requireReason: true,
+    description:
+      'Removes these accounts from the roster and blocks access. Practice history is kept, and an operator can restore them from the Removed filter.',
+  },
+};
+
 export default function UsersView() {
   const { range, nonce, refresh, can } = useConsole();
   const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState({ status: 'all', activity: 'all' });
+  const [filters, setFilters] = useState({ status: 'all', activity: 'all', account: 'registered' });
   const [selected, setSelected] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [bulk, setBulk] = useState(null);
@@ -61,13 +105,14 @@ export default function UsersView() {
 
   const counts = useMemo(() => {
     const now = Date.now();
+    const registered = users.filter((u) => !u.is_guest);
     return {
-      total: users.length,
+      total: registered.length,
+      guests: users.length - registered.length,
       suspended: users.filter((u) => u.status === 'suspended').length,
-      activeInRange: users.filter(
-        (u) => u.last_seen && new Date(u.last_seen) >= range.from,
-      ).length,
-      newInRange: users.filter((u) => u.signed_up && new Date(u.signed_up) >= range.from).length,
+      removed: users.filter((u) => u.status === 'deleted').length,
+      activeInRange: registered.filter((u) => u.last_seen && new Date(u.last_seen) >= range.from).length,
+      newInRange: registered.filter((u) => u.signed_up && new Date(u.signed_up) >= range.from).length,
       dormant: users.filter((u) => u.last_seen && now - new Date(u.last_seen).getTime() > 30 * DAY).length,
     };
   }, [users, range.from]);
@@ -77,7 +122,10 @@ export default function UsersView() {
     const now = Date.now();
     return users.filter((u) => {
       if (q && !(u.display_name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))) return false;
-      if (filters.status !== 'all' && (u.status ?? 'active') !== filters.status) return false;
+      if (filters.account === 'registered' && u.is_guest) return false;
+      if (filters.account === 'guest' && !u.is_guest) return false;
+      const st = u.status ?? 'active';
+      if (filters.status === 'all' ? st === 'deleted' : st !== filters.status) return false;
       if (filters.activity === 'active7' && !(u.last_seen && now - new Date(u.last_seen).getTime() <= 7 * DAY)) return false;
       if (filters.activity === 'dormant30' && !(u.last_seen && now - new Date(u.last_seen).getTime() > 30 * DAY)) return false;
       if (filters.activity === 'never' && u.last_seen) return false;
@@ -96,11 +144,18 @@ export default function UsersView() {
         render: (u) => (
           <span className="flex items-center gap-0.5">
             <span className="truncate font-semibold">{u.display_name || <span className="text-ink-3">unnamed</span>}</span>
+            {u.is_guest ? <Chip>guest</Chip> : null}
             {u.status === 'suspended' ? <Chip tone="bad">suspended</Chip> : null}
+            {u.status === 'deleted' ? <Chip tone="warn">removed</Chip> : null}
           </span>
         ),
       },
-      { key: 'email', label: 'Email', width: '22%', render: (u) => <span className="truncate text-ink-2">{u.email}</span> },
+      {
+        key: 'email',
+        label: 'Email',
+        width: '22%',
+        render: (u) => (u.email ? <span className="truncate text-ink-2">{u.email}</span> : <span className="text-ink-3">no email · guest</span>),
+      },
       { key: 'signed_up', label: 'Signed up', align: 'right', render: (u) => <span className="text-ink-3">{relativeTime(u.signed_up)}</span> },
       {
         key: 'last_seen',
@@ -137,12 +192,13 @@ export default function UsersView() {
       <MetricRack cols={4}>
         <MetricTile
           icon={UsersIcon}
-          label="Total users"
+          label="Registered users"
           value={counts.total}
           loading={roster.status === 'loading'}
+          hint={counts.guests ? `${counts.guests} guest ${counts.guests === 1 ? 'session' : 'sessions'} not counted` : 'no guest sessions'}
           source="admin_user_overview"
-          active={filters.status === 'all' && filters.activity === 'all'}
-          onClick={() => setFilters({ status: 'all', activity: 'all' })}
+          active={filters.account === 'registered' && filters.status === 'all' && filters.activity === 'all'}
+          onClick={() => setFilters({ status: 'all', activity: 'all', account: 'registered' })}
         />
         <MetricTile
           icon={CheckCircle2}
@@ -165,7 +221,7 @@ export default function UsersView() {
           label="Suspended"
           value={counts.suspended}
           invert
-          hint={counts.dormant ? `${counts.dormant} dormant 30d+` : null}
+          hint={counts.removed ? `${counts.removed} removed from roster` : counts.dormant ? `${counts.dormant} dormant 30d+` : null}
           source="profiles.status"
           active={filters.status === 'suspended'}
           onClick={() => applyTile('status', 'suspended')}
@@ -184,6 +240,7 @@ export default function UsersView() {
             onQueryChange={setQuery}
             placeholder="Search name or email…"
             filters={[
+              { key: 'account', label: 'Account', value: filters.account, defaultValue: 'registered', options: ACCOUNT_FILTER },
               { key: 'status', label: 'Status', value: filters.status, defaultValue: 'all', options: STATUS_FILTER },
               { key: 'activity', label: 'Activity', value: filters.activity, defaultValue: 'all', options: ACTIVITY_FILTER },
             ]}
@@ -208,12 +265,26 @@ export default function UsersView() {
               csvName="typeforge-users"
               minWidth={980}
               bulkActions={
-                <ScopeGate can={can('users.write')} scope="users.write" inline>
-                  <Button variant="danger" onClick={() => setBulk('suspend')}>
-                    <Ban size={13} aria-hidden />
-                    Suspend {selected.length}
-                  </Button>
-                </ScopeGate>
+                <>
+                  <ScopeGate can={can('users.write')} scope="users.write" inline>
+                    <Button variant="secondary" onClick={() => setBulk('reactivate')}>
+                      <CheckCircle2 size={13} aria-hidden />
+                      Reactivate
+                    </Button>
+                  </ScopeGate>
+                  <ScopeGate can={can('users.write')} scope="users.write" inline>
+                    <Button variant="danger" onClick={() => setBulk('suspend')}>
+                      <Ban size={13} aria-hidden />
+                      Suspend {selected.length}
+                    </Button>
+                  </ScopeGate>
+                  {can('users.delete') ? (
+                    <Button variant="danger" onClick={() => setBulk('delete')}>
+                      <Trash2 size={13} aria-hidden />
+                      Remove
+                    </Button>
+                  ) : null}
+                </>
               }
               empty={
                 <p className="px-2 text-center text-sm text-ink-3">
@@ -236,24 +307,30 @@ export default function UsersView() {
           reason it captures is written to every audit row it produces —
           suspending forty accounts should not mean forty dialogs, but it must
           still mean forty explanations. */}
+      {/* One dialog for all three bulk actions. Each target is written
+          separately so every account gets its own audit row, and the shared
+          reason is recorded against every one of them — forty accounts should
+          not mean forty dialogs, but it must still mean forty explanations. */}
       <ConfirmAction
-        open={bulk === 'suspend'}
+        open={Boolean(bulk)}
         onClose={() => setBulk(null)}
-        title={`Suspend ${selected.length} accounts`}
-        description="Each account is suspended separately and each gets its own audit entry."
-        confirmLabel="Suspend all"
-        tone="danger"
-        requireReason
+        title={`${BULK[bulk]?.verb ?? ''} ${selected.length} ${selected.length === 1 ? 'account' : 'accounts'}`}
+        description={BULK[bulk]?.description}
+        confirmLabel={BULK[bulk]?.confirm}
+        tone={BULK[bulk]?.tone}
+        requireReason={BULK[bulk]?.requireReason}
+        confirmPhrase={bulk === 'delete' ? `remove ${selected.length}` : null}
         onConfirm={async (reason) => {
+          const target = BULK[bulk].status;
           const results = await Promise.allSettled(
-            selected.map((id) => setUserStatus(id, 'suspended', reason)),
+            selected.map((id) => setUserStatus(id, target, reason || BULK[bulk].verb.toLowerCase())),
           );
           const failed = results.filter((r) => r.status === 'rejected');
           setSelected([]);
           refresh();
           if (failed.length) {
             throw new Error(
-              `${results.length - failed.length} suspended, ${failed.length} failed: ${failed[0].reason?.message ?? 'unknown error'}`,
+              `${results.length - failed.length} updated, ${failed.length} failed: ${failed[0].reason?.message ?? 'unknown error'}`,
             );
           }
         }}

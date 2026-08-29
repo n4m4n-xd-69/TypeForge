@@ -94,13 +94,22 @@ export default function OverviewView() {
       />
 
       <MetricRack cols={6}>
+        {/* Registered accounts only. Guests are real auth.users rows created
+            by anonymous sign-in, and folding them in would report session
+            churn as growth. */}
         <MetricTile
           icon={Users}
           label="Users"
           value={k.total_users}
           loading={loading}
-          hint={k.suspended ? `${k.suspended} suspended` : 'all active'}
-          source="admin_kpis"
+          hint={
+            k.guest_users
+              ? `+${Number(k.guest_users).toLocaleString()} guest sessions`
+              : k.suspended
+                ? `${k.suspended} suspended`
+                : 'all active'
+          }
+          source="admin_kpis · registered"
           onClick={() => navigate('/admin/users')}
         />
         <MetricTile

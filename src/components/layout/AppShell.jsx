@@ -13,7 +13,9 @@ import ThemeToggle from './ThemeToggle.jsx';
 import CommandPalette from './CommandPalette.jsx';
 import ChatFab from './ChatFab.jsx';
 import AccountMenu from '../../modules/auth/AccountMenu.jsx';
+import { useAuth } from '../../lib/auth.jsx';
 import AuthModal from '../../modules/auth/AuthModal.jsx';
+import SuspendedNotice from '../../modules/auth/SuspendedNotice.jsx';
 import { MODE_REGISTRY } from '../../lib/modes/registry.js';
 import { deriveNavGroups } from '../../lib/modes/derive.js';
 
@@ -88,6 +90,7 @@ const BARE_ROUTES = new Set(['/']);
 export default function AppShell({ children }) {
   const { state } = useStore();
   const stats = useStats();
+  const { suspended, accountStatus, signOut } = useAuth();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const location = useLocation();
 
@@ -400,6 +403,11 @@ export default function AppShell({ children }) {
           ToastProvider uses, so any surface can call openAuthModal() without
           owning a modal of its own. */}
       <AuthModal />
+
+      {/* Rendered here, beside AuthModal, for the same reason: it is a
+          property of the session rather than of any route, and it has to
+          appear over whichever surface the person happened to open. */}
+      {suspended ? <SuspendedNotice status={accountStatus} onSignOut={signOut} /> : null}
     </div>
   );
 }

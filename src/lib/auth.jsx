@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { cloudEnabled, getUser, logAuthEvent, onAuthChange, signOut as supabaseSignOut } from './supabase.js';
+import { fetchAccountStatus } from './accountStatus.js';
 
 /**
  * Session state only — no UI. The modal that reads `modalOpen`/`authView`
@@ -17,6 +18,9 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(!enabled);
   const [modal, setModal] = useState({ open: false, view: 'sign-in' });
+  /* An account's own standing. Null until known, and null forever when cloud
+     sync is off — a locally-run app has nobody to suspend it. */
+  const [accountStatus, setAccountStatus] = useState(null);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -42,10 +46,29 @@ export function AuthProvider({ children }) {
     };
   }, [enabled]);
 
+  /* Re-read on every identity change rather than once at mount: a suspension
+     applied while someone is signed in should reach them on their next
+     navigation, not only after they clear storage. */
+  useEffect(() => {
+    if (!enabled || !user) {
+      setAccountStatus(null);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchAccountStatus(user.id).then((s) => {
+      if (!cancelled) setAccountStatus(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, user]);
+
   const value = useMemo(
     () => ({
       user,
       ready,
+      accountStatus,
+      suspended: accountStatus?.status === 'suspended',
       cloudEnabled: enabled,
       modalOpen: modal.open,
       authView: modal.view,
@@ -53,7 +76,7 @@ export function AuthProvider({ children }) {
       closeAuthModal: () => setModal((m) => ({ ...m, open: false })),
       signOut: () => supabaseSignOut(),
     }),
-    [user, ready, enabled, modal],
+    [user, ready, enabled, modal, accountStatus],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

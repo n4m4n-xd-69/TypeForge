@@ -8,6 +8,10 @@ permission model, every mutation audited.
 | Layer | Where |
 |---|---|
 | Schema, RBAC, RPCs | `supabase/migrations/0014_admin_console.sql` |
+| Bootstrap owner | `supabase/migrations/0015_seed_console_owner.sql` |
+| Retention fix | `supabase/migrations/0016_retention_shows_empty_cohorts.sql` |
+| Suspension revokes access | `supabase/migrations/0017_suspension_revokes_console.sql` |
+| Suspension notice (end user) | `src/modules/auth/SuspendedNotice.jsx`, `src/lib/accountStatus.js` |
 | Data access | `src/modules/admin/api/console.js` |
 | Component kit | `src/modules/admin/kit/` |
 | Shell, strip, module registry | `src/modules/admin/console/` |
@@ -37,7 +41,12 @@ alone deliberately.
 
 ### 2. Promote the first owner
 
-There is no self-service path, by design. In the SQL editor:
+`0015_seed_console_owner.sql` does this, keyed on an email address so the same
+file works against any environment. Edit the address in that file and re-run
+`supabase db push` to hand ownership to someone else. If the account has not
+signed up yet the migration is a no-op and says so rather than failing.
+
+To do it by hand instead:
 
 ```sql
 insert into public.user_roles (user_id, role, admin_tier)
@@ -81,6 +90,26 @@ Scopes: `analytics.read`, `users.read`, `users.write`, `users.delete`,
 **Reads never throw on permission** — a caller without the scope gets an empty
 result, following 0002's convention. **Writes always throw** (Postgres 42501),
 surfaced as "Your admin tier does not include this action."
+
+## Suspension
+
+Suspension is a `profiles.status` flag, not a GoTrue ban, so it is reversible
+and the app can explain itself.
+
+- **The suspended person is told.** `SuspendedNotice` blocks the app with the
+  operator's own reason, the date it was applied, and a
+  three-day appeal window (`APPEAL_WINDOW_DAYS` in `src/lib/accountStatus.js`).
+  Sign-out stays available — locking someone out of the sign-out button traps
+  a shared device on their session.
+- **A suspended operator loses the console.** `admin_scopes()` returns nothing
+  unless the caller's profile is `active` (0017). This was a real gap: before
+  it, suspending a rogue admin left them with every scope including
+  `users.delete`. `is_admin()` is deliberately unchanged — the role is still
+  held; what it can *do* is what scopes answer.
+- **Removal is reversible.** `status = 'deleted'` drops an account out of the
+  default roster; the Removed filter brings it back and an operator can
+  reactivate it. Purging the `auth.users` record itself is a separate
+  service-role operation and is not wired to the console.
 
 ## API keys
 
