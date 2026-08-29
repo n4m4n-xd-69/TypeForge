@@ -1,0 +1,28 @@
+project_id = "kavfjyvsvgvcjiuwwfbw"
+
+# ── Forge AI Edge Functions ──────────────────────────────────────────────────
+#
+# `verify_jwt = true` means the platform validates the caller's token against
+# the project JWKS before the handler is entered. Every function that reads a
+# user id depends on that: `_shared/auth.ts` only *decodes* the claims, which
+# keeps the 2s CPU budget for work that matters, and is only sound because the
+# signature has already been checked.
+#
+# The two internal functions run with it off because they are called by pg_cron
+# through pg_net, which sends the project's secret key on `apikey` rather than
+# a user JWT. They authenticate on that key and never read a user id.
+
+[functions.forge-chat]
+verify_jwt = true
+
+[functions.forge-generate]
+verify_jwt = true
+
+[functions.forge-models]
+verify_jwt = true
+
+[functions.forge-embed-drain]
+verify_jwt = false
+
+[functions.forge-reconcile]
+verify_jwt = false

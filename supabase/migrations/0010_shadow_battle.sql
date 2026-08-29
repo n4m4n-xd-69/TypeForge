@@ -201,7 +201,7 @@ create or replace view public.shadow_leaderboard as
 select
   sr.user_id,
   coalesce(p.display_name, 'Anonymous') as display_name,
-  p.avatar_url as avatar,
+  p.avatar as avatar,
   sr.fr,
   sr.peak_fr,
   sr.matches,
@@ -399,7 +399,7 @@ begin
   insert into public.shadow_players (
     room_id, user_id, seat, display_name, avatar, fighter_id, is_host, ready
   ) values (
-    v_room.id, v_user_id, 0, coalesce(v_profile.display_name, 'Host'), v_profile.avatar_url, p_fighter_id, true, true
+    v_room.id, v_user_id, 0, coalesce(v_profile.display_name, 'Host'), v_profile.avatar, p_fighter_id, true, true
   );
 
   return jsonb_build_object('room', to_jsonb(v_room), 'pin', v_pin);
@@ -440,7 +440,7 @@ begin
   insert into public.shadow_players (
     room_id, user_id, seat, display_name, avatar, fighter_id, is_host, ready
   ) values (
-    v_room.id, v_user_id, 1, coalesce(v_profile.display_name, 'Challenger'), v_profile.avatar_url, p_fighter_id, false, false
+    v_room.id, v_user_id, 1, coalesce(v_profile.display_name, 'Challenger'), v_profile.avatar, p_fighter_id, false, false
   )
   on conflict (room_id, user_id) do update
   set left_at = null, fighter_id = p_fighter_id, last_seen_at = now();

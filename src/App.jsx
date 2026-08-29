@@ -76,7 +76,7 @@ export default function App() {
               tab bar shares NAV_GROUPS, and an operator view only one account
               can open has no business holding a permanent slot there. Access
               is enforced by is_admin() in the database, not by this route. */}
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

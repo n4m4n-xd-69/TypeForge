@@ -10,6 +10,7 @@ import { useTheme } from '../../lib/theme.jsx';
 import { LANGUAGES } from '../../lib/content.js';
 import { MODE_REGISTRY } from '../../lib/modes/registry.js';
 import { deriveModePaletteEntries } from '../../lib/modes/derive.js';
+import { getCommands, subscribeCommands } from '../../lib/paletteRegistry.js';
 
 const MODE_PALETTE_ENTRIES = deriveModePaletteEntries(MODE_REGISTRY);
 
@@ -20,6 +21,12 @@ export default function CommandPalette({ open, onClose }) {
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef(null);
+
+  /* Commands contributed by whichever surface is currently mounted — see
+     lib/paletteRegistry.js. Kept in state rather than read inline so the
+     palette re-renders when a surface registers or tears down. */
+  const [contextual, setContextual] = useState(getCommands);
+  useEffect(() => subscribeCommands(setContextual), []);
 
   const commands = useMemo(
     () => [
@@ -50,14 +57,22 @@ export default function CommandPalette({ open, onClose }) {
         group: 'Languages',
         run: () => navigate(`/code?lang=${l.id}`),
       })),
+      /* Contextual entries lead, because a surface that registered them is
+         the one the user is looking at. */
+      ...contextual,
     ],
-    [navigate, toggle, isDark],
+    [navigate, toggle, isDark, contextual],
   );
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return commands;
-    return commands.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q));
+    return commands.filter(
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.group.toLowerCase().includes(q) ||
+        c.keywords?.some((k) => k.toLowerCase().includes(q)),
+    );
   }, [commands, query]);
 
   useEffect(() => {

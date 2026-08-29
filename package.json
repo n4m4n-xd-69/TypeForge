@@ -3,14 +3,23 @@
   "private": true,
   "version": "2.0.0",
   "type": "module",
-  "description": "TypeForge — a typing-performance platform for people who type for a living.",
+  "description": "TypeForge \u2014 a typing-performance platform for people who type for a living.",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/build-icons.mjs && vite build",
     "preview": "vite preview",
     "icons": "node scripts/build-icons.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "forge:check": "deno check supabase/functions/_shared/*.ts supabase/functions/*/index.ts",
+    "forge:reconcile": "node scripts/forge-reconcile.mjs",
+    "forge:smoke": "node scripts/forge-smoke.mjs",
+    "forge:deploy": "supabase functions deploy --project-ref kavfjyvsvgvcjiuwwfbw",
+    "forge:secrets": "supabase secrets set --env-file supabase/.env.forge --project-ref kavfjyvsvgvcjiuwwfbw",
+    "check:bundle": "node scripts/check-bundle-secrets.mjs",
+    "forge:calibrate": "node scripts/forge-calibrate.mjs",
+    "forge:drain": "node scripts/forge-drain.mjs",
+    "verify": "npm run build && npm run check:bundle && npm test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",
@@ -25,9 +34,11 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "deno": "^2.9.6",
     "pg": "^8.23.0",
     "postcss": "^8.4.49",
     "sharp": "^0.35.3",
+    "supabase": "^2.116.0",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7",
     "vitest": "^4.1.11"
