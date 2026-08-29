@@ -7,6 +7,10 @@ dist-ssr/
 .env
 .env.*
 !.env.example
+# Forge AI Edge Function secrets. The template is committed; the filled-in
+# file is not — it holds the four provider keys and is pushed to Supabase with
+# `npm run forge:secrets`, never to git.
+!supabase/.env.forge.example
 
 # Credential notes — kept on disk for reference, never committed.
 ai.md

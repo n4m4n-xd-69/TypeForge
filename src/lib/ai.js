@@ -1,4 +1,5 @@
 import { complete, chat, aiConfigured, providerSummary, AIUnavailable, AI_REASON_COPY } from './ai-runner.js';
+import { generateContent } from './forge/client.js';
 
 /**
  * Task-level AI: prompts, JSON contracts and offline fallbacks.
@@ -214,86 +215,75 @@ export async function suggestQuestions(code, language, { signal } = {}) {
 
 /* ── Generation ────────────────────────────────────────────────────────── */
 
-export async function generateSnippet(language, difficulty, { signal, avoid = [] } = {}) {
-  const raw = await chat(
-    [
-      {
-        role: 'system',
-        content:
-          'You produce short, idiomatic, self-contained code snippets for a typing trainer. Reply with a single JSON object and nothing else. Use spaces, never tabs. Keep lines under 72 characters.',
-      },
-      {
-        role: 'user',
-        content: `A ${difficulty} ${language} snippet of 6-14 lines that teaches one idea.${
-          avoid.length ? ` Do NOT produce any of these: ${avoid.join('; ')}.` : ''
-        } Respond as {"title": "short title", "topic": "2-3 words", "intro": "one sentence on what it does and why it is worth typing", "code": "the snippet"}.`,
-      },
-    ],
-    { maxTokens: 900, temperature: 1, signal, surface: 'snippet' },
-  );
-  const parsed = extractJSON(raw);
-  if (!parsed.code) throw new AIUnavailable('No code in response', 'bad-response');
-  parsed.code = parsed.code.replace(/\t/g, '  ').replace(/\r/g, '').trimEnd();
-  return parsed;
+/**
+ * A code snippet to type.
+ *
+ * The prompt itself now lives server-side in
+ * `supabase/functions/_shared/prompts.ts`, alongside the quality gate that
+ * checks the result before it can enter the shared library. What used to be an
+ * `avoid: []` list stapled onto the prompt is a database question now: the
+ * server excludes rows this user has already been served, and steers a fresh
+ * generation away from near-duplicates it retrieved.
+ *
+ * The return shape is unchanged, so `CodeTyping.jsx` needed no edit.
+ */
+export async function generateSnippet(language, difficulty, { signal, topic } = {}) {
+  const res = await generateContent({
+    kind: 'snippet',
+    category: 'code',
+    language,
+    difficulty,
+    topic,
+    surface: 'snippet',
+    signal,
+  });
+
+  if (!res.body) throw new AIUnavailable('No code in response', 'bad-response');
+
+  return {
+    code: res.body,
+    title: res.title ?? 'Snippet',
+    topic: res.meta?.topic ?? topic ?? '',
+    intro: res.meta?.intro ?? '',
+    cache: res.cache,
+    generationId: res.generationId,
+  };
 }
 
 /**
- * Fresh practice text matched to the user's mode and difficulty. Called on
- * every load so the exercise is never the same twice.
+ * Fresh practice text matched to the user's mode and difficulty.
+ *
+ * Still called on every load, but "fresh" now means something better than
+ * "generated again": the server checks the shared library first, and only pays
+ * for a generation when nothing suitable exists that this user has not already
+ * typed. A returning user gets new text; a new user gets text someone else's
+ * request already paid for.
  */
-export async function generatePassage({ mode, difficulty, words = 60, avoid = [], signal }) {
-  const brief = {
-    time: `a flowing paragraph of roughly ${words} common English words`,
-    words: `roughly ${words} common English words as running prose`,
-    quote: 'a single memorable sentence about programming, craft or focus, plus its author',
-    zen: `a calm, reflective paragraph of roughly ${words} words about focus and practice`,
-    custom: `a paragraph of roughly ${words} words`,
-    drill: `a drill line of roughly ${words} short words`,
-  }[mode] ?? `a paragraph of roughly ${words} words`;
+export async function generatePassage({ mode, difficulty, words = 60, level = 0, topic, signal }) {
+  // The typing modes map onto library kinds. `quote` and `drill` are their own
+  // kinds because they are shaped differently; everything else is a passage.
+  const kind = mode === 'quote' ? 'quote' : mode === 'drill' ? 'drill' : 'passage';
 
-  const spice = {
-    easy: 'Use only short, very common words. No punctuation beyond full stops.',
-    normal: 'Everyday vocabulary with ordinary punctuation.',
-    hard: 'Richer vocabulary, commas, semicolons and hyphens.',
-    expert: 'Dense vocabulary with quotes, parentheses, numbers and symbols.',
-  }[difficulty] ?? '';
+  const res = await generateContent({
+    kind,
+    category: 'practice',
+    difficulty,
+    level,
+    words,
+    topic: topic ?? (mode === 'zen' ? 'focus and practice' : undefined),
+    surface: 'passage',
+    signal,
+  });
 
-  const raw = await chat(
-    [
-      {
-        role: 'system',
-        content:
-          'You write text for a typing trainer. Plain prose only — no markdown, no line breaks, no emoji, no characters outside a standard keyboard. Reply with a single JSON object and nothing else.',
-      },
-      {
-        role: 'user',
-        content:
-          `Write ${brief}. ${spice}` +
-          // Same mode and difficulty means an identical prompt every time, and
-          // temperature alone does not stop a model reaching for its favourite
-          // opening — practice kept serving variations on one paragraph. Naming
-          // what it just wrote, plus a throwaway seed, is what actually moves it.
-          (avoid.length
-            ? ` Choose a completely different subject from these recent ones, and do not reuse their opening words: ${avoid
-                .map((a) => `"${a}"`)
-                .join('; ')}.`
-            : '') +
-          ` Variation seed ${Math.random().toString(36).slice(2, 8)} — ignore its meaning, it exists only to push you somewhere new.` +
-          ` Respond as {"text": "...", "label": "3-5 word description"${mode === 'quote' ? ', "author": "name"' : ''}}.`,
-      },
-    ],
-    // hcnsec caps temperature at 1 and rejects anything above it with a 400
-    // (`'temperature' value must be less or equal than 1`). This call used 1.1,
-    // so the fastest provider failed on *every* passage request and the app
-    // silently fell through to the slower backup — which is why practice text
-    // so often looked like the bundled banks rather than freshly generated.
-    { maxTokens: 700, temperature: 1, signal, surface: 'passage' },
-  );
+  if (!res.body) throw new AIUnavailable('No text in response', 'bad-response');
 
-  const parsed = extractJSON(raw);
-  if (!parsed.text) throw new AIUnavailable('No text in response', 'bad-response');
-  parsed.text = parsed.text.replace(/\s+/g, ' ').replace(/[""]/g, '"').replace(/['']/g, "'").trim();
-  return parsed;
+  return {
+    text: res.body,
+    label: res.title ?? '',
+    author: res.meta?.author,
+    cache: res.cache,
+    generationId: res.generationId,
+  };
 }
 
 /* ── Coaching ──────────────────────────────────────────────────────────── */

@@ -1,344 +1,150 @@
-import { AI_ENABLED, AI_TIMING, PROVIDERS } from './config.js';
-import { logAiUsage } from './supabase.js';
+import { AI_ENABLED } from './config.js';
+import { ForgeError, forgeConfigured, streamChat as forgeStream } from './forge/client.js';
 
 /**
- * The transport layer: provider selection, hedging, failover and streaming.
+ * The client's view of Forge AI.
  *
- * Two rules drive everything here:
+ * This file used to be the transport: a provider table, a hedged failover
+ * runner, an SSE parser, and — inlined into the bundle — two API keys. All of
+ * that now lives in `supabase/functions/_shared/`, where a key can exist
+ * without being readable by anyone who opens devtools.
  *
- *   1. hcnsec leads, OpenRouter backs it up. Attempts are ordered by provider
- *      priority, then by measured model speed.
- *   2. Nothing is allowed to hang. Each attempt has its own timeout, and the
- *      next attempt starts *while the previous is still running* rather than
- *      after it fails — a slow model costs a hedge delay, not a full timeout.
+ * What is left is an adapter. It keeps the exact surface the rest of the app
+ * already imports (`complete`, `chat`, `aiConfigured`, `providerSummary`,
+ * `AIUnavailable`, `AI_REASON_COPY`) so `ai.js`, `useStreamingChat.js` and the
+ * admin panel needed no changes at all — the transport was swapped underneath
+ * them.
  *
- * The first attempt to produce a usable answer wins and every other in-flight
- * request is aborted.
+ * One thing deliberately does *not* survive the move: the client can no longer
+ * learn which provider or model answered. The Forge wire protocol has no field
+ * for it. That is the layer of the identity clamp that actually holds, and
+ * giving this module a way to report it back would quietly undo it.
  */
 
-export class AIUnavailable extends Error {
-  constructor(message, reason = 'network', meta = {}) {
-    super(message);
-    this.reason = reason;
-    this.meta = meta;
-  }
-}
+export { ForgeError };
 
+/**
+ * Kept as an alias rather than renamed.
+ *
+ * Every catch site in the app tests `err.reason` and several test files import
+ * this name. `ForgeError` carries the same `reason` vocabulary, so the alias is
+ * accurate rather than merely compatible.
+ */
+export const AIUnavailable = ForgeError;
+
+/** Unchanged: the copy is what users see, and the reasons still mean the same. */
 export const AI_REASON_COPY = {
   'rate-limit': {
     label: 'Limit reached',
-    detail: 'Every configured provider is rate limited right now. OpenRouter\'s free tier resets at 00:00 UTC.',
+    detail: 'Forge is rate limited right now. Try again in a minute.',
   },
-  auth: { label: 'Key rejected', detail: 'A provider refused its API key. Check the VITE_*_KEY values in .env.local, or your host\'s environment variables.' },
-  network: { label: 'Unreachable', detail: 'No provider responded. Showing a locally computed reading instead.' },
-  timeout: { label: 'Timed out', detail: 'Every model took too long to answer. Try again — a faster one may pick it up.' },
-  'no-key': { label: 'No API key', detail: 'Set VITE_HCNSEC_KEY or VITE_OPENROUTER_KEY in .env.local to turn the AI features on.' },
-  'bad-response': { label: 'Unreadable reply', detail: 'The model answered with something this app could not parse.' },
+  auth: {
+    label: 'Sign-in needed',
+    detail: 'Forge needs you signed in. Reload the page, or sign in again.',
+  },
+  network: {
+    label: 'Unreachable',
+    detail: 'Forge did not respond. Showing a locally computed reading instead.',
+  },
+  timeout: {
+    label: 'Timed out',
+    detail: 'Forge took too long to answer. Try again — the next attempt is usually faster.',
+  },
+  'no-key': {
+    label: 'AI unavailable',
+    detail: 'Forge is not configured on this deploy. Everything else still works offline.',
+  },
+  'bad-response': {
+    label: 'Unreadable reply',
+    detail: 'Forge answered with something this app could not parse.',
+  },
   'bad-request': {
     label: 'Request rejected',
-    detail: 'A provider refused the request itself. Every attempt will fail the same way until it is fixed — check the console for the provider\'s reason.',
+    detail: 'Forge refused the request itself. Check the console for the reason.',
   },
 };
 
-/* ── Attempt planning ──────────────────────────────────────────────────── */
-
-const byPriority = () => Object.values(PROVIDERS).filter((p) => p.apiKey).sort((a, b) => a.priority - b.priority);
-
-/**
- * Interleaves models across providers so the backup provider gets an early
- * slot: hcnsec#1, openrouter#1, hcnsec#2, openrouter#2, … Each provider's own
- * models stay in priority order.
- */
-function planAttempts({ thinking = false, maxAttempts = 6 } = {}) {
-  const providers = byPriority().map((p) => ({
-    provider: p,
-    models: thinking && p.thinkingModels?.length ? p.thinkingModels : p.models,
-  }));
-
-  const plan = [];
-  for (let round = 0; plan.length < maxAttempts; round++) {
-    let added = false;
-    for (const { provider, models } of providers) {
-      if (models[round]) {
-        plan.push({ provider, model: models[round] });
-        added = true;
-        if (plan.length >= maxAttempts) break;
-      }
-    }
-    if (!added) break;
-  }
-  return plan;
-}
-
 export function aiConfigured() {
-  return AI_ENABLED && byPriority().length > 0;
+  return AI_ENABLED && forgeConfigured();
 }
-
-export function providerSummary() {
-  return byPriority().map((p) => ({ id: p.id, label: p.label, models: p.models.length }));
-}
-
-/* ── Single request ────────────────────────────────────────────────────── */
-
-function headers(provider) {
-  const h = { 'Content-Type': 'application/json', Authorization: `Bearer ${provider.apiKey}` };
-  if (provider.id === 'openrouter') {
-    h['HTTP-Referer'] = provider.referer;
-    h['X-Title'] = provider.title;
-  }
-  return h;
-}
-
-function classify(status, body) {
-  if (status === 429) return 'rate-limit';
-  if (status === 401 || status === 403) return 'auth';
-  // A 400 is us, not them: a malformed request fails identically on every
-  // attempt, so failover cannot rescue it. It used to classify as 'network',
-  // which is how `temperature: 1.1` went unnoticed while failing 100% of the
-  // lead provider's passage requests.
-  if (status === 400) return 'bad-request';
-  return 'network';
-}
-
-async function callOnce({ provider, model, messages, maxTokens, temperature, signal, stream, onThinking, onToken }) {
-  // Clamped per provider rather than at each call site: a caller asking for more
-  // creativity than a provider allows should get that provider's maximum, not a
-  // 400 that failover then has to paper over.
-  const capped = provider.maxTemperature != null
-    ? Math.min(temperature, provider.maxTemperature)
-    : temperature;
-
-  const res = await fetch(provider.endpoint, {
-    method: 'POST',
-    headers: headers(provider),
-    signal,
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: maxTokens,
-      temperature: capped,
-      ...(stream ? { stream: true } : {}),
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new AIUnavailable(`${provider.id}/${model} → ${res.status}`, classify(res.status), {
-      status: res.status,
-      body: body.slice(0, 200),
-    });
-  }
-
-  if (!stream) {
-    const data = await res.json();
-    const msg = data?.choices?.[0]?.message;
-    const text = msg?.content?.trim();
-    if (!text) throw new AIUnavailable(`${provider.id}/${model} returned no content`, 'bad-response');
-    return { text, reasoning: msg?.reasoning_content ?? msg?.reasoning ?? '', provider: provider.id, model, usage: data?.usage };
-  }
-
-  /* ── SSE ───────────────────────────────────────────────────────────────
-     hcnsec and OpenRouter both emit OpenAI-shaped chunks; thinking models put
-     their chain of thought in `delta.reasoning_content`, which is what feeds
-     the live "thinking" line in the chat panel. */
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-  let content = '';
-  let reasoning = '';
-  let usage;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const lines = buffer.split('\n');
-    buffer = lines.pop() ?? '';
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('data:')) continue;
-      const payload = trimmed.slice(5).trim();
-      if (!payload || payload === '[DONE]') continue;
-
-      let chunk;
-      try {
-        chunk = JSON.parse(payload);
-      } catch {
-        continue; // partial frame; the next read completes it
-      }
-
-      // Streams report token counts on a trailing frame, usually the same one
-      // that carries the finish reason and no delta at all.
-      if (chunk?.usage) usage = chunk.usage;
-
-      const delta = chunk?.choices?.[0]?.delta;
-      if (!delta) continue;
-
-      const think = delta.reasoning_content ?? delta.reasoning;
-      if (think) {
-        reasoning += think;
-        onThinking?.(reasoning);
-      }
-      if (delta.content) {
-        content += delta.content;
-        onToken?.(content);
-      }
-    }
-  }
-
-  if (!content.trim()) throw new AIUnavailable(`${provider.id}/${model} streamed no content`, 'bad-response');
-  return { text: content.trim(), reasoning, provider: provider.id, model, usage };
-}
-
-/* ── Hedged runner ─────────────────────────────────────────────────────── */
-
-const sleep = (ms, signal) =>
-  new Promise((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener('abort', () => {
-      clearTimeout(t);
-      reject(new DOMException('aborted', 'AbortError'));
-    }, { once: true });
-  });
 
 /**
- * Runs the attempt plan with staggered starts. Returns the first success.
+ * What the UI may say about what is answering.
  *
- * Every attempt gets its own AbortController so a winner can cancel the losers
- * — without that, abandoned requests keep burning quota in the background.
+ * Forge names, never vendor names. The real ladder is server-side config and
+ * is not fetched here — `forge-models` serves the picker catalogue when a
+ * surface needs one.
+ */
+export function providerSummary() {
+  return aiConfigured() ? [{ id: 'forge', label: 'Forge AI' }] : [];
+}
+
+/**
+ * Splits the system turns out of a message list.
+ *
+ * `ai.js` builds prompts as `[{role:'system'},{role:'user'}]`, which is the
+ * OpenAI shape. The Forge endpoint takes the system prompt as its own field so
+ * it can prepend the identity block to it server-side, where a client cannot
+ * strip it.
+ */
+function splitSystem(messages = []) {
+  const system = messages
+    .filter((m) => m?.role === 'system')
+    .map((m) => m.content)
+    .join('\n\n');
+  const rest = messages
+    .filter((m) => m?.role && m.role !== 'system')
+    .map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+  return { system: system || undefined, rest };
+}
+
+/**
+ * One completion.
+ *
+ * `temperature` and `thinking` are accepted and ignored: both are lane
+ * properties now, chosen server-side. Callers still pass them, and silently
+ * accepting them is what let this swap happen without touching six call sites.
  */
 export async function complete({
   messages,
-  maxTokens = 900,
-  temperature = 0.4,
+  maxTokens,
   signal,
-  stream = false,
-  thinking = false,
   onThinking,
   onToken,
   onAttempt,
   surface = 'unknown',
+  lane,
 } = {}) {
-  if (!aiConfigured()) throw new AIUnavailable('No providers configured', 'no-key');
+  if (!aiConfigured()) throw new ForgeError('Forge is not configured', 'no-key');
 
-  const plan = planAttempts({ thinking });
-  const perAttemptTimeout = stream ? AI_TIMING.streamTimeoutMs : AI_TIMING.modelTimeoutMs;
+  const { system, rest } = splitSystem(messages);
 
-  const controllers = [];
-  let settled = false;
-  const errors = [];
+  // The old runner reported each failover attempt so the chat panel could show
+  // a trace. Attempts are now invisible by design, so this fires once with a
+  // Forge-shaped placeholder rather than being dropped — callers that render it
+  // keep working.
+  onAttempt?.({ provider: 'forge', model: 'forge', index: 0 });
 
-  const abortAll = () => controllers.forEach((c) => { try { c.abort(); } catch { /* already done */ } });
-  signal?.addEventListener('abort', abortAll, { once: true });
+  const res = await forgeStream({
+    messages: rest,
+    system,
+    lane,
+    maxTokens,
+    surface,
+    signal,
+    onToken,
+    onThinking,
+  });
 
-  const overall = setTimeout(abortAll, AI_TIMING.totalTimeoutMs);
-
-  /**
-   * One row per settled attempt, for the admin AI-usage view.
-   *
-   * Fire-and-forget by design: `logAiUsage` swallows its own failures and
-   * no-ops for signed-out users and unconfigured deploys, so an analytics
-   * write can never be the reason an answer fails to arrive.
-   */
-  const record = (entry, startedAt, { ok, reason, usage }) => {
-    logAiUsage({
-      surface,
-      provider: entry.provider.id,
-      model: entry.model,
-      promptTokens: usage?.prompt_tokens,
-      outputTokens: usage?.completion_tokens,
-      latencyMs: Date.now() - startedAt,
-      ok,
-      reason,
-    });
+  return {
+    text: res.text,
+    reasoning: res.reasoning,
+    // Present so destructuring call sites do not break; never a vendor name.
+    provider: 'forge',
+    model: 'forge',
+    usage: undefined,
+    cache: res.cache,
   };
-
-  const attempt = async (entry, index) => {
-    // Stagger: attempt N starts N × hedgeMs after the first, unless we've won.
-    if (index > 0) {
-      try {
-        await sleep(index * AI_TIMING.hedgeMs, signal);
-      } catch {
-        return null;
-      }
-      if (settled) return null;
-    }
-
-    const controller = new AbortController();
-    controllers.push(controller);
-    const timer = setTimeout(() => controller.abort(), perAttemptTimeout);
-    onAttempt?.({ provider: entry.provider.id, model: entry.model, index });
-    const startedAt = Date.now();
-
-    try {
-      const result = await callOnce({
-        ...entry,
-        messages,
-        maxTokens,
-        temperature,
-        stream,
-        signal: controller.signal,
-        // Only the eventual winner should paint; losers stay silent.
-        onThinking: (t) => !settled && onThinking?.(t),
-        onToken: (t) => !settled && onToken?.(t),
-      });
-      record(entry, startedAt, { ok: true, usage: result.usage });
-      return result;
-    } catch (err) {
-      const reason = err?.name === 'AbortError' ? 'timeout' : (err.reason ?? 'network');
-      // A hedge cancelled by a winner is not a failure and would badly skew any
-      // reliability figure read off this table, so it is not recorded at all.
-      if (!(err?.name === 'AbortError' && settled)) {
-        record(entry, startedAt, { ok: false, reason });
-      }
-      errors.push(new AIUnavailable(`${entry.provider.id}/${entry.model}: ${err.message}`, reason));
-      return null;
-    } finally {
-      clearTimeout(timer);
-    }
-  };
-
-  try {
-    const runners = plan.map((entry, i) =>
-      attempt(entry, i).then((res) => {
-        if (res && !settled) {
-          settled = true;
-          return res;
-        }
-        if (res) return null;
-        return null;
-      }),
-    );
-
-    // Resolve as soon as any runner produces a result.
-    const winner = await new Promise((resolve) => {
-      let outstanding = runners.length;
-      runners.forEach((r) =>
-        r.then((res) => {
-          if (res) resolve(res);
-          else if (--outstanding === 0) resolve(null);
-        }),
-      );
-    });
-
-    if (winner) {
-      abortAll();
-      return winner;
-    }
-
-    // Everything failed — surface the most actionable reason.
-    // Most actionable first. `bad-request` outranks everything: it is the only
-    // reason here that is a bug in this app rather than a condition at the
-    // provider, so it must never be masked by a slower attempt's timeout.
-    const priority = ['bad-request', 'auth', 'rate-limit', 'bad-response', 'timeout', 'network'];
-    const best = priority.find((r) => errors.some((e) => e.reason === r)) ?? 'network';
-    throw new AIUnavailable(errors.map((e) => e.message).join(' · ').slice(0, 300) || 'All providers failed', best);
-  } finally {
-    clearTimeout(overall);
-    signal?.removeEventListener?.('abort', abortAll);
-  }
 }
 
 /** Convenience wrapper returning just the text. */

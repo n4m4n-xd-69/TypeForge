@@ -357,3 +357,422 @@
 .token.class-name {
   color: rgb(var(--tok-function));
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Forge AI — the chat surface.
+
+   Scoped to the coach (the /chat page and the floating panel) and nothing
+   else. Prefixed `fap-` so it cannot leak into the twenty-odd other surfaces
+   that share the `.glass` utility above.
+
+   Three rules govern the whole layer:
+
+   1. ONLY panes blur. `.fap-pane`, `.fap-rail` and `.fap-float` carry
+      `backdrop-filter`; bubbles, tiles, wells and the composer are plain
+      translucent fills stacked on top of an already-blurred pane. Nesting
+      backdrop-filters costs a second full-viewport blur pass per surface and
+      the result reads muddy rather than deep — a transcript is thirty of
+      these, so it is the difference between a smooth scroll and a janky one.
+
+   2. NO edge strokes. No borders, no 1px inset specular line, no conic rim.
+      Depth is carried by tint separation, one soft top-down luminance
+      gradient, and a drop shadow. An edge highlight is the single thing that
+      makes glass read as "sticker on a page" rather than a pane of glass.
+
+   3. The mascot is the GIF and nothing else. No halo, no disc, no ring, no
+      cast reflection — the blob has its own silhouette and shading, and every
+      shape drawn behind it competed with that instead of supporting it. It
+      gets one soft contact shadow so it is not floating in a void, and it
+      moves; that is the whole treatment.
+
+   The aura underneath is not decoration for its own sake: glass over a flat
+   fill has nothing to refract and greys out. It gives the blur something to
+   pick up, which is where most of the depth actually comes from.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root,
+[data-theme='dark'] {
+  --fap-tint: 24 27 32;
+  --fap-tint-a: 0.4;
+  --fap-blur: 30px;
+  --fap-sat: 150%;
+  --fap-bright: 106%;
+
+  --fap-well: 255 255 255;
+  --fap-well-a: 0.05;
+  --fap-well-a-hi: 0.08;
+
+  --fap-ai-a: 0.055;
+  /* Ambient top-down light on a pane. Always white — this is a highlight, so
+     it cannot borrow --fap-well, which flips to dark ink in the light theme. */
+  --fap-lum-c: 255 255 255;
+  --fap-lum: 0.055;
+  --fap-tile-a: 0.04;
+
+  --fap-shadow: 0 24px 60px -18px rgb(0 0 0 / 0.55), 0 6px 18px -8px rgb(0 0 0 / 0.4);
+  --fap-shadow-sm: 0 10px 30px -12px rgb(0 0 0 / 0.45);
+  --fap-bloom-a: 0.18;
+  --fap-bloom-b: 0.12;
+  --fap-contact: 0.4;
+}
+
+[data-theme='light'] {
+  --fap-tint: 255 255 255;
+  --fap-tint-a: 0.58;
+  --fap-blur: 28px;
+  --fap-sat: 140%;
+  --fap-bright: 102%;
+
+  --fap-well: 20 22 26;
+  --fap-well-a: 0.04;
+  --fap-well-a-hi: 0.065;
+
+  --fap-ai-a: 0.5;
+  --fap-lum-c: 255 255 255;
+  --fap-lum: 0.55;
+  --fap-tile-a: 0.03;
+
+  --fap-shadow: 0 24px 60px -20px rgb(24 30 40 / 0.18), 0 4px 14px -6px rgb(24 30 40 / 0.1);
+  --fap-shadow-sm: 0 10px 30px -14px rgb(24 30 40 / 0.16);
+  --fap-bloom-a: 0.14;
+  --fap-bloom-b: 0.09;
+  --fap-contact: 0.22;
+}
+
+@layer components {
+  /* ── Stage + aura ────────────────────────────────────────────────────── */
+
+  .fap-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* Two brand blooms and one cool counterweight, far enough apart that the
+     panes above them blur different colours at different corners. */
+  .fap-aura {
+    position: absolute;
+    inset: -8%;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 44% at 16% 6%, rgb(var(--brand-solid) / var(--fap-bloom-a)) 0%, transparent 68%),
+      radial-gradient(34% 40% at 90% 20%, rgb(var(--accent) / var(--fap-bloom-b)) 0%, transparent 70%),
+      radial-gradient(46% 38% at 60% 104%, rgb(var(--brand-solid) / var(--fap-bloom-b)) 0%, transparent 72%);
+    filter: blur(30px);
+  }
+
+  /* ── Panes ───────────────────────────────────────────────────────────── */
+
+  .fap-pane,
+  .fap-rail,
+  .fap-float {
+    position: relative;
+    background:
+      linear-gradient(
+        180deg,
+        rgb(var(--fap-lum-c) / var(--fap-lum)) 0%,
+        rgb(var(--fap-lum-c) / 0) 42%
+      ),
+      rgb(var(--fap-tint) / var(--fap-tint-a));
+    backdrop-filter: blur(var(--fap-blur)) saturate(var(--fap-sat)) brightness(var(--fap-bright));
+    -webkit-backdrop-filter: blur(var(--fap-blur)) saturate(var(--fap-sat)) brightness(var(--fap-bright));
+    box-shadow: var(--fap-shadow);
+  }
+
+  .fap-rail {
+    box-shadow: var(--fap-shadow-sm);
+  }
+
+  /* A divider that is a change in light rather than a line. Used where the
+     header and composer meet the transcript — a border there would
+     contradict the whole layer. */
+  .fap-seam {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--fap-well) / 0.09) 14%,
+      rgb(var(--fap-well) / 0.09) 86%,
+      transparent
+    );
+    background-repeat: no-repeat;
+    background-size: 100% 1px;
+  }
+
+  .fap-seam-top {
+    background-position: 0 0;
+  }
+
+  .fap-seam-bottom {
+    background-position: 0 100%;
+  }
+
+  /* ── Bubbles ─────────────────────────────────────────────────────────── */
+
+  .fap-ai {
+    background: rgb(var(--fap-tint) / var(--fap-ai-a));
+    box-shadow: 0 2px 10px -4px rgb(0 0 0 / 0.18);
+  }
+
+  [data-theme='light'] .fap-ai {
+    background: rgb(255 255 255 / var(--fap-ai-a));
+  }
+
+  /* The one saturated object in the transcript. A gradient rather than a flat
+     fill so a long message does not read as a solid orange slab. */
+  .fap-user {
+    background-image: linear-gradient(
+      145deg,
+      rgb(var(--brand-solid)) 0%,
+      rgb(var(--brand-solid) / 0.88) 100%
+    );
+    color: rgb(var(--brand-ink));
+    box-shadow: 0 8px 24px -10px rgb(var(--brand-solid) / 0.5);
+  }
+
+  /* ── Wells, tiles, chips ─────────────────────────────────────────────── */
+
+  .fap-well {
+    background: rgb(var(--fap-well) / var(--fap-well-a));
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .fap-well:hover,
+  .fap-well:focus-within {
+    background: rgb(var(--fap-well) / var(--fap-well-a-hi));
+  }
+
+  .fap-tile {
+    background: rgb(var(--fap-well) / var(--fap-tile-a));
+    transition:
+      transform 220ms cubic-bezier(0.2, 0, 0, 1),
+      background-color 220ms cubic-bezier(0.2, 0, 0, 1),
+      box-shadow 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .fap-tile:hover {
+    background: rgb(var(--fap-well) / var(--fap-well-a-hi));
+    box-shadow: var(--fap-shadow-sm);
+  }
+
+  /* Follow-up prompt. Reads as an offer, so it is lighter than a tile and
+     carries a brand-tinted edge of colour only on hover. */
+  .fap-chip {
+    background: rgb(var(--fap-well) / var(--fap-tile-a));
+    transition:
+      background-color 180ms cubic-bezier(0.2, 0, 0, 1),
+      color 180ms cubic-bezier(0.2, 0, 0, 1),
+      transform 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .fap-chip:hover {
+    background: rgb(var(--brand-solid) / 0.14);
+    transform: translateY(-1px);
+  }
+
+  /* ── The mascot ──────────────────────────────────────────────────────── */
+
+  .fap-orb {
+    position: relative;
+    display: block;
+    flex: none;
+  }
+
+  .fap-orb > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    animation: fap-float 5.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    /* The only shape behind the blob: a contact shadow tinted to its own
+       orange, so it sits on the surface instead of hovering over it. */
+    filter: drop-shadow(0 6px 14px rgb(var(--brand-solid) / var(--fap-contact)));
+  }
+
+  /* Thinking: the same silhouette, breathing faster. Deliberately not a
+     spinner — the mascot is already the loading indicator, and two would
+     compete for the same job. */
+  .fap-orb-busy > img {
+    animation: fap-breathe 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes fap-float {
+    0%,
+    100% {
+      transform: translateY(-3%) scale(1);
+    }
+    50% {
+      transform: translateY(3%) scale(0.985);
+    }
+  }
+
+  @keyframes fap-breathe {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-2%) scale(1.05);
+    }
+  }
+
+  /* ── Agent trace ─────────────────────────────────────────────────────── */
+
+  /* The run, as steps. Each row's state comes from the stream itself — a step
+     is only marked done once the phase that produces it has actually
+     finished, so this never claims work the model has not done. */
+  .fap-step {
+    position: relative;
+    padding-left: 18px;
+  }
+
+  /* The rail joining the steps. Drawn per-row and stopped short on the last
+     one, so there is no line dangling below the final step. */
+  .fap-step:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 4.5px;
+    top: 14px;
+    bottom: -3px;
+    width: 1px;
+    background: rgb(var(--ink-3) / 0.25);
+  }
+
+  .fap-step-dot {
+    position: absolute;
+    left: 0;
+    top: 6px;
+    display: grid;
+    place-items: center;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgb(var(--ink-3) / 0.3);
+  }
+
+  .fap-step-done > .fap-step-dot {
+    background: rgb(var(--brand-solid) / 0.9);
+  }
+
+  .fap-step-active > .fap-step-dot {
+    background: rgb(var(--brand-solid));
+    animation: fap-pulse 1.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes fap-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(var(--brand-solid) / 0.45);
+    }
+    70% {
+      box-shadow: 0 0 0 5px rgb(var(--brand-solid) / 0);
+    }
+  }
+
+  /* ── Streaming cue ───────────────────────────────────────────────────── */
+
+  .fap-dots > span {
+    display: block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgb(var(--brand-solid));
+    animation: fap-dot 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .fap-dots > span:nth-child(2) {
+    animation-delay: 0.14s;
+  }
+
+  .fap-dots > span:nth-child(3) {
+    animation-delay: 0.28s;
+  }
+
+  @keyframes fap-dot {
+    0%,
+    100% {
+      opacity: 0.25;
+      transform: translateY(0);
+    }
+    40% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+
+  /* A caret parked at the end of a streaming answer, so the text reads as
+     still arriving rather than finished and short. */
+  .fap-caret {
+    display: inline-block;
+    width: 2px;
+    height: 0.95em;
+    margin-left: 2px;
+    vertical-align: -0.14em;
+    border-radius: 1px;
+    background: rgb(var(--brand-solid));
+    animation: blink 1s steps(2, start) infinite;
+  }
+
+  /* ── Scrollbar ───────────────────────────────────────────────────────── */
+
+  /* The app's 10px bar has a 3px --bg border, which paints an opaque stripe
+     down the edge of a translucent pane. This one floats. */
+  .fap-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--ink-3) / 0.35) transparent;
+  }
+
+  .fap-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .fap-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .fap-scroll::-webkit-scrollbar-thumb {
+    background: rgb(var(--ink-3) / 0.3);
+    border: 0;
+    border-radius: 99px;
+  }
+
+  .fap-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-3) / 0.55);
+  }
+
+  /* ── Degradation ─────────────────────────────────────────────────────── */
+
+  /* Reduce means reduce: the mascot still reads as the assistant, it simply
+     stops moving. The step dots and dots keep their opacity beat, because a
+     progress indicator that never changes is a bug, not a preference. */
+  @media (prefers-reduced-motion: reduce) {
+    .fap-orb > img {
+      animation: none;
+      transform: none;
+    }
+  }
+
+  /* No blur available, or the user has asked for less transparency: fall back
+     to near-opaque panes. The layer is designed so this is a token swap
+     rather than a separate set of rules. */
+  @media (prefers-reduced-transparency: reduce) {
+    .fap-pane,
+    .fap-rail,
+    .fap-float {
+      --fap-tint-a: 0.97;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .fap-aura {
+      opacity: 0.4;
+    }
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .fap-pane,
+    .fap-rail,
+    .fap-float {
+      --fap-tint-a: 0.96;
+    }
+  }
+}

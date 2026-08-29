@@ -7,6 +7,11 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.js'],
+    // The Edge Function modules are TypeScript and live outside src/, but they
+    // are plain Web-standard code (fetch, ReadableStream, TextDecoder) with no
+    // Deno-only imports, so they run here rather than needing a second runner.
+    // Anything Deno-specific lives in a function entrypoint, which is not
+    // covered by this glob.
+    include: ['src/**/*.test.js', 'supabase/functions/**/*.test.ts'],
   },
 });
