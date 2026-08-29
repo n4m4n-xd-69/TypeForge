@@ -137,6 +137,32 @@ function isEchoedPlaceholder(v: string): boolean {
   );
 }
 
+/**
+ * Best-effort body for a reply that failed the quality gate.
+ *
+ * A failed check used to send no body at all, and the client falls back to the
+ * raw stream when the parsed body is missing — so a generation that was merely
+ * *imperfect* reached the typing surface as a JSON envelope. Extracting the
+ * field anyway means the worst case is slightly odd prose rather than
+ * punctuation nobody can type.
+ *
+ * Returns null only when there is genuinely nothing to salvage.
+ */
+export function salvageBody(kind: string, raw: string): string | null {
+  const parsed = extractJSON(raw);
+  const field = kind === 'snippet' ? 'code' : 'text';
+  const value = parsed && typeof parsed[field] === 'string' ? parsed[field] as string : '';
+  if (value.trim()) {
+    return kind === 'snippet' ? value.trim() : value.replace(/\s+/g, ' ').trim();
+  }
+  // No envelope: the model answered in prose, which is usable as-is.
+  const bare = String(raw ?? '').trim();
+  if (bare && !bare.startsWith('{') && !bare.startsWith('[')) {
+    return kind === 'snippet' ? bare : bare.replace(/\s+/g, ' ').trim();
+  }
+  return null;
+}
+
 export interface PassageValue {
   body: string;
   title: string | null;
