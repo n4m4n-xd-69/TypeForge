@@ -185,8 +185,9 @@ Instrumenting it needs a payments provider, an entitlements table keyed to
 
 **Model cost without a rate.** `ai_models.input_cost_per_1k` and
 `output_cost_per_1k` are nullable and `NULL` is not zero — it means unrated.
-The AI module reports unrated call counts alongside every spend estimate. This
-is the same contract `src/modules/admin/costs.js` has always held.
+The AI module reports unrated call counts alongside every spend estimate. Only
+the eight `:free` models are priced at zero, because for those it is a fact;
+the rest stay unrated rather than carry a plausible guess.
 
 **WAU and MAU are approximations.** `admin_timeseries` returns distinct users
 per day; the rolling sums in Reports count a person once per day they appeared,

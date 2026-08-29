@@ -22,8 +22,8 @@ import { Skeleton } from '../../../components/ui/Primitives.jsx';
  *    to compare against is decoration.
  *
  * 4. **`null` is rendered, not coerced.** A metric with no configured source
- *    reads "not instrumented", never "0" — the same contract `costs.js` holds
- *    for unrated models. Revenue is the live example.
+ *    reads "not instrumented", never "0" — the same contract the AI module
+ *    holds for unrated models. Revenue is the live example.
  */
 
 function formatValue(value, { prefix = '', suffix = '', decimals = 0, compact = false }) {

@@ -23,6 +23,16 @@ export function TrendLine({ data, dataKey, label, unit = '', domain, color, form
 
   if (!data.length) return <NoData />;
 
+  /* The axis floor is 0 unless the data actually goes below it.
+     The previous default was an unconditional `dataMin - 4`, which gave every
+     series four units of headroom underneath — including counts. A chart of
+     daily active users, XP earned or matches played would draw ticks at -1 and
+     -4, quantities that cannot exist, and a flat run at zero sat a third of
+     the way up the panel instead of on the baseline. Series that genuinely go
+     negative keep the headroom. */
+  const values = data.map((d) => Number(d[dataKey])).filter(Number.isFinite);
+  const lowerBound = values.length && Math.min(...values) < 0 ? 'dataMin - 4' : 0;
+
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
@@ -45,7 +55,7 @@ export function TrendLine({ data, dataKey, label, unit = '', domain, color, form
           tickLine={false}
           axisLine={false}
           width={44}
-          domain={domain ?? ['dataMin - 4', 'dataMax + 4']}
+          domain={domain ?? [lowerBound, 'dataMax + 4']}
           tickFormatter={formatter}
         />
         <Tooltip

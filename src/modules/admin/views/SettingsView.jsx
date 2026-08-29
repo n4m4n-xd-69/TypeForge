@@ -69,7 +69,15 @@ function Operators({ canWrite }) {
   const [editing, setEditing] = useState(null);
   const [nextTier, setNextTier] = useState('support');
 
-  const operators = useConsoleQuery(() => fetchOperators(), [nonce]);
+  /* user_roles carries no name or email, so an operator list built from it
+     alone is a column of UUIDs — technically complete and useless for the one
+     question the panel exists to answer. The overview function already joins
+     auth.users under the same scope, so the identity comes from there. */
+  const operators = useConsoleQuery(async () => {
+    const [roles, people] = await Promise.all([fetchOperators(), fetchOverview()]);
+    const by = new Map(people.map((u) => [u.id, u]));
+    return roles.map((r) => ({ ...r, ...(by.get(r.user_id) ?? {}) }));
+  }, [nonce]);
 
   return (
     <>
@@ -89,7 +97,21 @@ function Operators({ canWrite }) {
         >
           <ConsoleTable
             columns={[
-              { key: 'user_id', label: 'Account', mono: true, render: (o) => <span className="truncate">{o.user_id}</span> },
+              {
+                key: 'display_name',
+                label: 'Account',
+                width: '24%',
+                render: (o) => (
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {o.display_name || o.email || 'Unknown account'}
+                    </span>
+                    <span className="block truncate font-mono text-2xs text-ink-3">
+                      {o.email ?? o.user_id}
+                    </span>
+                  </span>
+                ),
+              },
               {
                 key: 'admin_tier',
                 label: 'Tier',

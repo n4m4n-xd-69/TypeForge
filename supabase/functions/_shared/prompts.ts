@@ -71,9 +71,21 @@ export function passagePrompt({ facets, words = 60, hint }: PromptOptions): Mess
         + (hint ? ` The reader asked for: ${hint}` : '')
         + ` Variation seed ${seed()} — ignore its meaning, it exists only to`
         + ' push you somewhere new.'
-        + ' Respond as {"text": "...", "label": "3-5 word description"'
-        + (facets.kind === 'quote' ? ', "author": "name"' : '')
-        + '}.',
+        /* The shape is shown FILLED, not annotated.
+           This used to read `{"text": "...", "label": "3-5 word description"}`
+           — a description sitting where a value belongs. Smaller models copy
+           what they see, so replies came back with the literal string
+           "3-5 word description" in the label field, and that placeholder
+           reached the typing surface as a passage title. Showing a plausible
+           filled example and naming the rule separately removes the thing
+           there was to copy. */
+        + ' Reply with one JSON object and nothing else, in this shape: '
+        + '{"text": "the passage itself", "label": "Steady hands at dawn"'
+        + (facets.kind === 'quote' ? ', "author": "Ada Lovelace"' : '')
+        + '}.'
+        + ' The example values are illustrations — write your own, never copy'
+        + ' them. "text" holds only the passage: no JSON, no quotes around it,'
+        + ' no commentary.',
     },
   ];
 }
@@ -93,9 +105,13 @@ export function snippetPrompt({ facets, hint }: PromptOptions): Message[] {
         + 'teaches one idea.'
         + (hint ? ` The reader asked for: ${hint}` : '')
         + ` Variation seed ${seed()}.`
-        + ' Respond as {"title": "short title", "topic": "2-3 words", '
-        + '"intro": "one sentence on what it does and why it is worth typing", '
-        + '"code": "the snippet"}.',
+        /* Filled example, same reasoning as passagePrompt above. */
+        + ' Reply with one JSON object and nothing else, in this shape: '
+        + '{"title": "Debounce a resize handler", "topic": "event timing", '
+        + '"intro": "Waits for the resizing to stop before doing the work.", '
+        + '"code": "the snippet"}.'
+        + ' The example values are illustrations — write your own, never copy'
+        + ' them. "code" holds only the code.',
     },
   ];
 }

@@ -29,9 +29,10 @@ import {
  * is it the key I think it is": a presence flag and a four-character tail,
  * both written server-side by the function that can actually see the secret.
  *
- * The second rule is inherited from costs.js: a model with no configured rate
- * is reported as unrated. It is never counted as free, because a $0 line in a
- * spend table is a number someone will budget against.
+ * The second rule: a model with no configured rate is reported as UNRATED, and
+ * every spend figure is shown next to how many calls it could not price. A
+ * null rate is never counted as free, because a $0 line in a spend table is a
+ * number someone will eventually budget against.
  */
 
 const LANES = [
@@ -227,9 +228,22 @@ export default function AiControlView() {
                 },
                 {
                   key: 'key_rotated_at',
-                  label: 'Rotated',
+                  label: 'Key changed',
                   align: 'right',
-                  render: (p) => <span className="text-ink-3">{p.key_rotated_at ? relativeTime(p.key_rotated_at) : 'never'}</span>,
+                  // The timestamp records the last *change*, which includes a
+                  // removal. Labelling that "rotated" next to a NOT SET key
+                  // reads as "there is a key and it is fresh", which is the
+                  // opposite of the truth.
+                  render: (p) => {
+                    if (!p.key_rotated_at) return <span className="text-ink-3">never</span>;
+                    const live = vaultByProvider.get(p.id)?.in_vault || p.key_present;
+                    return (
+                      <span className="text-ink-3">
+                        {live ? '' : 'cleared '}
+                        {relativeTime(p.key_rotated_at)}
+                      </span>
+                    );
+                  },
                 },
                 { key: 'priority', label: 'Priority', align: 'right', mono: true },
                 {
@@ -771,7 +785,8 @@ function ProviderEditor({ provider, vault, canWrite, onClose, onSaved }) {
                 </Field>
                 {current.key_rotated_at ? (
                   <span className="font-mono text-2xs text-ink-3">
-                    rotated {relativeTime(current.key_rotated_at)}
+                    {vault?.in_vault || current.key_present ? 'set' : 'cleared'}{' '}
+                    {relativeTime(current.key_rotated_at)}
                   </span>
                 ) : null}
               </div>

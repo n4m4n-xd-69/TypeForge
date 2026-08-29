@@ -26,56 +26,22 @@ export const supabase = SUPABASE_ENABLED
 
 export const cloudEnabled = () => Boolean(supabase);
 
-/**
- * Mirrors the signed-in user id outside React, updated by the same
- * `onAuthStateChange` subscription every consumer already relies on. This is
- * what lets `ai-runner.js` — a plain fetch/hedging module with no React or
- * store dependency of its own — attribute a usage row to a user without an
- * extra network round-trip per AI call.
- */
-let cachedUserId = null;
-if (supabase) {
-  supabase.auth.getUser().then(({ data }) => {
-    cachedUserId = data?.user?.id ?? null;
-  });
-  supabase.auth.onAuthStateChange((_event, session) => {
-    cachedUserId = session?.user?.id ?? null;
-  });
-}
+/* ── auth telemetry ──────────────────────────────────────────────────────
+   Best-effort and silently swallows its own failures — a logging write must
+   never be the reason a sign-in fails.
 
-export function currentUserId() {
-  return cachedUserId;
-}
-
-/* ── admin telemetry (PRD 05) ────────────────────────────────────────────
-   Both are best-effort and silently swallow their own failures — a logging
-   write must never be the reason a sign-in or an AI reply fails. Both also
-   only fire for signed-in users: anonymous, local-only usage stays local,
-   matching the app's local-first default. */
+   The AI-usage counterpart that used to live here is gone. It was written by
+   the browser and needed a module-scope mirror of the signed-in user id, kept
+   current by a second `onAuthStateChange` subscription that ran on every page
+   load. Both became dead weight when generation moved behind the forge Edge
+   Functions: `ai_usage` rows are now written server-side, by the tier that can
+   actually see which model answered, which is also what makes them
+   trustworthy enough for the console to bill against. */
 
 export async function logAuthEvent(userId, event, provider) {
   if (!supabase) return;
   try {
     await supabase.from('auth_events').insert({ user_id: userId ?? null, event, provider: provider ?? null });
-  } catch {
-    /* advisory only */
-  }
-}
-
-export async function logAiUsage({ surface, provider, model, promptTokens, outputTokens, latencyMs, ok, reason }) {
-  if (!supabase || !cachedUserId) return;
-  try {
-    await supabase.from('ai_usage').insert({
-      user_id: cachedUserId,
-      surface,
-      provider: provider ?? 'unknown',
-      model: model ?? 'unknown',
-      prompt_tokens: promptTokens ?? null,
-      output_tokens: outputTokens ?? null,
-      latency_ms: latencyMs ?? null,
-      ok: ok !== false,
-      reason: reason ?? null,
-    });
   } catch {
     /* advisory only */
   }
