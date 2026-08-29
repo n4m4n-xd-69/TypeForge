@@ -12,8 +12,9 @@ import {
   useConsole, useConsoleQuery, usePolling,
 } from '../kit/index.js';
 import {
-  deleteModel, fetchBudget, fetchKpis, fetchModelHealth, fetchModels,
-  fetchModelStats, fetchProviders, resetModelHealth, upsertModel, upsertProvider,
+  clearProviderKey, deleteModel, deleteProvider, fetchBudget, fetchKeyStatus, fetchKpis,
+  fetchModelHealth, fetchModels, fetchModelStats, fetchProviders, resetModelHealth,
+  setProviderKey, upsertModel, upsertProvider,
 } from '../api/console.js';
 
 /**
@@ -62,6 +63,7 @@ export default function AiControlView() {
   const models = useConsoleQuery(() => fetchModels(), [nonce]);
   const providers = useConsoleQuery(() => fetchProviders(), [nonce]);
   const health = useConsoleQuery(() => fetchModelHealth(), [nonce]);
+  const keyStatus = useConsoleQuery(() => fetchKeyStatus(), [nonce]);
   const budget = useConsoleQuery(() => fetchBudget({ days: 14 }), [nonce]);
 
   usePolling(health.reload, 15_000);
@@ -84,6 +86,11 @@ export default function AiControlView() {
   }, [statRows]);
 
   const failureRate = k.ai_calls ? (k.ai_failures / k.ai_calls) * 100 : null;
+
+  const vaultByProvider = useMemo(
+    () => new Map((keyStatus.data ?? []).map((k) => [k.provider_id, k])),
+    [keyStatus.data],
+  );
 
   const now = Date.now();
   const openBreakers = (health.data ?? []).filter((h) => h.open_until && new Date(h.open_until).getTime() > now);
@@ -202,14 +209,21 @@ export default function AiControlView() {
                   key: 'key_present',
                   label: 'Key',
                   sortable: false,
-                  render: (p) => (
-                    <span className="flex items-center gap-0.5">
-                      {p.key_present ? <Chip tone="good">configured</Chip> : <Chip tone="warn">not set</Chip>}
-                      <span className="font-mono text-2xs text-ink-3">
-                        {p.key_present && p.key_tail ? `••••${p.key_tail}` : p.secret_ref}
+                  render: (p) => {
+                    // `in_vault` is what the runtime can actually read; a row
+                    // claiming a key that Vault does not hold is the failure
+                    // mode worth surfacing loudly.
+                    const vault = vaultByProvider.get(p.id);
+                    const live = vault?.in_vault || p.key_present;
+                    return (
+                      <span className="flex items-center gap-0.5">
+                        {live ? <Chip tone="good">configured</Chip> : <Chip tone="warn">not set</Chip>}
+                        <span className="font-mono text-2xs text-ink-3">
+                          {live && p.key_tail ? `••••${p.key_tail}` : p.secret_ref}
+                        </span>
                       </span>
-                    </span>
-                  ),
+                    );
+                  },
                 },
                 {
                   key: 'key_rotated_at',
@@ -228,7 +242,15 @@ export default function AiControlView() {
                 {
                   key: 'enabled',
                   label: 'State',
-                  render: (p) => (p.enabled ? <Chip tone="good">enabled</Chip> : <Chip>disabled</Chip>),
+                  render: (p) => (
+                    <span className="flex items-center gap-0.5">
+                      {p.enabled ? <Chip tone="good">enabled</Chip> : <Chip>disabled</Chip>}
+                      {/* A custom row is configuration only until providers.ts
+                          learns how to talk to it. Saying so beats implying
+                          parity with a built-in. */}
+                      {p.is_builtin ? null : <Chip tone="warn">custom</Chip>}
+                    </span>
+                  ),
                 },
               ]}
               rows={providers.data ?? []}
@@ -336,6 +358,8 @@ export default function AiControlView() {
 
       <ProviderEditor
         provider={editingProvider}
+        vault={editingProvider ? vaultByProvider.get(editingProvider.id) : null}
+        canWrite={can('ai.write')}
         onClose={() => setEditingProvider(null)}
         onSaved={refresh}
       />
@@ -666,9 +690,11 @@ function ModelEditor({ model, models, providers, onClose, onSaved, canDelete }) 
   );
 }
 
-function ProviderEditor({ provider, onClose, onSaved }) {
+function ProviderEditor({ provider, vault, canWrite, onClose, onSaved }) {
   const [draft, setDraft] = useState(provider);
   const [confirming, setConfirming] = useState(false);
+  const [keyDraft, setKeyDraft] = useState('');
+  const [keyAction, setKeyAction] = useState(null);
 
   const current = draft?.id === provider?.id ? draft : provider;
   const set = (patch) => setDraft({ ...(current ?? {}), ...patch });
@@ -686,7 +712,14 @@ function ProviderEditor({ provider, onClose, onSaved }) {
         title={isNew ? 'Add a provider' : current.label}
         subtitle={current.id}
         footer={
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-1">
+            {!isNew && canWrite ? (
+              <Button variant="danger" onClick={() => setKeyAction('delete')}>
+                Delete provider
+              </Button>
+            ) : (
+              <span />
+            )}
             <Button variant="primary" onClick={() => setConfirming(true)}>
               {isNew ? 'Create provider' : 'Save changes'}
             </Button>
@@ -724,25 +757,78 @@ function ProviderEditor({ provider, onClose, onSaved }) {
           </label>
 
           {!isNew ? (
-            <Field label="Key status">
-              {current.key_present ? (
-                <span className="flex items-center gap-0.5">
-                  <Chip tone="good">configured</Chip>
-                  <span className="font-mono text-xs text-ink-3">••••{current.key_tail}</span>
-                </span>
-              ) : (
-                <Chip tone="warn">not set</Chip>
-              )}
-            </Field>
-          ) : null}
+            <div className="rounded-sm border border-line bg-raised/40 p-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-1">
+                <Field label="API key">
+                  {vault?.in_vault || current.key_present ? (
+                    <span className="flex items-center gap-0.5">
+                      <Chip tone="good">configured</Chip>
+                      <span className="font-mono text-xs text-ink-3">••••{current.key_tail ?? '????'}</span>
+                    </span>
+                  ) : (
+                    <Chip tone="warn">not set</Chip>
+                  )}
+                </Field>
+                {current.key_rotated_at ? (
+                  <span className="font-mono text-2xs text-ink-3">
+                    rotated {relativeTime(current.key_rotated_at)}
+                  </span>
+                ) : null}
+              </div>
 
-          <p className="rounded-sm border border-line bg-raised/40 p-1.5 text-xs text-ink-2">
-            To set or rotate the key, run{' '}
-            <code className="font-mono text-ink">
-              supabase secrets set {current.secret_ref || 'PROVIDER_API_KEY'}=…
-            </code>{' '}
-            then redeploy the forge functions. The console cannot read or write it.
-          </p>
+              {/* The value is write-only. It is posted to a SECURITY DEFINER
+                  function that puts it in Supabase Vault, and no query in this
+                  console can read it back — the tail below is all that
+                  returns. `type=password` plus autoComplete off keeps it out
+                  of the browser's own credential store too. */}
+              <label className="mt-1.5 block">
+                <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">
+                  Set or rotate key
+                </span>
+                <input
+                  type="password"
+                  value={keyDraft}
+                  onChange={(e) => setKeyDraft(e.target.value)}
+                  disabled={!canWrite}
+                  placeholder="Paste the provider's API key"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="mt-0.5 h-[34px] w-full rounded-sm border border-line bg-surface px-1.5 font-mono text-sm outline-none transition-colors focus:border-line-strong disabled:opacity-50"
+                />
+              </label>
+
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                <ScopeGate can={canWrite} scope="ai.write" inline>
+                  <Button
+                    variant="primary"
+                    disabled={keyDraft.trim().length < 8}
+                    onClick={() => setKeyAction('set')}
+                  >
+                    <KeyRound size={13} aria-hidden />
+                    Save key
+                  </Button>
+                </ScopeGate>
+                {vault?.in_vault ? (
+                  <ScopeGate can={canWrite} scope="ai.write" inline>
+                    <Button variant="danger" onClick={() => setKeyAction('clear')}>
+                      Remove key
+                    </Button>
+                  </ScopeGate>
+                ) : null}
+              </div>
+
+              <p className="mt-1 text-xs text-ink-3">
+                Stored encrypted in Supabase Vault under{' '}
+                <code className="font-mono text-ink-2">{current.secret_ref}</code>. The forge functions read it on
+                their next cold start — no redeploy. An environment secret of the same name still wins over Vault.
+              </p>
+            </div>
+          ) : (
+            <p className="rounded-sm border border-line bg-raised/40 p-1.5 text-xs text-ink-2">
+              Save the provider first, then set its key. The secret name must begin with{' '}
+              <code className="font-mono text-ink">FORGE_</code> or the runtime will not read it.
+            </p>
+          )}
         </div>
       </Drilldown>
 
@@ -755,6 +841,49 @@ function ProviderEditor({ provider, onClose, onSaved }) {
           await upsertProvider(current);
           onSaved?.();
           onClose();
+        }}
+      />
+
+      <ConfirmAction
+        open={keyAction === 'set'}
+        onClose={() => setKeyAction(null)}
+        title={`${vault?.in_vault ? 'Rotate' : 'Set'} the ${current.label} key`}
+        description="Stored encrypted in Vault. The audit log records that it changed and its last four characters — never the key."
+        confirmLabel={vault?.in_vault ? 'Rotate key' : 'Save key'}
+        onConfirm={async () => {
+          await setProviderKey(current.id, keyDraft.trim());
+          setKeyDraft('');
+          onSaved?.();
+        }}
+      />
+
+      <ConfirmAction
+        open={keyAction === 'delete'}
+        onClose={() => setKeyAction(null)}
+        title={`Delete ${current.label}`}
+        description="Its models are deleted with it — the console tells you how many in the audit entry. Any lane that relied on them falls through to its remaining rungs."
+        confirmLabel="Delete provider"
+        tone="danger"
+        requireReason
+        confirmPhrase={current.id}
+        onConfirm={async (reason) => {
+          await deleteProvider(current.id, reason);
+          onSaved?.();
+          onClose();
+        }}
+      />
+
+      <ConfirmAction
+        open={keyAction === 'clear'}
+        onClose={() => setKeyAction(null)}
+        title={`Remove the ${current.label} key`}
+        description="The provider stops answering as soon as the functions next start. Models on its ladders fall through to the next rung."
+        confirmLabel="Remove key"
+        tone="danger"
+        requireReason
+        onConfirm={async (reason) => {
+          await clearProviderKey(current.id, reason);
+          onSaved?.();
         }}
       />
     </>

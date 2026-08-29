@@ -185,7 +185,7 @@ export async function fetchProviders() {
   // Function secrets and is not reachable from here by construction.
   const { data, error } = await supabase
     .from('ai_providers')
-    .select('id, label, base_url, secret_ref, key_present, key_tail, key_rotated_at, enabled, priority, day_limit, notes, updated_at')
+    .select('id, label, base_url, embed_url, secret_ref, key_present, key_tail, key_rotated_at, enabled, priority, day_limit, max_temperature, is_builtin, notes, updated_at')
     .order('priority');
   if (error) return [];
   return data ?? [];
@@ -255,6 +255,24 @@ export const upsertModel = (m) =>
   });
 
 export const deleteModel = (id, reason) => rpc('admin_delete_model', { p_id: id, p_reason: reason });
+
+export const deleteProvider = (id, reason) => rpc('admin_delete_provider', { p_id: id, p_reason: reason });
+
+/**
+ * Writes a provider key into Supabase Vault.
+ *
+ * The value leaves the browser once, over HTTPS, and is never returned to any
+ * client afterwards — not by this function, not by `fetchProviders`. What comes
+ * back is the last four characters, which is all the console ever displays.
+ */
+export const setProviderKey = (providerId, key) =>
+  rpc('admin_set_provider_key', { p_provider: providerId, p_key: key });
+
+export const clearProviderKey = (providerId, reason) =>
+  rpc('admin_clear_provider_key', { p_provider: providerId, p_reason: reason });
+
+/** Whether each provider's secret actually exists under the name the runtime reads. */
+export const fetchKeyStatus = () => softRpc('admin_provider_key_status', {}, []);
 
 export const resetModelHealth = (provider, model) =>
   rpc('admin_reset_model_health', { p_provider: provider, p_model: model });
@@ -382,7 +400,13 @@ export const upsertAnnouncement = (a) =>
     p_published: Boolean(a.published),
     p_starts_at: iso(a.starts_at ?? new Date()),
     p_ends_at: a.ends_at ? iso(a.ends_at) : null,
+    p_frequency: a.frequency ?? 'once',
+    p_target_user: a.target_user_id || null,
+    p_dismissible: a.dismissible !== false,
   });
+
+/** Delivery counts per notice, so an operator can see whether it landed. */
+export const fetchNoticeStats = () => softRpc('admin_notice_stats', {}, []);
 
 export const deleteAnnouncement = (id) => rpc('admin_delete_announcement', { p_id: id });
 

@@ -12,6 +12,8 @@ permission model, every mutation audited.
 | Retention fix | `supabase/migrations/0016_retention_shows_empty_cohorts.sql` |
 | Suspension revokes access | `supabase/migrations/0017_suspension_revokes_console.sql` |
 | Suspension notice (end user) | `src/modules/auth/SuspendedNotice.jsx`, `src/lib/accountStatus.js` |
+| Full provider/model registry | `supabase/migrations/0019_full_ai_registry.sql` (generated from `functions/_shared/`) |
+| Notices + delivery rules | `supabase/migrations/0020_notices.sql`, `src/modules/auth/NoticeDialog.jsx`, `src/lib/notices.js` |
 | Data access | `src/modules/admin/api/console.js` |
 | Component kit | `src/modules/admin/kit/` |
 | Shell, strip, module registry | `src/modules/admin/console/` |
@@ -111,19 +113,46 @@ and the app can explain itself.
   reactivate it. Purging the `auth.users` record itself is a separate
   service-role operation and is not wired to the console.
 
+## Notices
+
+An operator message shown to one person or to everyone, in a glass dialog.
+
+| Control | Effect |
+|---|---|
+| `frequency: once` | Shown until the person **closes** it, then never again. Dismissal is stored server-side, so it holds across devices. |
+| `frequency: every_time` | Shown on every visit while the notice is live. Forced dismissible — a permanent notice that always returns is a trap, and the RPC rejects that combination. |
+| `target_user_id` | Only that account sees it; `audience` is ignored entirely. |
+| `audience` | `all`, `beta` or `admins`, when no target is set. |
+
+Several live notices queue rather than stack, most severe first. Delivery is
+observable: `admin_notice_stats()` reports seen and dismissed counts per
+notice, so an operator can tell whether a message actually landed.
+
+The suspension notice outranks all of them — `NoticeDialog` renders nothing
+while an account is suspended.
+
 ## API keys
 
-No key passes through the console, ever.
+Keys are **written** from the console and never read back by it.
 
-- `ai_providers.secret_ref` stores the **name** of an Edge Function secret.
-- `key_present` and `key_tail` are written server-side by the function that can
-  actually read the secret.
-- `admin_upsert_provider` rejects a `secret_ref` that is not a
-  `SCREAMING_SNAKE_CASE` environment variable name, so the column cannot be
-  repurposed to smuggle a value.
-- No admin RPC takes a key parameter. `scopes.test.js` asserts this.
+- `admin_set_provider_key(provider, key)` puts the value in **Supabase Vault**,
+  encrypted at rest. `secrets.ts` already resolves environment → Vault, so a key
+  set here is picked up on the functions' next cold start with no redeploy, and
+  rotation is an update rather than a deploy.
+- Nothing returns a key value to any client. The console gets `key_present` and
+  the last four characters — enough to answer "is this configured, and is it the
+  key I think it is".
+- `admin_provider_key_status()` reports whether the secret actually exists under
+  the name the runtime reads, so "no key set" is distinguishable from "key set
+  under a name nothing looks at".
+- The name must start with `FORGE_`, because `forge_secrets()` filters on that
+  prefix — a key stored under any other name would write fine and never be read.
+- The audit log records that a key changed and its last four characters. Never
+  the value.
+- `scopes.test.js` asserts no admin RPC exposes a key-shaped column or reads one
+  back.
 
-To set or rotate one:
+Environment secrets still win over Vault, so this remains available:
 
 ```bash
 supabase secrets set <SECRET_NAME>=…
@@ -162,6 +191,23 @@ is the same contract `src/modules/admin/costs.js` has always held.
 **WAU and MAU are approximations.** `admin_timeseries` returns distinct users
 per day; the rolling sums in Reports count a person once per day they appeared,
 not once per window. The panel says so.
+
+## The AI registry
+
+`0019` is **generated** from `supabase/functions/_shared/providers.ts` and
+`lanes.ts` — four providers, 36 models, nine lanes — so the console starts from
+exactly what the router knows rather than a hand-written subset. 0014's two
+providers and four invented lane names described a system that did not exist.
+
+From there the tables are authoritative for everything an operator edits:
+enable/disable, priority, fallback chains, parameters, rates, and adding or
+removing providers and models outright. `is_builtin` marks a row the deployed
+functions know how to talk to; a custom provider is configuration only until
+`providers.ts` learns it, and the console labels that rather than implying
+parity.
+
+To regenerate after changing the ladders, re-run the generator that produced
+0019 and land the diff as a new migration — never edit an applied one.
 
 ## Adding a module
 
