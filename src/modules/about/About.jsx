@@ -450,7 +450,7 @@ function FollowTab() {
           </p>
           <Button
             as="a"
-            href="https://github.com/n4m4n-xd-69/Key-Stroke/issues/new"
+            href="https://github.com/n4m4n-xd-69/TypeForge/issues/new"
             target="_blank"
             rel="noreferrer noopener"
             variant="primary"

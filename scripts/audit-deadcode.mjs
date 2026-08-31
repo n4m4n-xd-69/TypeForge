@@ -31,9 +31,11 @@ for (const file of files) {
   const importers = files.filter((other) => {
     if (other === file) return false;
     const text = source.get(other);
-    // match ./Name.jsx  ../lib/Name.js  './Name'
+    // match ./Name.jsx  ../lib/Name.js  './Name'  import './Name.js'
     return new RegExp(`from\\s+['"][^'"]*/${base}(\\.jsx?)?['"]`).test(text)
         || new RegExp(`from\\s+['"]\\./${base}(\\.jsx?)?['"]`).test(text)
+        || new RegExp(`import\\s+['"][^'"]*/${base}(\\.jsx?)?['"]`).test(text)
+        || new RegExp(`import\\s+['"]\\./${base}(\\.jsx?)?['"]`).test(text)
         || new RegExp(`import\\s+['"][^'"]*${base}\\.css['"]`).test(text);
   });
   if (importers.length === 0) {
