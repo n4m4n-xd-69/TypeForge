@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Bell, FileClock, Flag, Plus, ShieldCheck, SlidersHorizontal, Trash2, Users } from 'lucide-react';
-import { relativeTime } from '../../../lib/format.js';
+import { cx, relativeTime } from '../../../lib/format.js';
 import { Chip } from '../../../components/ui/Primitives.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Select from '../../../components/ui/Select.jsx';
@@ -11,7 +11,8 @@ import {
 } from '../kit/index.js';
 import {
   deleteAnnouncement, fetchAnnouncements, fetchAuditLog, fetchConfig, fetchFlags,
-  fetchOperators, setConfig, setFlag, setUserRole, upsertAnnouncement,
+  fetchNoticeStats, fetchOperators, fetchOverview, setConfig, setFlag, setUserRole,
+  upsertAnnouncement,
 } from '../api/console.js';
 import { TIER_SCOPES, TIER_SUMMARY } from '../console/scopes.js';
 
@@ -36,7 +37,7 @@ const AREAS = [
   { value: 'audit', label: 'Audit log' },
   { value: 'flags', label: 'Feature flags' },
   { value: 'config', label: 'Configuration' },
-  { value: 'announcements', label: 'Announcements' },
+  { value: 'announcements', label: 'Notices' },
 ];
 
 export default function SettingsView() {
@@ -68,7 +69,15 @@ function Operators({ canWrite }) {
   const [editing, setEditing] = useState(null);
   const [nextTier, setNextTier] = useState('support');
 
-  const operators = useConsoleQuery(() => fetchOperators(), [nonce]);
+  /* user_roles carries no name or email, so an operator list built from it
+     alone is a column of UUIDs — technically complete and useless for the one
+     question the panel exists to answer. The overview function already joins
+     auth.users under the same scope, so the identity comes from there. */
+  const operators = useConsoleQuery(async () => {
+    const [roles, people] = await Promise.all([fetchOperators(), fetchOverview()]);
+    const by = new Map(people.map((u) => [u.id, u]));
+    return roles.map((r) => ({ ...r, ...(by.get(r.user_id) ?? {}) }));
+  }, [nonce]);
 
   return (
     <>
@@ -88,7 +97,21 @@ function Operators({ canWrite }) {
         >
           <ConsoleTable
             columns={[
-              { key: 'user_id', label: 'Account', mono: true, render: (o) => <span className="truncate">{o.user_id}</span> },
+              {
+                key: 'display_name',
+                label: 'Account',
+                width: '24%',
+                render: (o) => (
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {o.display_name || o.email || 'Unknown account'}
+                    </span>
+                    <span className="block truncate font-mono text-2xs text-ink-3">
+                      {o.email ?? o.user_id}
+                    </span>
+                  </span>
+                ),
+              },
               {
                 key: 'admin_tier',
                 label: 'Tier',
@@ -534,6 +557,18 @@ function Announcements({ canWrite }) {
   const [saving, setSaving] = useState(false);
 
   const list = useConsoleQuery(() => fetchAnnouncements(), [nonce]);
+  const stats = useConsoleQuery(() => fetchNoticeStats(), [nonce]);
+  /* The target picker needs real accounts. Registered only: a notice aimed at
+     a throwaway guest session is delivered to a session that will not return. */
+  const people = useConsoleQuery(
+    async () => (await fetchOverview()).filter((u) => !u.is_guest && u.status !== 'deleted'),
+    [nonce],
+  );
+
+  const statBy = useMemo(
+    () => new Map((stats.data ?? []).map((r) => [r.id, r])),
+    [stats.data],
+  );
 
   const state = (a) => {
     if (!a.published) return { label: 'draft', tone: 'neutral' };
@@ -554,7 +589,10 @@ function Announcements({ canWrite }) {
             <Button
               variant="secondary"
               onClick={() =>
-                setEditing({ id: null, title: '', body: '', tone: 'info', audience: 'all', published: false })
+                setEditing({
+                  id: null, title: '', body: '', tone: 'info', audience: 'all',
+                  published: false, frequency: 'once', target_user_id: '', dismissible: true,
+                })
               }
             >
               <Plus size={13} aria-hidden />
@@ -582,12 +620,18 @@ function Announcements({ canWrite }) {
                       <span className="truncate text-sm font-semibold">{a.title}</span>
                       <Chip tone={s.tone}>{s.label}</Chip>
                       <Chip tone={a.tone === 'critical' ? 'bad' : a.tone === 'warn' ? 'warn' : 'accent'}>{a.tone}</Chip>
-                      {a.audience !== 'all' ? <Chip>{a.audience}</Chip> : null}
+                      {a.target_user_id ? <Chip tone="brand">one account</Chip> : a.audience !== 'all' ? <Chip>{a.audience}</Chip> : null}
+                      <Chip tone={a.frequency === 'every_time' ? 'warn' : 'neutral'}>
+                        {a.frequency === 'every_time' ? 'every visit' : 'once'}
+                      </Chip>
                     </span>
                     <span className="mt-px block truncate text-xs text-ink-3">{a.body}</span>
                     <span className="block font-mono text-2xs text-ink-3">
                       {new Date(a.starts_at).toLocaleDateString()}
                       {a.ends_at ? ` → ${new Date(a.ends_at).toLocaleDateString()}` : ' → no end'}
+                      {statBy.get(a.id)
+                        ? ` · seen by ${statBy.get(a.id).seen_by}, dismissed by ${statBy.get(a.id).dismissed_by}`
+                        : ''}
                     </span>
                   </span>
                   <ScopeGate can={canWrite} scope="config.write" inline>
@@ -660,21 +704,79 @@ function Announcements({ canWrite }) {
                 </div>
               </label>
               <label className="block">
-                <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">Audience</span>
+                <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">How often</span>
                 <div className="mt-0.5">
                   <Select
-                    value={editing.audience}
-                    onChange={(v) => setEditing({ ...editing, audience: v })}
-                    label="Audience"
+                    value={editing.frequency}
+                    onChange={(v) =>
+                      setEditing({
+                        ...editing,
+                        frequency: v,
+                        // The database refuses a permanent notice that returns
+                        // on every visit; keep the form from offering it.
+                        dismissible: v === 'every_time' ? true : editing.dismissible,
+                      })
+                    }
+                    label="Frequency"
                     options={[
-                      { value: 'all', label: 'Everyone' },
-                      { value: 'beta', label: 'Beta users' },
-                      { value: 'admins', label: 'Admins only' },
+                      { value: 'once', label: 'Once — until they close it' },
+                      { value: 'every_time', label: 'Every visit' },
                     ]}
                   />
                 </div>
               </label>
             </div>
+
+            {/* Who sees it. A named account overrides the audience entirely,
+                so the two controls are stacked rather than side by side —
+                picking a person should visibly retire the broader choice. */}
+            <label className="block">
+              <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">Send to</span>
+              <div className="mt-0.5">
+                <Select
+                  value={editing.target_user_id ? 'one' : editing.audience}
+                  onChange={(v) =>
+                    setEditing({
+                      ...editing,
+                      audience: v === 'one' ? editing.audience : v,
+                      target_user_id: v === 'one' ? editing.target_user_id || ' ' : '',
+                    })
+                  }
+                  label="Recipients"
+                  minWidth={240}
+                  options={[
+                    { value: 'all', label: 'Everyone' },
+                    { value: 'beta', label: 'Beta users' },
+                    { value: 'admins', label: 'Admins only' },
+                    { value: 'one', label: 'One specific person' },
+                  ]}
+                />
+              </div>
+            </label>
+
+            {editing.target_user_id ? (
+              <label className="block">
+                <span className="text-2xs font-bold uppercase tracking-[0.08em] text-ink-3">Which account</span>
+                <div className="mt-0.5">
+                  <Select
+                    value={editing.target_user_id.trim()}
+                    onChange={(v) => setEditing({ ...editing, target_user_id: v })}
+                    label="Account"
+                    minWidth={240}
+                    options={[
+                      { value: '', label: 'Choose an account…' },
+                      ...(people.data ?? []).map((u) => ({
+                        value: u.id,
+                        label: u.display_name ? `${u.display_name} · ${u.email}` : u.email,
+                      })),
+                    ]}
+                  />
+                </div>
+                <span className="mt-px block text-xs text-ink-3">
+                  Only this person sees it. The audience setting is ignored.
+                </span>
+              </label>
+            ) : null}
             <label className="flex items-center gap-1">
               <input
                 type="checkbox"
@@ -682,7 +784,23 @@ function Announcements({ canWrite }) {
                 onChange={(e) => setEditing({ ...editing, published: e.target.checked })}
                 className="h-[15px] w-[15px] accent-[rgb(var(--brand-solid))]"
               />
-              <span className="text-sm font-semibold">Published — visible to the audience above</span>
+              <span className="text-sm font-semibold">Published — visible to the recipients above</span>
+            </label>
+
+            <label className={cx('flex items-center gap-1', editing.frequency === 'every_time' && 'opacity-50')}>
+              <input
+                type="checkbox"
+                checked={editing.dismissible !== false}
+                disabled={editing.frequency === 'every_time'}
+                onChange={(e) => setEditing({ ...editing, dismissible: e.target.checked })}
+                className="h-[15px] w-[15px] accent-[rgb(var(--brand-solid))]"
+              />
+              <span className="text-sm font-semibold">
+                Dismissible
+                {editing.frequency === 'every_time' ? (
+                  <span className="ml-0.5 font-normal text-ink-3">— required when shown every visit</span>
+                ) : null}
+              </span>
             </label>
           </div>
         ) : null}
@@ -697,6 +815,11 @@ function Announcements({ canWrite }) {
         }
         confirmLabel="Save"
         onConfirm={async () => {
+          // ' ' is the picker's "targeted but not yet chosen" state. Sending it
+          // would silently broadcast a message written for one person.
+          if (editing.target_user_id && !editing.target_user_id.trim()) {
+            throw new Error('Choose which account this notice is for, or send it to everyone.');
+          }
           await upsertAnnouncement(editing);
           refresh();
           setEditing(null);

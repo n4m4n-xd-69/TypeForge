@@ -91,9 +91,9 @@ directly from a view.
 ## The rule that matters most
 
 **Never invent a number.** `null` is rendered as "not instrumented" or "rate
-not configured" — never coerced to `0`. `src/modules/admin/costs.js` already
-holds this line for unrated model costs and `admin_kpis` returns `revenue` as
-SQL `NULL` because TypeForge has no billing system. A fabricated figure in an
+not configured" — never coerced to `0`. `ai_models.*_cost_per_1k` is nullable
+and NULL means unrated, and `admin_kpis` returns `revenue` as SQL `NULL`
+because TypeForge has no billing system. A fabricated figure in an
 admin console is worse than a blank one, because someone will act on it.
 
 ## Charts

@@ -16,6 +16,7 @@ import AccountMenu from '../../modules/auth/AccountMenu.jsx';
 import { useAuth } from '../../lib/auth.jsx';
 import AuthModal from '../../modules/auth/AuthModal.jsx';
 import SuspendedNotice from '../../modules/auth/SuspendedNotice.jsx';
+import NoticeDialog from '../../modules/auth/NoticeDialog.jsx';
 import { MODE_REGISTRY } from '../../lib/modes/registry.js';
 import { deriveNavGroups } from '../../lib/modes/derive.js';
 
@@ -408,6 +409,10 @@ export default function AppShell({ children }) {
           property of the session rather than of any route, and it has to
           appear over whichever surface the person happened to open. */}
       {suspended ? <SuspendedNotice status={accountStatus} onSignOut={signOut} /> : null}
+
+      {/* Sits below the suspension notice in priority: NoticeDialog returns
+          null while an account is suspended, so the two never overlap. */}
+      <NoticeDialog />
     </div>
   );
 }

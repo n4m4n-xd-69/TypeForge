@@ -18,7 +18,8 @@
 import { generate, learn } from '../_shared/orchestrator.ts';
 import { promptFor, laneFor } from '../_shared/prompts.ts';
 import { normaliseFacets } from '../_shared/facets.ts';
-import { checkByKind } from '../_shared/contracts.ts';
+import { checkByKind, salvageBody } from '../_shared/contracts.ts';
+import { bodyFieldFor, JsonFieldStreamer } from '../_shared/jsonStream.ts';
 import { IdentityFilter } from '../_shared/identity.ts';
 import { SseWriter, SSE_HEADERS, chunkBody } from '../_shared/sse.ts';
 import { callerFrom, CORS_HEADERS } from '../_shared/auth.ts';
@@ -120,6 +121,10 @@ Deno.serve(async (req: Request) => {
 
   const pump = (async () => {
     const filter = new IdentityFilter();
+    // The model replies with a JSON envelope. Pulling the body field out as it
+    // streams is what stops a passage arriving with `{"text": "` on the front
+    // of it; the identity filter then scrubs prose rather than punctuation.
+    const field = new JsonFieldStreamer(bodyFieldFor(facets.kind));
     let rawText = '';
 
     try {
@@ -142,7 +147,9 @@ Deno.serve(async (req: Request) => {
         onToken: (delta) => {
           // Raw is kept for the quality gate; the filtered copy is what ships.
           rawText += delta;
-          const out = filter.push(delta);
+          const inner = field.push(delta);
+          if (!inner) return;
+          const out = filter.push(inner);
           if (out) void sse.send('token', { delta: out });
         },
       });
@@ -165,7 +172,7 @@ Deno.serve(async (req: Request) => {
         return;
       }
 
-      const tail = filter.flush();
+      const tail = filter.push(field.flush()) + filter.flush();
       if (tail) await sse.send('token', { delta: tail });
 
       // The client needs the parsed shape, not the raw JSON envelope the model
@@ -177,7 +184,10 @@ Deno.serve(async (req: Request) => {
         generationId: null,
         title: checked.ok ? checked.value.title : null,
         meta: checked.ok ? checked.value.meta : {},
-        body: checked.ok ? checked.value.body : undefined,
+        // A failed check still sends text. Omitting it makes the client fall
+        // back to the raw stream, which is how an imperfect generation reached
+        // the typing surface as a JSON envelope.
+        body: checked.ok ? checked.value.body : (salvageBody(facets.kind, result.body) ?? undefined),
         valid: checked.ok,
       });
 

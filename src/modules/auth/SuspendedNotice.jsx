@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from 'framer-motion';
 import { AlertOctagon, LogOut, Mail } from 'lucide-react';
 import { cx } from '../../lib/format.js';
-import { useReducedMotionSafe } from '../../lib/motion.js';
 import Button from '../../components/ui/Button.jsx';
+import GlassAlert from '../../components/ui/GlassAlert.jsx';
 import { APPEAL_WINDOW_DAYS, appealDeadline, daysRemaining } from '../../lib/accountStatus.js';
 
 /**
@@ -28,7 +27,6 @@ import { APPEAL_WINDOW_DAYS, appealDeadline, daysRemaining } from '../../lib/acc
 const SUPPORT_EMAIL = 'n4m4n.op69@gmail.com';
 
 export default function SuspendedNotice({ status, onSignOut }) {
-  const reduce = useReducedMotionSafe();
   const [now, setNow] = useState(() => Date.now());
 
   /* The countdown only needs to be right to the day, so it re-reads once a
@@ -38,7 +36,6 @@ export default function SuspendedNotice({ status, onSignOut }) {
     return () => window.clearInterval(t);
   }, []);
 
-  // The page behind must not scroll while this is up.
   useEffect(() => {
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -60,36 +57,17 @@ export default function SuspendedNotice({ status, onSignOut }) {
   );
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-3"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="suspended-title"
-      aria-describedby="suspended-reason"
-    >
-      {/* Heavier than a normal dialog scrim: the product behind this is not
-          usable, and showing it crisply invites people to try. */}
-      <div className="absolute inset-0 bg-bg/70 backdrop-blur-[14px]" aria-hidden />
-
-      <motion.div
-        initial={reduce ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={reduce ? { duration: 0.15 } : { type: 'spring', stiffness: 320, damping: 28 }}
-        className={cx(
-          'glass relative w-full max-w-[520px] overflow-hidden rounded-2xl border border-line',
-          'shadow-e4',
-        )}
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-3">
+      <GlassAlert
+        role="alertdialog"
+        labelledBy="suspended-title"
+        describedBy="suspended-reason"
+        edgeClass="via-bad"
+        width="max-w-[520px]"
       >
-        {/* A single warm edge along the top — the one decorative move, and it
-            carries the severity rather than colouring the whole card. */}
-        <span
-          aria-hidden
-          className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-transparent via-bad to-transparent"
-        />
-
         <div className="p-3">
           <div className="flex items-start gap-2">
-            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-bad/12 text-bad">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[12px] bg-bad/14 text-bad ring-1 ring-inset ring-bad/25">
               <AlertOctagon size={22} strokeWidth={2} aria-hidden />
             </span>
             <div className="min-w-0">
@@ -103,7 +81,10 @@ export default function SuspendedNotice({ status, onSignOut }) {
             </div>
           </div>
 
-          <div className="mt-2.5 rounded-lg border border-line bg-surface/60 p-2">
+          {/* Inset panels rather than raised ones: nesting a second glass
+              surface inside the first is the fastest way to make both read as
+              mud, so these are cut *into* the card. */}
+          <div className="mt-2.5 rounded-[12px] border border-line/70 bg-bg/35 p-2 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.06)]">
             <p className="eyebrow">Reason given</p>
             <p id="suspended-reason" className="mt-0.5 text-base font-semibold text-ink">
               {status?.status_reason?.trim() || 'No reason was recorded.'}
@@ -117,15 +98,13 @@ export default function SuspendedNotice({ status, onSignOut }) {
 
           <div
             className={cx(
-              'mt-1.5 rounded-lg border p-2',
-              expired ? 'border-line bg-surface/40' : 'border-warn/35 bg-warn/[0.07]',
+              'mt-1.5 rounded-[12px] border p-2 shadow-[inset_0_1px_0_0_rgb(255_255_255/0.05)]',
+              expired ? 'border-line/70 bg-bg/25' : 'border-warn/30 bg-warn/[0.09]',
             )}
           >
             <p className="eyebrow">Appeal window</p>
             {left == null ? (
-              <p className="mt-0.5 text-sm text-ink-2">
-                Contact support and we&apos;ll review it.
-              </p>
+              <p className="mt-0.5 text-sm text-ink-2">Contact support and we&apos;ll review it.</p>
             ) : expired ? (
               <p className="mt-0.5 text-sm text-ink-2">
                 The {APPEAL_WINDOW_DAYS}-day window closed on {deadline.toLocaleDateString()}. You can still write in —
@@ -147,12 +126,12 @@ export default function SuspendedNotice({ status, onSignOut }) {
               as="a"
               href={`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`}
               variant="primary"
-              className="w-full sm:w-auto"
+              className="lgx-glow w-full sm:w-auto"
             >
               <Mail size={15} aria-hidden />
               Appeal this decision
             </Button>
-            <Button variant="ghost" onClick={onSignOut} className="w-full sm:w-auto">
+            <Button variant="secondary" onClick={onSignOut} className="lgx-glow-quiet w-full sm:w-auto">
               <LogOut size={15} aria-hidden />
               Sign out
             </Button>
@@ -162,7 +141,7 @@ export default function SuspendedNotice({ status, onSignOut }) {
             Your practice history and stats are kept. Nothing is deleted while an account is suspended.
           </p>
         </div>
-      </motion.div>
+      </GlassAlert>
     </div>,
     document.body,
   );

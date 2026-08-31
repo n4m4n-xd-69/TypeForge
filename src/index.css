@@ -203,6 +203,130 @@
     box-shadow: inset 0 1px 0 0 rgb(var(--glass-edge) / var(--glass-edge-alpha));
   }
 
+  /* ── Liquid glass ───────────────────────────────────────────────────────
+     `.glass` above is sticky-chrome frost: one flat translucent plane. An
+     alert that interrupts the whole product needs to read as an object in
+     front of the page rather than a panel painted onto it, so this is built
+     as separate optical layers — surface, sheen, rim — each tunable on its
+     own.
+
+     Four of the five liquid-glass ingredients are here: translucency+blur,
+     specular light (fixed top-down, never cursor-chasing), depth, and a
+     restrained tilt. Edge refraction (SVG displacement) is deliberately
+     skipped: it is Chromium-only, and the payoff on a 480px dialog over a
+     mostly-dark app does not justify a effect most visitors would not see.
+
+     Corners are 16px. Fully rounded reads friendly and this is an
+     interruption; square reads like an error box. Slightly squarish is the
+     shape of something deliberate. */
+  .lgx {
+    position: relative;
+    border-radius: 16px;
+    isolation: isolate;
+    transform-style: preserve-3d;
+    transition: transform var(--lgx-dur, 240ms) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .lgx__surface {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background: rgb(var(--glass) / 0.62);
+    backdrop-filter: blur(26px) saturate(150%) brightness(106%);
+    -webkit-backdrop-filter: blur(26px) saturate(150%) brightness(106%);
+    /* Directional, not a uniform border: bright top edge, faint bottom
+       catch, then the drop shadow that lifts the whole card off the page. */
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.22),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.06),
+      inset 1px 0 0 0 rgb(255 255 255 / 0.05),
+      inset -1px 0 0 0 rgb(255 255 255 / 0.05),
+      0 24px 70px -18px rgb(0 0 0 / 0.62),
+      0 6px 18px -8px rgb(0 0 0 / 0.45);
+  }
+
+  [data-theme='light'] .lgx__surface {
+    background: rgb(255 255 255 / 0.72);
+    box-shadow:
+      inset 0 1px 0 0 rgb(255 255 255 / 0.9),
+      inset 0 -1px 0 0 rgb(0 0 0 / 0.04),
+      0 24px 60px -20px rgb(24 30 40 / 0.28),
+      0 6px 16px -8px rgb(24 30 40 / 0.16);
+  }
+
+  /* The sheen is a fixed light source at the top-left, so the card has a
+     consistent "up". It sits above the surface and below the content. */
+  .lgx__sheen {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(120% 80% at 12% -10%, rgb(255 255 255 / 0.14), transparent 60%),
+      linear-gradient(180deg, rgb(255 255 255 / 0.05), transparent 34%);
+  }
+
+  .lgx__content {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Tilt is a pointer-driven custom property, so the transform is one
+     composited step rather than a re-layout per frame. */
+  @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+    .lgx--tilt {
+      transform: perspective(900px)
+        rotateX(var(--lgx-rx, 0deg))
+        rotateY(var(--lgx-ry, 0deg))
+        translateZ(0);
+    }
+  }
+
+  /* A glass card over a solid wall is just grey. Anything that fails to
+     transmit gets an opaque surface instead of a broken one. */
+  @media (prefers-reduced-transparency: reduce) {
+    .lgx__surface {
+      background: rgb(var(--surface));
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .lgx__sheen { display: none; }
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .lgx__surface { background: rgb(var(--surface) / 0.97); }
+  }
+
+  /* Buttons inside a glass alert carry a low bloom so they read as lit
+     rather than pasted on. Kept under the focus ring's weight: a glow is
+     decoration, focus is information. */
+  .lgx-glow {
+    box-shadow:
+      0 0 0 1px rgb(var(--brand-solid) / 0.30),
+      0 2px 10px -2px rgb(var(--brand-solid) / 0.42),
+      0 8px 26px -10px rgb(var(--brand-solid) / 0.30);
+    transition: box-shadow 180ms cubic-bezier(0.2, 0, 0, 1), transform 120ms ease-out;
+  }
+  .lgx-glow:hover {
+    box-shadow:
+      0 0 0 1px rgb(var(--brand-solid) / 0.45),
+      0 3px 14px -2px rgb(var(--brand-solid) / 0.58),
+      0 12px 34px -10px rgb(var(--brand-solid) / 0.42);
+  }
+  .lgx-glow-quiet {
+    box-shadow:
+      0 0 0 1px rgb(var(--glass-edge) / 0.14),
+      0 2px 10px -4px rgb(0 0 0 / 0.5);
+    transition: box-shadow 180ms cubic-bezier(0.2, 0, 0, 1);
+  }
+  .lgx-glow-quiet:hover {
+    box-shadow:
+      0 0 0 1px rgb(var(--glass-edge) / 0.26),
+      0 3px 14px -4px rgb(0 0 0 / 0.6);
+  }
+
   /* ── Typographic roles ─────────────────────────────────────────────────
      `eyebrow` is mono because it labels a region the way a panel label does
      on an instrument. */

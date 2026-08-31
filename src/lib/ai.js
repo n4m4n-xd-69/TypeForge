@@ -62,17 +62,83 @@ async function cached(key, producer, shouldCache = () => true) {
   return p;
 }
 
-/** Models like to wrap JSON in prose or fences. Dig the object back out. */
-function extractJSON(text) {
+/** Models like to wrap JSON in prose or fences. Dig the object back out.
+ *  Exported for its own test — the truncation path is the one that used to
+ *  surface as "Forge answered with something this app could not parse". */
+export function extractJSON(text) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const body = fenced ? fenced[1] : text;
   const start = body.indexOf('{');
+  if (start === -1) throw new AIUnavailable('No JSON object in response', 'bad-response');
+
   const end = body.lastIndexOf('}');
-  if (start === -1 || end === -1) throw new AIUnavailable('No JSON object in response', 'bad-response');
+  if (end > start) {
+    try {
+      return JSON.parse(body.slice(start, end + 1));
+    } catch {
+      /* fall through to the repair below */
+    }
+  }
+
+  // The analysis shape is large and providers cut replies at the token
+  // ceiling, which leaves a valid prefix and no closing braces. Discarding it
+  // is what produced "Forge answered with something this app could not parse"
+  // on a reply that was mostly fine — so close what is open and keep the
+  // fields that did arrive.
+  const repaired = repairTruncatedJSON(body.slice(start));
+  if (repaired) return repaired;
+  throw new AIUnavailable('Malformed JSON', 'bad-response');
+}
+
+/**
+ * Closes a JSON object that stops mid-stream.
+ *
+ * Mirrors `repairTruncated` in supabase/functions/_shared/contracts.ts. The two
+ * exist separately because one runs in Deno on the server and this one runs in
+ * the browser; they are kept deliberately identical in behaviour.
+ */
+function repairTruncatedJSON(raw) {
+  let inString = false;
+  let escaped = false;
+  let lastSafe = -1;
+
+  for (let i = 0; i < raw.length; i += 1) {
+    const c = raw[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === ',' || c === '}' || c === ']') lastSafe = i;
+  }
+  if (lastSafe === -1) return null;
+
+  let head = raw.slice(0, lastSafe + 1).replace(/,\s*$/, '');
+  const closers = [];
+  let s2 = false;
+  let e2 = false;
+  for (let i = 0; i < head.length; i += 1) {
+    const c = head[i];
+    if (s2) {
+      if (e2) e2 = false;
+      else if (c === '\\') e2 = true;
+      else if (c === '"') s2 = false;
+      continue;
+    }
+    if (c === '"') s2 = true;
+    else if (c === '{') closers.push('}');
+    else if (c === '[') closers.push(']');
+    else if (c === '}' || c === ']') closers.pop();
+  }
+  if (s2) head += '"';
+
   try {
-    return JSON.parse(body.slice(start, end + 1));
-  } catch (err) {
-    throw new AIUnavailable(`Malformed JSON: ${err.message}`, 'bad-response');
+    const parsed = JSON.parse(head + closers.reverse().join(''));
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
 }
 
@@ -123,7 +189,7 @@ export async function analyseCode(code, language, { signal } = {}) {
               content: `Analyse this ${language} snippet. The "flow" array is a directed graph: give each node an id, and list the ids it leads to in "next". Use "decision" for branches and give each outgoing edge a "branch" label, and put a concrete value at that step in "example". Give 2-3 worked "examples" with real inputs and the outputs they actually produce — a normal case and at least one edge case. Respond in exactly this JSON shape:\n${ANALYSIS_SHAPE}\n\n\`\`\`${language}\n${code}\n\`\`\``,
             },
           ],
-          { maxTokens: 2200, temperature: 0.3, signal, surface: 'analyse' },
+          { maxTokens: 3200, temperature: 0.3, signal, surface: 'analyse' },
         );
         return { ...extractJSON(raw), source: 'ai' };
       } catch (err) {
