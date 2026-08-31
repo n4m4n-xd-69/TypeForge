@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CONTEST, parMs } from './damage.js';
+import { parMs } from './damage.js';
 import { initialRoundState } from './roundState.js';
 import { stepEvent, reduceRound, finalizeOutcome, DOUBLE_KO_WINDOW_MS, ROUND_TIME_CAP_MS } from './combat.js';
 
