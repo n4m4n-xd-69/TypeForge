@@ -1597,6 +1597,7 @@ export default function CommunityProfileCard({ onSaved = () => {} }) {
 import { useEffect, useState } from 'react';
 import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
+import { useToast } from '../../components/ui/Toast.jsx';
 import { useAuth } from '../../lib/auth.jsx';
 import { supabase } from '../../lib/supabase.js';
 import CommunityProfileCard from './CommunityProfileCard.jsx';
@@ -1609,6 +1610,7 @@ import CommunityProfileCard from './CommunityProfileCard.jsx';
  */
 export default function IntroModal() {
   const { user, cloudEnabled } = useAuth();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -1619,15 +1621,38 @@ export default function IntroModal() {
       .select('community_intro_seen')
       .eq('id', user.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled && data && data.community_intro_seen === false) setOpen(true);
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          if (import.meta.env.DEV) console.warn('[community] intro-seen check failed', error);
+          return;
+        }
+        if (data && data.community_intro_seen === false) setOpen(true);
       });
     return () => { cancelled = true; };
   }, [cloudEnabled, user]);
 
+  /*
+   * Closes only once the flag is actually persisted. `supabase-js` resolves
+   * `{ error }` on an RLS denial or a Postgres error rather than throwing —
+   * closing unconditionally first (as an earlier version of this function
+   * did) meant a failed write left the modal gone but `community_intro_seen`
+   * still `false`, so it would silently reappear on the member's very next
+   * visit despite them having explicitly dismissed it. `saveCommunityProfile`
+   * (lib/community/api.js) already treats this exact write shape as
+   * something that can fail; this does the same.
+   */
   const dismiss = async () => {
+    if (!user) { setOpen(false); return; }
+    const { error } = await supabase
+      .from('profiles')
+      .update({ community_intro_seen: true })
+      .eq('id', user.id);
+    if (error) {
+      toast('Could not save that — try again.', { tone: 'error' });
+      return;
+    }
     setOpen(false);
-    if (user) await supabase.from('profiles').update({ community_intro_seen: true }).eq('id', user.id);
   };
 
   if (!open) return null;
