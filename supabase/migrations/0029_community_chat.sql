@@ -6,7 +6,7 @@
 -- Follows community_posts' exact shape (0025): a table with soft-delete,
 -- SECURITY DEFINER RPCs that own every write, and admin_can('content.moderate')
 -- as the one moderation gate this whole app already uses. The one deliberate
--- departure: there is no client-facing insert policy on chat_messages at all.
+-- departure: there is no client-facing insert policy on chat_channel_messages at all.
 -- community_posts has one that duplicates the RPC's "active account" check as
 -- defense in depth (see its own comment), but that duplication doesn't cover
 -- the RPC's rate limit or mute check — a client could insert directly via
@@ -39,7 +39,7 @@ on conflict (slug) do nothing;
 
 /* ══ 2. messages ═════════════════════════════════════════════════════════ */
 
-create table if not exists public.chat_messages (
+create table if not exists public.chat_channel_messages (
   id           uuid primary key default gen_random_uuid(),
   channel_id   uuid not null references public.chat_channels on delete cascade,
   user_id      uuid not null references auth.users on delete cascade,
@@ -56,20 +56,20 @@ create table if not exists public.chat_messages (
   created_at   timestamptz not null default now(),
   deleted_at   timestamptz,
 
-  constraint chat_messages_content_check check (body is not null or image_url is not null)
+  constraint chat_channel_messages_content_check check (body is not null or image_url is not null)
 );
 
-create index if not exists chat_messages_channel_feed_idx
-  on public.chat_messages (channel_id, created_at desc) where deleted_at is null;
+create index if not exists chat_channel_messages_channel_feed_idx
+  on public.chat_channel_messages (channel_id, created_at desc) where deleted_at is null;
 
-alter table public.chat_messages enable row level security;
+alter table public.chat_channel_messages enable row level security;
 
-drop policy if exists chat_messages_read on public.chat_messages;
-create policy chat_messages_read on public.chat_messages
+drop policy if exists chat_channel_messages_read on public.chat_channel_messages;
+create policy chat_channel_messages_read on public.chat_channel_messages
   for select to authenticated using (deleted_at is null);
 
-drop policy if exists chat_messages_delete on public.chat_messages;
-create policy chat_messages_delete on public.chat_messages
+drop policy if exists chat_channel_messages_delete on public.chat_channel_messages;
+create policy chat_channel_messages_delete on public.chat_channel_messages
   for update to authenticated
   using (user_id = auth.uid() or public.admin_can('content.moderate'))
   with check (user_id = auth.uid() or public.admin_can('content.moderate'));
@@ -109,7 +109,7 @@ alter table public.profiles
   add column if not exists community_intro_seen boolean not null default false;
 
 /* ══ 5. the reserved "TypeForge AI" bot identity ════════════════════════ */
--- A fixed-UUID row so /ai replies are ordinary chat_messages authored by a
+-- A fixed-UUID row so /ai replies are ordinary chat_channel_messages authored by a
 -- real profile, not a special case the client has to know about. See this
 -- plan's "flagged for verification" note above the task list — this insert
 -- is the standard minimal-columns pattern for seeding a Supabase service
@@ -151,10 +151,10 @@ create or replace function public.chat_send_message(
   p_channel   uuid,
   p_body      text default null,
   p_image_url text default null
-) returns public.chat_messages
+) returns public.chat_channel_messages
 language plpgsql security definer set search_path = '' as $$
 declare
-  msg    public.chat_messages;
+  msg    public.chat_channel_messages;
   uid    uuid := auth.uid();
   prof   record;
   recent int;
@@ -190,14 +190,14 @@ begin
 
   -- Rate limit in the database, same reasoning community_post's own comment
   -- gives: it cannot be skipped by not using the UI.
-  select count(*) into recent from public.chat_messages
+  select count(*) into recent from public.chat_channel_messages
    where user_id = uid and created_at > now() - interval '1 minute';
   if recent >= 20 then
     raise exception 'Slow down a moment — twenty messages a minute is the limit'
       using errcode = 'CH001';
   end if;
 
-  insert into public.chat_messages (
+  insert into public.chat_channel_messages (
     channel_id, user_id, body, image_url, display_name, avatar, photo_url
   ) values (
     p_channel, uid, nullif(btrim(p_body), ''), p_image_url,
@@ -213,7 +213,7 @@ grant  execute on function public.chat_send_message(uuid, text, text) to authent
 create or replace function public.chat_delete_message(p_id uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  update public.chat_messages
+  update public.chat_channel_messages
      set deleted_at = now()
    where id = p_id
      and deleted_at is null
@@ -326,9 +326,9 @@ begin
   if not exists (
     select 1 from pg_publication_tables
      where pubname = 'supabase_realtime' and schemaname = 'public'
-       and tablename = 'chat_messages'
+       and tablename = 'chat_channel_messages'
   ) then
-    alter publication supabase_realtime add table public.chat_messages;
+    alter publication supabase_realtime add table public.chat_channel_messages;
   end if;
 exception
   when undefined_object then
