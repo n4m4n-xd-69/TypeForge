@@ -160,6 +160,25 @@ export const setUserRole = (userId, role, tier, note) =>
 
 export const fetchLiveMatches = () => softRpc('admin_live_matches', {}, []);
 export const fetchMatchDetail = (roomId) => softRpc('admin_match_detail', { p_room: roomId }, null);
+
+/**
+ * Closes a live Battlefield.
+ *
+ * A write, so it throws — `admin_require('content.moderate')` raises 42501 and
+ * an operator without the tier gets a real error rather than a button that
+ * appeared to work. The reason is not optional and the database enforces that:
+ * every player in the room is about to be shown this text, and "removed by an
+ * administrator" with no explanation is the state this whole feature exists to
+ * avoid.
+ */
+export const removeBattleRoom = (roomId, reason) =>
+  rpc('admin_remove_battle_room', { p_room: roomId, p_reason: reason });
+
+export const fetchAppeals = (openOnly = false) =>
+  softRpc('admin_list_appeals', { p_open_only: openOnly }, []);
+
+export const replyToAppeal = (appealId, reply) =>
+  rpc('admin_reply_to_appeal', { p_appeal: appealId, p_reply: reply });
 export const fetchAnomalies = (from, to) =>
   softRpc('admin_anomalies', { p_from: iso(from), p_to: iso(to) }, []);
 

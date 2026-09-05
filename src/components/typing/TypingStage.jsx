@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { cx } from '../../lib/format.js';
 import { CHAR_STATE } from '../../lib/typing.js';
@@ -271,60 +271,128 @@ export default function TypingStage({
 }
 
 /**
- * Split out and memo-free on purpose: the per-character spans are cheap, and
- * memoising them costs more than it saves at these lengths.
+ * The passage, rendered one word at a time.
+ *
+ * This used to be a flat loop that rebuilt every character span on every
+ * render, and it was the single biggest source of the input lag. Two things
+ * drove it, and neither was the keystroke itself:
+ *
+ *   1. The engine ticks a clock into state ten times a second, so the whole
+ *      passage re-rendered 10×/s *while the user was doing nothing*. An
+ *      800-character exercise is 800 element creations and 800 `cx()` string
+ *      concatenations per tick.
+ *   2. A keystroke changes exactly one character's state, and rebuilt all 800
+ *      to express it.
+ *
+ * Chunking by word fixes both. `Word` is memoised on a signature of just its
+ * own characters' states, so a clock tick re-renders nothing at all, and a
+ * keystroke re-renders the one word under the caret. The signature costs a
+ * single pass over an array of short strings — far less than the work it
+ * avoids.
+ *
+ * Words, not fixed-size blocks, because a word is also the unit the browser
+ * wraps on: chunk boundaries never fall mid-word, so `whitespace-pre-wrap`
+ * still breaks lines exactly where it did before.
  */
 function Passage({ target, tokens, states }) {
-  const chars = tokens ?? [...target].map((ch) => ({ ch, className: '' }));
-  const out = [];
+  const chars = useMemo(
+    () => tokens ?? [...target].map((ch) => ({ ch, className: '' })),
+    [tokens, target],
+  );
 
-  for (let i = 0; i < chars.length; i++) {
-    const { ch, className } = chars[i];
-    const state = states[i];
+  /* Boundaries change only when the exercise does. A chunk runs up to and
+     including its trailing space or newline, so whitespace never starts a
+     chunk and the caret's word is always one unit. */
+  const chunks = useMemo(() => {
+    const out = [];
+    let start = 0;
+    for (let i = 0; i < chars.length; i++) {
+      const ch = chars[i].ch;
+      if (ch === ' ' || ch === '\n' || ch === '\t') {
+        out.push([start, i + 1]);
+        start = i + 1;
+      }
+    }
+    if (start < chars.length) out.push([start, chars.length]);
+    return out;
+  }, [chars]);
 
-    if (ch === '\n') {
-      // The newline still has to be typed, so it gets a visible glyph and the
-      // same state colours as any other character.
+  return (
+    <>
+      {chunks.map(([start, end]) => {
+        // One character per state, so a word's signature is a short string and
+        // comparing it is a single string compare inside React.memo.
+        let sig = '';
+        for (let i = start; i < end; i++) sig += STATE_SIG[states[i]] ?? '.';
+        return <Word key={start} chars={chars} start={start} end={end} states={states} sig={sig} />;
+      })}
+    </>
+  );
+}
+
+/** Distinct one-character codes, so two different states never share a signature. */
+const STATE_SIG = {
+  [CHAR_STATE.PENDING]: 'p',
+  [CHAR_STATE.CORRECT]: 'c',
+  [CHAR_STATE.WRONG]: 'w',
+  [CHAR_STATE.CORRECTED]: 'x',
+  [CHAR_STATE.EXTRA]: 'e',
+};
+
+const Word = memo(
+  function Word({ chars, start, end, states }) {
+    const out = [];
+    for (let i = start; i < end; i++) {
+      const { ch, className } = chars[i];
+      const state = states[i];
+
+      if (ch === '\n') {
+        // The newline still has to be typed, so it gets a visible glyph and the
+        // same state colours as any other character.
+        out.push(
+          <span
+            key={i}
+            data-idx={i}
+            className={cx(
+              'inline-block w-[0.9em] text-[0.7em] align-middle',
+              state === CHAR_STATE.WRONG
+                ? 'text-bad bg-bad/15 rounded-[3px]'
+                : state === CHAR_STATE.CORRECT || state === CHAR_STATE.CORRECTED
+                  ? 'text-ink-3'
+                  : 'text-ink-3/30',
+            )}
+          >
+            ↵
+          </span>,
+        );
+        out.push(<br key={`br-${i}`} />);
+        continue;
+      }
+
       out.push(
         <span
           key={i}
           data-idx={i}
           className={cx(
-            'inline-block w-[0.9em] text-[0.7em] align-middle',
-            state === CHAR_STATE.WRONG
-              ? 'text-bad bg-bad/15 rounded-[3px]'
-              : state === CHAR_STATE.CORRECT || state === CHAR_STATE.CORRECTED
-                ? 'text-ink-3'
-                : 'text-ink-3/30',
+            'relative transition-colors duration-75',
+            state === CHAR_STATE.PENDING && className ? `${className} opacity-70` : null,
+            state === CHAR_STATE.CORRECT && className ? className : null,
+            !className || state === CHAR_STATE.WRONG || state === CHAR_STATE.CORRECTED
+              ? STATE_CLASS[state]
+              : null,
           )}
         >
-          ↵
+          {ch}
         </span>,
       );
-      out.push(<br key={`br-${i}`} />);
-      continue;
     }
-
-    out.push(
-      <span
-        key={i}
-        data-idx={i}
-        className={cx(
-          'relative transition-colors duration-100',
-          state === CHAR_STATE.PENDING && className ? `${className} opacity-70` : null,
-          state === CHAR_STATE.CORRECT && className ? className : null,
-          !className || state === CHAR_STATE.WRONG || state === CHAR_STATE.CORRECTED
-            ? STATE_CLASS[state]
-            : null,
-        )}
-      >
-        {ch}
-      </span>,
-    );
-  }
-
-  return <>{out}</>;
-}
+    return <>{out}</>;
+  },
+  // `states` is a fresh array on every keystroke and `chars` is stable, so the
+  // signature is the only thing worth comparing — it is precisely "did any of
+  // MY characters change".
+  (a, b) => a.sig === b.sig && a.chars === b.chars && a.start === b.start && a.end === b.end,
+);
 
 /**
  * Line numbers live in their own absolutely-positioned column so they never

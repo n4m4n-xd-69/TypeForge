@@ -2,16 +2,36 @@ import { PRESET_AVATARS, defaultPresetFor, findPreset, isPreset } from '../../li
 import { cx } from '../../lib/format.js';
 
 /**
- * One avatar, three sources.
+ * Whether a stored avatar value is an image to render rather than a preset id.
  *
- * A preset id draws the tile below, a data URI renders the uploaded image, and
- * anything else falls back to a preset derived from the name — so a person who
- * has never opened the picker still gets a stable, recognisable tile rather
- * than the same grey circle as everyone else.
+ * Deliberately an allow-list of three schemes. `avatar` is a free text column
+ * that a person can influence, and rendering it straight into `src` would
+ * otherwise accept `javascript:` — which is not a hypothetical shape for a
+ * field that also travels to the leaderboard and the admin console.
+ */
+export function isImageSource(value) {
+  if (typeof value !== 'string') return false;
+  return value.startsWith('data:image/')
+    || value.startsWith('https://')
+    || value.startsWith('blob:');
+}
+
+/**
+ * One avatar, four sources.
+ *
+ * A preset id draws the tile below, a data URI or an https URL renders an
+ * image, and anything else falls back to a preset derived from the name — so a
+ * person who has never opened the picker still gets a stable, recognisable tile
+ * rather than the same grey circle as everyone else.
+ *
+ * The https case is not optional. A Google profile photo arrives as a URL, and
+ * so does an uploaded photo once it is in storage; before this, both fell
+ * through to the name-derived fallback and the picture the person had already
+ * provided was silently discarded everywhere it appeared.
  */
 export default function Avatar({ value, name, size = 32, className, ring = false, alt }) {
   const preset = isPreset(value) ? findPreset(value) : null;
-  const custom = typeof value === 'string' && value.startsWith('data:') ? value : null;
+  const custom = isImageSource(value) ? value : null;
   const fallback = preset ?? defaultPresetFor(name || 'keystroke');
 
   const shell = cx(

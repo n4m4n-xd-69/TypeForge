@@ -7,6 +7,7 @@ import Segmented from '../../components/ui/Segmented.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { useAuth } from '../../lib/auth.jsx';
 import { signInAnonymously, signInWithGoogle } from '../../lib/supabase.js';
+import { resolveDisplayName } from '../../lib/identity.js';
 import { cx } from '../../lib/format.js';
 
 const GOALS = [
@@ -29,7 +30,11 @@ export default function Onboarding({ open, onClose, onStart }) {
   const { state, updateProfile } = useStore();
   const { user, cloudEnabled, openAuthModal } = useAuth();
   const [step, setStep] = useState(0);
-  const [name, setName] = useState(state.profile.name);
+  /* Whatever we already know, pre-filled — a signed-in Google user should see
+     their own name in the box rather than an empty one. Home does not open this
+     wizard at all in that case, but the field is also reachable from a return
+     visit, and an empty input next to a known name is its own small insult. */
+  const [name, setName] = useState(() => resolveDisplayName(state.profile, user));
   const [goal, setGoal] = useState(state.profile.goalMinutes ?? 15);
   const [focus, setFocus] = useState('speed');
 

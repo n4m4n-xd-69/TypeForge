@@ -5,6 +5,7 @@ import {
 import { cx, humanDuration, relativeTime } from '../../../lib/format.js';
 import { keyLabel, weakestKeys } from '../../../lib/typing.js';
 import { Chip } from '../../../components/ui/Primitives.jsx';
+import Avatar from '../../../components/ui/Avatar.jsx';
 import Button from '../../../components/ui/Button.jsx';
 import Select from '../../../components/ui/Select.jsx';
 import ChartFrame, { DataTable } from '../../../components/charts/ChartFrame.jsx';
@@ -16,6 +17,7 @@ import {
 } from '../kit/index.js';
 import {
   adjustXp, fetchOverview, fetchUserDetail, fetchUserStatuses, setUserRole, setUserStatus,
+  subscribeToTables,
 } from '../api/console.js';
 
 /**
@@ -42,14 +44,25 @@ const STATUS_FILTER = [
   { value: 'deleted', label: 'Removed' },
 ];
 
-/* The app signs people in anonymously so it works before anyone commits to an
-   account, and each guest is a real auth.users row. Counting those as users
-   reports session churn as growth, so the roster defaults to registered
-   accounts and guests are an explicit choice. */
+/**
+ * The app signs people in anonymously so it works before anyone commits to an
+ * account, and each guest is a real auth.users row.
+ *
+ * Migration 0018 was right that counting guests as registered users reports
+ * session churn as growth — but it fixed that in the wrong place. It made
+ * `registered` the roster's *default filter*, so the one screen whose job is to
+ * answer "who is in this database" answered it with a subset, silently. On a
+ * project where nearly every account is a guest, that is an admin panel showing
+ * one user out of dozens with no indication anything is hidden.
+ *
+ * The distinction belongs in the KPIs, which still report the two populations
+ * separately, and in a filter the operator can choose. The roster's default is
+ * now everyone, because a roster that hides rows by default is not a roster.
+ */
 const ACCOUNT_FILTER = [
+  { value: 'all', label: 'Everyone' },
   { value: 'registered', label: 'Registered' },
   { value: 'guest', label: 'Guests' },
-  { value: 'all', label: 'Everyone' },
 ];
 
 const ACTIVITY_FILTER = [
@@ -91,7 +104,7 @@ const BULK = {
 export default function UsersView() {
   const { range, nonce, refresh, can } = useConsole();
   const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState({ status: 'all', activity: 'all', account: 'registered' });
+  const [filters, setFilters] = useState({ status: 'all', activity: 'all', account: 'all' });
   const [selected, setSelected] = useState([]);
   const [openId, setOpenId] = useState(null);
   const [bulk, setBulk] = useState(null);
@@ -100,6 +113,32 @@ export default function UsersView() {
     const [users, statuses] = await Promise.all([fetchOverview(), fetchUserStatuses()]);
     return users.map((u) => ({ ...u, ...(statuses.get(u.id) ?? { status: 'active' }) }));
   }, [nonce]);
+
+  /**
+   * A new registration should appear here without anyone pressing anything.
+   *
+   * `profiles` gets a row from the `on_auth_user_created` trigger the moment an
+   * account exists, and it carries the status changes an operator makes, so one
+   * subscription covers "someone signed up", "someone edited their profile" and
+   * "someone was suspended" — the three things this screen is watching for.
+   *
+   * Coalesced through a timer rather than refetched per event: a burst of
+   * profile writes (a bulk suspend is one per account) should cost one reload,
+   * not one each. Realtime is advisory here — if the publication is not
+   * configured this is simply inert and the console's own polling still
+   * refreshes the roster.
+   */
+  useEffect(() => {
+    let timer = null;
+    const stop = subscribeToTables(['profiles'], () => {
+      if (timer) return;
+      timer = setTimeout(() => { timer = null; refresh(); }, 600);
+    });
+    return () => {
+      clearTimeout(timer);
+      stop();
+    };
+  }, [refresh]);
 
   const users = roster.data ?? [];
 
@@ -143,6 +182,7 @@ export default function UsersView() {
         width: '20%',
         render: (u) => (
           <span className="flex items-center gap-0.5">
+            <Avatar value={u.photo_url || u.avatar} name={u.display_name || 'user'} size={22} />
             <span className="truncate font-semibold">{u.display_name || <span className="text-ink-3">unnamed</span>}</span>
             {u.is_guest ? <Chip>guest</Chip> : null}
             {u.status === 'suspended' ? <Chip tone="bad">suspended</Chip> : null}
@@ -155,6 +195,12 @@ export default function UsersView() {
         label: 'Email',
         width: '22%',
         render: (u) => (u.email ? <span className="truncate text-ink-2">{u.email}</span> : <span className="text-ink-3">no email · guest</span>),
+      },
+      {
+        key: 'provider',
+        label: 'Provider',
+        width: '9%',
+        render: (u) => <span className="text-ink-3">{providerLabel(u) ?? '—'}</span>,
       },
       { key: 'signed_up', label: 'Signed up', align: 'right', render: (u) => <span className="text-ink-3">{relativeTime(u.signed_up)}</span> },
       {
@@ -190,15 +236,25 @@ export default function UsersView() {
       />
 
       <MetricRack cols={4}>
+        {/* The headline is every account, with the split in the hint. The tile
+            used to read "Registered users" and set the roster to match, which
+            made the subset look like the whole — the panel below reported one
+            user on a database holding dozens. Registered vs guest is a real
+            distinction and it is still one click away, but it is a breakdown,
+            not the default view of the roster. */}
         <MetricTile
           icon={UsersIcon}
-          label="Registered users"
-          value={counts.total}
+          label="Accounts"
+          value={users.length}
           loading={roster.status === 'loading'}
-          hint={counts.guests ? `${counts.guests} guest ${counts.guests === 1 ? 'session' : 'sessions'} not counted` : 'no guest sessions'}
+          hint={
+            counts.guests
+              ? `${counts.total.toLocaleString()} registered · ${counts.guests.toLocaleString()} guest`
+              : `${counts.total.toLocaleString()} registered · no guest sessions`
+          }
           source="admin_user_overview"
-          active={filters.account === 'registered' && filters.status === 'all' && filters.activity === 'all'}
-          onClick={() => setFilters({ status: 'all', activity: 'all', account: 'registered' })}
+          active={filters.account === 'all' && filters.status === 'all' && filters.activity === 'all'}
+          onClick={() => setFilters({ status: 'all', activity: 'all', account: 'all' })}
         />
         <MetricTile
           icon={CheckCircle2}
@@ -263,7 +319,7 @@ export default function UsersView() {
               onSelectionChange={setSelected}
               defaultSort={{ key: 'signed_up', dir: 'desc' }}
               csvName="typeforge-users"
-              minWidth={980}
+              minWidth={1080}
               bulkActions={
                 <>
                   <ScopeGate can={can('users.write')} scope="users.write" inline>
@@ -341,14 +397,39 @@ export default function UsersView() {
 
 /* ── the drill-down ────────────────────────────────────────────────────── */
 
+/**
+ * Six sections rather than one long scroll, per spec §7: an operator opening an
+ * account is usually answering one question, and the tab they land on should be
+ * the one that answers "who is this and are they in trouble" — identity, totals
+ * and the practice footprint. Everything else is one click away and nothing is
+ * two.
+ *
+ * "Battles" leads with Battlefield and keeps Shadow below it: Battlefield is
+ * the mode people actually play, and Shadow is behind the under-development
+ * gate, so an account with no rated match is the normal case, not a gap.
+ */
 const TABS = [
   { value: 'overview', label: 'Overview' },
   { value: 'activity', label: 'Activity' },
   { value: 'performance', label: 'Performance' },
-  { value: 'games', label: 'Games' },
-  { value: 'content', label: 'Content' },
+  { value: 'games', label: 'Battles' },
+  { value: 'content', label: 'Community' },
   { value: 'audit', label: 'Audit' },
 ];
+
+/* Guests have no provider string of their own and reading "anonymous" as a
+   sign-in method is more confusing than helpful, so the two are one label. */
+const PROVIDER_LABEL = {
+  google: 'Google',
+  email: 'Email',
+  anonymous: 'Guest session',
+  phone: 'Phone',
+};
+
+function providerLabel(profile) {
+  if (!profile?.provider) return profile?.is_guest ? 'Guest session' : null;
+  return PROVIDER_LABEL[profile.provider] ?? profile.provider;
+}
 
 function UserSheet({ userId, summary, onClose, onMutated }) {
   const { can } = useConsole();
@@ -407,8 +488,15 @@ function UserSheet({ userId, summary, onClose, onMutated }) {
         onClose={onClose}
         width="xl"
         eyebrow="admin_user_detail"
+        media={
+          <Avatar
+            value={profile.photo_url || profile.avatar}
+            name={profile.display_name || profile.email || 'User'}
+            size={40}
+          />
+        }
         title={profile.display_name || profile.email || 'User'}
-        subtitle={profile.email}
+        subtitle={profile.email || (profile.is_guest ? 'Guest session · no email' : null)}
         tabs={TABS}
         activeTab={tab}
         onTabChange={setTab}
@@ -453,6 +541,29 @@ function UserSheet({ userId, summary, onClose, onMutated }) {
         <StateBlock status={detail.status} error={detail.error} onRetry={detail.reload} rows={6}>
           {tab === 'overview' ? (
             <div className="space-y-2">
+              {/* Identity first. The sheet used to open on XP and streaks,
+                  which answers "how much have they typed" before "who is
+                  this" — and on a roster where most rows are guests, the
+                  second question is the one an operator actually has. */}
+              <FieldGrid cols={4}>
+                <Field label="Account">
+                  {profile.is_guest ? <Chip>guest</Chip> : <Chip tone="good">registered</Chip>}
+                </Field>
+                <Field label="Signed in with">{providerLabel(profile)}</Field>
+                <Field label="Course">{profile.course}</Field>
+                <Field label="Branch">{profile.branch}</Field>
+                <Field label="Year" mono>{profile.study_year ? `Year ${profile.study_year}` : null}</Field>
+                <Field label="Photo">{profile.photo_url ? 'uploaded' : 'preset avatar'}</Field>
+                <Field label="Signed up">{profile.signed_up ? relativeTime(profile.signed_up) : null}</Field>
+                <Field label="Last seen">{profile.last_seen ? relativeTime(profile.last_seen) : 'never'}</Field>
+              </FieldGrid>
+
+              {profile.bio ? (
+                <p className="rounded-sm border border-line bg-raised/40 p-1.5 text-sm text-ink-2">
+                  {profile.bio}
+                </p>
+              ) : null}
+
               <FieldGrid cols={4}>
                 <Field label="XP" mono>{profile.xp?.toLocaleString()}</Field>
                 <Field label="Streak" mono>{profile.streak_count ?? 0}d</Field>
@@ -463,8 +574,8 @@ function UserSheet({ userId, summary, onClose, onMutated }) {
                 <Field label="Average WPM" mono>{d.totals?.avg_wpm}</Field>
                 <Field label="Best WPM" mono>{d.totals?.best_wpm}</Field>
                 <Field label="Accuracy" mono>{d.totals?.avg_accuracy != null ? `${d.totals.avg_accuracy}%` : null}</Field>
-                <Field label="Signed up">{profile.signed_up ? relativeTime(profile.signed_up) : null}</Field>
-                <Field label="Last seen">{profile.last_seen ? relativeTime(profile.last_seen) : 'never'}</Field>
+                <Field label="Battlefield matches" mono>{d.battle?.matches ?? 0}</Field>
+                <Field label="Community posts" mono>{d.community?.posts ?? 0}</Field>
                 <Field label="AI calls" mono>{d.ai?.calls?.toLocaleString()}</Field>
               </FieldGrid>
 
@@ -549,6 +660,42 @@ function UserSheet({ userId, summary, onClose, onMutated }) {
 
           {tab === 'games' ? (
             <div className="space-y-2">
+              <div>
+                <p className="mb-1 text-sm font-bold">Battlefield</p>
+                <FieldGrid cols={4}>
+                  <Field label="Rooms opened" mono>{d.battle?.rooms_created ?? 0}</Field>
+                  {/* Hosting a room also joins it, so this count includes the
+                      rooms above rather than sitting beside them. */}
+                  <Field label="Rooms joined" mono>{d.battle?.rooms_joined ?? 0}</Field>
+                  <Field label="Matches" mono>{d.battle?.matches ?? 0}</Field>
+                  <Field label="Wins" mono>{d.battle?.wins ?? 0}</Field>
+                  <Field label="Top three" mono>
+                    {(d.battle?.wins ?? 0) + (d.battle?.podium ?? 0)}
+                  </Field>
+                  {/* A result written by the settle path rather than by the
+                      player — a closed tab or a timeout. High counts here are
+                      the signature of someone who keeps abandoning rooms. */}
+                  <Field label="Did not finish" mono>{d.battle?.unfinished ?? 0}</Field>
+                  <Field label="Average WPM" mono>{d.battle?.avg_wpm ?? null}</Field>
+                  <Field label="Best WPM" mono>{d.battle?.best_wpm ?? null}</Field>
+                </FieldGrid>
+              </div>
+
+              <MiniTable
+                title="Recent Battlefields"
+                head={['Room', 'Role', 'Result', 'WPM', 'Accuracy', 'When']}
+                rows={(d.battle_history ?? []).map((b) => [
+                  b.pin,
+                  b.hosted ? 'host' : 'player',
+                  b.finished ? (b.rank ? `#${b.rank}` : 'finished') : 'did not finish',
+                  b.wpm,
+                  `${b.accuracy}%`,
+                  relativeTime(b.created_at),
+                ])}
+                emptyText="This account has not raced in a Battlefield."
+              />
+
+              <p className="pt-0.5 text-sm font-bold">Shadow</p>
               {d.shadow ? (
                 <FieldGrid cols={4}>
                   <Field label="Forge rating" mono>{d.shadow.fr}</Field>
@@ -576,31 +723,75 @@ function UserSheet({ userId, summary, onClose, onMutated }) {
           ) : null}
 
           {tab === 'content' ? (
-            <MiniTable
-              title="Generations attributed to this account"
-              head={['Title', 'Kind', 'Words', 'State', 'Created']}
-              rows={(d.generations ?? []).map((g) => [
-                g.title || g.kind,
-                g.kind,
-                g.word_count,
-                g.flagged ? 'flagged' : g.published ? 'live' : 'archived',
-                relativeTime(g.created_at),
-              ])}
-              emptyText="No generations attributed to this account."
-            />
+            <div className="space-y-2">
+              <FieldGrid cols={4}>
+                <Field label="Posts" mono>{d.community?.posts ?? 0}</Field>
+                <Field label="Last 7 days" mono>{d.community?.posts_7d ?? 0}</Field>
+                <Field label="Rooms shared" mono>{d.community?.shared_rooms ?? 0}</Field>
+                <Field label="Removed" mono>{d.community?.removed ?? 0}</Field>
+                <Field label="Last post">
+                  {d.community?.last_post ? relativeTime(d.community.last_post) : null}
+                </Field>
+              </FieldGrid>
+
+              {/* Post *text* is moderated in Content, under content.moderate.
+                  What this screen answers is whether someone is active and
+                  whether they are spraying room links — which is what these
+                  columns show without reading anybody's messages. */}
+              <MiniTable
+                title="Community posts"
+                head={['When', 'Shared room', 'Length', 'State']}
+                rows={(d.community_posts ?? []).map((p) => [
+                  relativeTime(p.created_at),
+                  p.battle_pin ?? '—',
+                  `${p.body_length} chars`,
+                  p.deleted_at ? 'removed' : 'live',
+                ])}
+                emptyText="This account has not posted in the community."
+              />
+
+              <MiniTable
+                title="Generations attributed to this account"
+                head={['Title', 'Kind', 'Words', 'State', 'Created']}
+                rows={(d.generations ?? []).map((g) => [
+                  g.title || g.kind,
+                  g.kind,
+                  g.word_count,
+                  g.flagged ? 'flagged' : g.published ? 'live' : 'archived',
+                  relativeTime(g.created_at),
+                ])}
+                emptyText="No generations attributed to this account."
+              />
+            </div>
           ) : null}
 
           {tab === 'audit' ? (
-            <MiniTable
-              title="Manual XP adjustments"
-              head={['Change', 'Reason', 'When']}
-              rows={(d.xp_adjustments ?? []).map((a) => [
-                `${a.delta > 0 ? '+' : ''}${a.delta}`,
-                a.reason,
-                relativeTime(a.created_at),
-              ])}
-              emptyText="No manual adjustments on this account."
-            />
+            <div className="space-y-2">
+              <MiniTable
+                title="Manual XP adjustments"
+                head={['Change', 'Reason', 'When']}
+                rows={(d.xp_adjustments ?? []).map((a) => [
+                  `${a.delta > 0 ? '+' : ''}${a.delta}`,
+                  a.reason,
+                  relativeTime(a.created_at),
+                ])}
+                emptyText="No manual adjustments on this account."
+              />
+              {/* Appeals against a room an operator removed. Answering one
+                  happens in Arena; seeing it here is what tells an operator
+                  this is the fourth time, which Arena's per-room view cannot. */}
+              <MiniTable
+                title="Room removal appeals"
+                head={['Room', 'Removed because', 'Answered', 'Filed']}
+                rows={(d.appeals ?? []).map((a) => [
+                  a.pin ?? '—',
+                  a.removed_reason ?? '—',
+                  a.answered ? relativeTime(a.replied_at) : 'open',
+                  relativeTime(a.created_at),
+                ])}
+                emptyText="This account has not appealed a room removal."
+              />
+            </div>
           ) : null}
 
           {/* PRD 05 §7.3. Worth repeating on the surface where it would be

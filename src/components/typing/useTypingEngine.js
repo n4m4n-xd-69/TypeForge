@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  accuracyPct, consistencyPct, countCorrect, diffChars, netWPM,
+  accuracyPct, consistencyPct, diffChars, grossWPM, netWPM,
 } from '../../lib/typing.js';
 import { sfx } from '../../lib/sound.js';
 
@@ -51,44 +51,88 @@ export default function useTypingEngine({
   const onFinishRef = useRef(onFinish);
   onFinishRef.current = onFinish;
 
-  /* Reset whenever the exercise changes. */
-  useEffect(() => {
-    setTyped('');
-    setStatus('idle');
-    setElapsedMs(0);
+  /**
+   * Running count of characters correct *at their own index*.
+   *
+   * Maintained incrementally rather than recomputed. `countCorrect` walks the
+   * whole passage, and `live` was calling it on every render — which, with the
+   * clock ticking ten times a second, meant an O(n) scan 10×/s for a number
+   * that changes only when a key is pressed. `correctAt` remembers each
+   * position's verdict so push and back can adjust the total in O(1), and
+   * `countCorrect` is left for the one place that genuinely needs a fresh
+   * scan (a `seed`ed value that never went through push).
+   */
+  const correctAt = useRef([]);
+  const correctCount = useRef(0);
+
+  const clearCounters = useCallback(() => {
     typedRef.current = '';
     startedAt.current = null;
     everWrong.current = new Set();
     keystrokes.current = { total: 0, correct: 0 };
     keyStats.current = {};
     samples.current = [];
+    correctAt.current = [];
+    correctCount.current = 0;
     finishedRef.current = false;
     armed.current = !gated;
-  }, [target, gated]);
+  }, [gated]);
+
+  /* Reset whenever the exercise changes. */
+  useEffect(() => {
+    setTyped('');
+    setStatus('idle');
+    setElapsedMs(0);
+    clearCounters();
+  }, [target, gated, clearCounters]);
+
+  /**
+   * `finish` reached through a ref.
+   *
+   * The clock effect below cannot list `finish` as a dependency without
+   * restarting the interval every time its identity changes, and it cannot
+   * close over it without eventually holding a stale one. A ref is the only
+   * arrangement where exactly one interval exists and it always calls the
+   * current function.
+   */
+  const finishRef = useRef(null);
 
   /* Clock + per-second WPM sampling (the input to consistency). */
   useEffect(() => {
-    if (status !== 'running') return;
+    if (status !== 'running') return undefined;
     let lastSampleAt = 0;
     let lastCorrect = 0;
 
-    const id = setInterval(() => {
+    /* Elapsed is always computed from the start instant, never accumulated, so
+       a throttled or skipped tick costs an update but never drifts the value. */
+    const tick = () => {
       const ms = Date.now() - startedAt.current;
       setElapsedMs(ms);
 
       if (ms - lastSampleAt >= 1000) {
-        const correct = countCorrect(target, typedRef.current);
+        const correct = correctCount.current;
         samples.current.push(netWPM(correct - lastCorrect, ms - lastSampleAt));
         lastCorrect = correct;
         lastSampleAt = ms;
       }
 
-      if (limitSeconds && ms >= limitSeconds * 1000) finish('time');
-    }, 100);
+      if (limitSeconds && ms >= limitSeconds * 1000) finishRef.current?.('time');
+    };
 
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, limitSeconds, target]);
+    const id = setInterval(tick, 100);
+
+    /* A backgrounded tab throttles intervals to about 1Hz, so a test whose
+       limit expires while hidden would otherwise finish up to a second late and
+       show a clock that had visibly jumped. Re-checking on the way back makes
+       the deadline exact at the moment it becomes observable. */
+    const onVisible = () => { if (!document.hidden) tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [status, limitSeconds]);
 
   const finish = useCallback(
     (reason) => {
@@ -97,14 +141,14 @@ export default function useTypingEngine({
 
       const ms = startedAt.current ? Date.now() - startedAt.current : 0;
       const value = typedRef.current;
-      const correct = countCorrect(target, value);
+      const correct = correctCount.current;
       const result = {
         reason,
         durationSec: ms / 1000,
         chars: value.length,
         correctChars: correct,
         wpm: netWPM(correct, ms),
-        rawWpm: netWPM(value.length, ms),
+        rawWpm: grossWPM(value.length, ms),
         accuracy: accuracyPct(keystrokes.current.correct, keystrokes.current.total),
         consistency: consistencyPct(samples.current),
         errors: keystrokes.current.total - keystrokes.current.correct,
@@ -116,8 +160,9 @@ export default function useTypingEngine({
       if (sound) sfx.complete();
       onFinishRef.current?.(result);
     },
-    [target, sound],
+    [sound],
   );
+  finishRef.current = finish;
 
   const push = useCallback(
     (ch) => {
@@ -138,12 +183,20 @@ export default function useTypingEngine({
       if (sound) (correct ? (expected === ' ' ? sfx.space : sfx.key) : sfx.error)();
       if (stopOnError && !correct) return;
 
+      correctAt.current[value.length] = correct;
+      if (correct) correctCount.current += 1;
+
       let next = value + ch;
 
       // After a newline, walk past the next line's indentation for free — you
       // shouldn't have to hand-type eight spaces to prove you can indent.
       if (autoIndent && ch === '\n' && correct) {
         while (next.length < target.length && (target[next.length] === ' ' || target[next.length] === '\t')) {
+          // Auto-consumed indentation is correct by construction — it is copied
+          // straight out of the target — and has to be counted, or the WPM of
+          // every indented snippet silently under-reports.
+          correctAt.current[next.length] = true;
+          correctCount.current += 1;
           next += target[next.length];
         }
       }
@@ -155,6 +208,14 @@ export default function useTypingEngine({
     },
     [target, autoIndent, stopOnError, sound, finish],
   );
+
+  /** Un-counts every position being removed, so the running total stays exact. */
+  const rewindTo = useCallback((length) => {
+    for (let i = typedRef.current.length - 1; i >= length; i--) {
+      if (correctAt.current[i]) correctCount.current -= 1;
+      correctAt.current[i] = false;
+    }
+  }, []);
 
   const back = useCallback(
     (wholeWord) => {
@@ -169,10 +230,11 @@ export default function useTypingEngine({
       } else {
         next = value.slice(0, -1);
       }
+      rewindTo(next.length);
       typedRef.current = next;
       setTyped(next);
     },
-    [],
+    [rewindTo],
   );
 
   const start = useCallback(() => {
@@ -253,23 +315,16 @@ export default function useTypingEngine({
     setTyped('');
     setStatus('idle');
     setElapsedMs(0);
-    typedRef.current = '';
-    startedAt.current = null;
-    everWrong.current = new Set();
-    keystrokes.current = { total: 0, correct: 0 };
-    keyStats.current = {};
-    samples.current = [];
-    finishedRef.current = false;
-    armed.current = !gated;
-  }, [gated]);
+    clearCounters();
+  }, [clearCounters]);
 
   const states = useMemo(() => diffChars(target, typed, everWrong.current), [target, typed]);
 
   const live = useMemo(() => {
-    const correct = countCorrect(target, typed);
+    const correct = correctCount.current;
     return {
       wpm: netWPM(correct, elapsedMs),
-      rawWpm: netWPM(typed.length, elapsedMs),
+      rawWpm: grossWPM(typed.length, elapsedMs),
       accuracy: accuracyPct(keystrokes.current.correct, keystrokes.current.total),
       errors: keystrokes.current.total - keystrokes.current.correct,
       progress: target.length ? typed.length / target.length : 0,

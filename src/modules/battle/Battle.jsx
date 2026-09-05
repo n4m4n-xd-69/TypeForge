@@ -11,6 +11,7 @@ import { useAuth } from '../../lib/auth.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { signInAnonymously } from '../../lib/supabase.js';
 import { createBattle, joinBattle } from '../../lib/battle/api.js';
+import { MAX_PLAYERS, MIN_PLAYERS, QUICK_PICKS, clampPlayerCount } from '../../lib/battle/capacity.js';
 import { LENGTH_PRESETS, pickBattlePassage, presetById } from '../../lib/battle/passage.js';
 import { cx } from '../../lib/format.js';
 import { DIFFICULTIES } from '../../lib/content.js';
@@ -37,6 +38,12 @@ export default function Battle() {
   const [difficulty, setDifficulty] = useState('normal');
   const [preset, setPreset] = useState('standard');
   const [maxPlayers, setMaxPlayers] = useState(8);
+  // Custom is the only way past the QUICK_PICKS ceiling of 30, up to the
+  // server's real cap of 60 (migration 0028). Kept as a separate toggle
+  // rather than always showing a bare number input, because a blank text
+  // field inviting "type a number" reads as more work than picking a chip
+  // for the size everyone actually wants most of the time.
+  const [customCapacity, setCustomCapacity] = useState(false);
 
   if (!cloudEnabled) {
     return (
@@ -131,13 +138,44 @@ export default function Battle() {
               </Field>
 
               <Field label="Players">
-                <Segmented
-                  size="sm"
-                  label="Max players"
-                  options={[2, 4, 6, 8].map((n) => ({ value: n, label: String(n) }))}
-                  value={maxPlayers}
-                  onChange={setMaxPlayers}
-                />
+                {customCapacity ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={MIN_PLAYERS}
+                      max={MAX_PLAYERS}
+                      value={maxPlayers}
+                      onChange={(e) => setMaxPlayers(clampPlayerCount(e.target.value))}
+                      className="h-7 w-16 rounded-lg border border-line bg-surface px-2 text-sm text-ink-1"
+                      aria-label="Custom player count, 2 to 60"
+                    />
+                    <button
+                      type="button"
+                      className="text-2xs font-bold text-ink-3 underline decoration-dotted underline-offset-2 hover:text-ink-2"
+                      onClick={() => { setCustomCapacity(false); setMaxPlayers(8); }}
+                    >
+                      Use presets
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <Segmented
+                      size="sm"
+                      label="Max players"
+                      options={QUICK_PICKS.map((n) => ({ value: n, label: String(n) }))}
+                      value={maxPlayers}
+                      onChange={setMaxPlayers}
+                    />
+                    <button
+                      type="button"
+                      className="text-2xs font-bold text-ink-3 underline decoration-dotted underline-offset-2 hover:text-ink-2"
+                      onClick={() => setCustomCapacity(true)}
+                    >
+                      Custom
+                    </button>
+                  </div>
+                )}
               </Field>
             </div>
 
@@ -186,7 +224,7 @@ export default function Battle() {
 
       <Reveal delay={0.08}>
         <div className="grid gap-2.5 md:grid-cols-3">
-          <Feature icon={Users} title="Up to eight" body="Everyone sees the roster fill in real time, and nobody can slip in once the countdown starts." />
+          <Feature icon={Users} title="2 to 60" body="Pick a quick size or dial in Custom. Everyone sees the roster fill in real time, and nobody can slip in once the countdown starts." />
           <Feature icon={Timer} title="One passage, one clock" body="The same text for the whole room, and a start time that belongs to the server rather than to anybody's laptop." />
           <Feature icon={Trophy} title="Cleanest run wins" body="Fewest mistakes first, then speed, then accuracy, then who finished soonest." />
         </div>

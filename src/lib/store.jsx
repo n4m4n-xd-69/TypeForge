@@ -5,6 +5,7 @@ import {
 } from './gamification.js';
 import { useAuth } from './auth.jsx';
 import { useCloudSync } from './sync.js';
+import { identityFromUser } from './identity.js';
 
 const KEY = 'keystroke.state.v2';
 
@@ -189,6 +190,35 @@ export function StoreProvider({ children }) {
    * local-only path is byte-for-byte what it was before this line existed.
    */
   useCloudSync(user, state, dispatch);
+
+  /**
+   * Adopt whatever the identity provider already told us.
+   *
+   * A Google sign-in hands over a name and a photo, and until this existed
+   * nothing read either — so the next screen asked "what should we call you?"
+   * of someone who had just answered that question. Same for the avatar: it
+   * arrived as a URL and was thrown away.
+   *
+   * Strictly fill-in-the-blanks. It writes a field only when that field is
+   * empty, so a name or avatar the person chose by hand always wins and signing
+   * in again never overwrites it. That is the difference between adopting an
+   * identity and imposing one.
+   */
+  const adoptedFor = useRef(null);
+  useEffect(() => {
+    if (!user || adoptedFor.current === user.id) return;
+    adoptedFor.current = user.id;
+
+    const id = identityFromUser(user);
+    const patch = {};
+    if (!state.profile.name?.trim() && id.name) patch.name = id.name;
+    if (!state.profile.avatar && id.avatarUrl) patch.avatar = id.avatarUrl;
+    if (Object.keys(patch).length) dispatch({ type: 'profile', patch });
+    // Reading `state.profile` without depending on it is deliberate: this runs
+    // once per identity, not on every profile edit, or it would fight the user
+    // for the field it just filled in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Debounced persistence — typing generates a lot of state churn.
   useEffect(() => {

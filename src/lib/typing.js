@@ -1,6 +1,7 @@
 /**
  * The typing engine's maths, kept separate from React so it can be reasoned
- * about (and unit-tested) on its own.
+ * about (and unit-tested) on its own. See typing.test.js — every definition
+ * below is pinned by a test that states it in words.
  *
  * Definitions, chosen to match what typing sites conventionally report:
  *   gross WPM = (all characters typed / 5) / minutes
@@ -8,26 +9,61 @@
  *   accuracy  = correct keystrokes / total keystrokes, counting every keypress
  *               ever made, so a corrected mistake still costs you
  *   consistency = 100 − coefficient of variation of the per-second WPM samples
+ *
+ * "Correct characters" means characters that match the target *at their own
+ * index*. A correct letter in the wrong place is not a correct character —
+ * `countCorrect` is what enforces that, and it is the single input every WPM
+ * figure in the product derives from, including the one Postgres recomputes in
+ * battle_finish(). One definition, four surfaces.
  */
 
 export const CHARS_PER_WORD = 5;
 
+function wpm(chars, elapsedMs) {
+  // A non-positive span is the only case that genuinely has no answer.
+  //
+  // The previous guard was `elapsedMs < 500 -> 0`, which is worse than it
+  // looks: the readout sat at a flat zero for the first half second and then
+  // jumped to whatever three-figure rate the opening burst implied. That jump
+  // is the "WPM leaps incorrectly" complaint. Reporting the honest rate from
+  // the first millisecond removes the discontinuity entirely, and DecayCounter
+  // already eases the displayed value so the early noise never reads as jitter.
+  if (!(elapsedMs > 0)) return 0;
+  return Math.max(0, (chars / CHARS_PER_WORD) / (elapsedMs / 60_000));
+}
+
+/** Correct characters only — the headline figure. */
 export function netWPM(correctChars, elapsedMs) {
-  if (elapsedMs < 500) return 0;
-  return (correctChars / CHARS_PER_WORD) / (elapsedMs / 60_000);
+  return wpm(Math.max(0, correctChars), elapsedMs);
+}
+
+/** Every character typed, right or wrong. Always >= netWPM. */
+export function grossWPM(typedChars, elapsedMs) {
+  return wpm(Math.max(0, typedChars), elapsedMs);
 }
 
 export function accuracyPct(correctKeystrokes, totalKeystrokes) {
   if (!totalKeystrokes) return 100;
-  return (correctKeystrokes / totalKeystrokes) * 100;
+  // Clamped rather than trusted: the engine's counters are the normal caller,
+  // but a restored session or a Battlefield row can carry anything, and an
+  // accuracy of 104% on a results screen destroys confidence in every other
+  // number beside it.
+  return Math.max(0, Math.min(100, (correctKeystrokes / totalKeystrokes) * 100));
 }
 
-/** Coefficient of variation, inverted, so higher is steadier. */
+/**
+ * Coefficient of variation, inverted, so higher is steadier.
+ *
+ * Returns null — not 0 — when there are too few samples to say anything. Zero
+ * is a measurement, and it is the worst one available; a three-second quote
+ * run produced two samples and was scored as maximally erratic for it.
+ * `gradeRun` renormalises around null instead of docking the grade.
+ */
 export function consistencyPct(samples) {
-  const values = samples.filter((v) => v > 0);
-  if (values.length < 3) return 0;
+  const values = (samples ?? []).filter((v) => v > 0);
+  if (values.length < 3) return null;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
-  if (!mean) return 0;
+  if (!mean) return null;
   const variance = values.reduce((a, b) => a + (b - mean) ** 2, 0) / values.length;
   const cv = Math.sqrt(variance) / mean;
   return Math.max(0, Math.min(100, (1 - cv) * 100));
@@ -106,9 +142,18 @@ export function keyFor(ch) {
   return { key: lower, shift: lower !== ch };
 }
 
-/** Grades a finished run into a letter, used on the summary screen. */
+/**
+ * Grades a finished run into a letter, used on the summary screen.
+ *
+ * An unmeasured consistency (a run too short to produce three samples) drops
+ * out of the weighting and the remaining two are renormalised, rather than
+ * being scored as a zero the run never earned.
+ */
 export function gradeRun({ wpm, accuracy, consistency }) {
-  const score = wpm * 0.4 + accuracy * 0.45 + consistency * 0.15;
+  const measured = typeof consistency === 'number' && Number.isFinite(consistency);
+  const score = measured
+    ? wpm * 0.4 + accuracy * 0.45 + consistency * 0.15
+    : (wpm * 0.4 + accuracy * 0.45) / 0.85;
   if (accuracy < 85) return { grade: 'C', note: 'Accuracy is holding you back' };
   if (score >= 95) return { grade: 'S', note: 'Exceptional run' };
   if (score >= 85) return { grade: 'A', note: 'Strong across the board' };

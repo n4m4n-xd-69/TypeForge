@@ -22,7 +22,7 @@ export const BATTLE_ERROR_COPY = {
   BF004: 'That match has already started. Ask the host to open a new one.',
   BF005: 'Only the host can do that.',
   BF006: 'You need at least one opponent before you can start.',
-  BF007: 'A Battlefield holds between 2 and 8 players.',
+  BF007: 'A Battlefield holds between 2 and 60 players.',
   BF008: 'That passage is not a usable length.',
   BF009: 'Could not mint a room code. Try again.',
   BF010: 'You already have 3 Battlefields open. Close one first.',
@@ -93,6 +93,25 @@ export const kickPlayer = (roomId, userId) => rpc('battle_kick', { p_room: roomI
 export const abortBattle = (roomId) => rpc('battle_abort', { p_room: roomId });
 export const touchBattle = (roomId) => rpc('battle_touch', { p_room: roomId });
 
+/**
+ * Asks the server to re-evaluate whether this room is over, and returns the
+ * room as it stands afterwards.
+ *
+ * This is the escape from the freeze. `battle_maybe_settle` only ever ran as a
+ * side effect of somebody calling finish or leave, so a player who closed their
+ * tab — reporting neither — left the room `active` forever and everyone else
+ * waiting on results that could not arrive. The server now settles a room whose
+ * deadline has passed, but something still has to ask it to look, and with no
+ * scheduler on the project that has to be a client.
+ *
+ * It is only a prompt, never an instruction: the RPC is membership-gated and
+ * decides for itself, so a client cannot end a match that is genuinely still
+ * running, and the answer is the same for every caller.
+ */
+export async function sweepBattle(roomId) {
+  return one(await rpc('battle_sweep', { p_room: roomId }));
+}
+
 export async function startBattle(roomId) {
   return one(await rpc('battle_start', { p_room: roomId }));
 }
@@ -146,4 +165,25 @@ export async function fetchRoster(roomId) {
 
 export async function fetchResults(roomId) {
   return (await rpc('battle_leaderboard', { p_room: roomId })) ?? [];
+}
+
+/* ── removal ───────────────────────────────────────────────────────────── */
+
+/**
+ * The explanation for a room an operator closed, plus this player's own thread
+ * about it.
+ *
+ * A separate RPC rather than a column on the room, because a removed room has
+ * no live members and `battle_rooms`' own policy is member-scoped — the person
+ * who most needs to read the reason is exactly the one who can no longer select
+ * the row. The function checks historical membership instead, and returns only
+ * the reason and the thread: no passage, no roster, no other player's messages.
+ */
+export async function fetchRemovalNotice(roomId) {
+  return rpc('battle_removal_notice', { p_room: roomId });
+}
+
+/** Asks an operator why. Sending twice edits the question rather than adding a second. */
+export async function appealRemoval(roomId, message) {
+  return one(await rpc('battle_appeal_removal', { p_room: roomId, p_message: message }));
 }

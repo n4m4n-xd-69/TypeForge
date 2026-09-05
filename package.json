@@ -17,9 +17,10 @@
     "forge:deploy": "supabase functions deploy --project-ref kavfjyvsvgvcjiuwwfbw",
     "forge:secrets": "supabase secrets set --env-file supabase/.env.forge --project-ref kavfjyvsvgvcjiuwwfbw",
     "check:bundle": "node scripts/check-bundle-secrets.mjs",
+    "check:migrations": "node scripts/check-migrations.mjs",
     "forge:calibrate": "node scripts/forge-calibrate.mjs",
     "forge:drain": "node scripts/forge-drain.mjs",
-    "verify": "npm run build && npm run check:bundle && npm test"
+    "verify": "npm run build && npm run check:bundle && npm run check:migrations && npm test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.111.0",

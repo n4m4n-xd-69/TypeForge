@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../supabase.js';
 import { measureClockOffset, msUntil, serverNow } from './clock.js';
 import {
-  fetchPassage, fetchResults, fetchRoom, fetchRoster, roomByPin, touchBattle,
+  fetchPassage, fetchResults, fetchRoom, fetchRoster, roomByPin, sweepBattle, touchBattle,
 } from './api.js';
 
 /**
@@ -125,6 +125,20 @@ export default function useBattleRoom(pin, userId) {
   }, [roomId, status]);
 
   /* ── subscriptions ─────────────────────────────────────────────────── */
+
+  /* Coalesces a burst of battle_players events into a single roster read.
+     Lives outside the subscription effect so its timer survives a resubscribe
+     and is cleared exactly once, on unmount. */
+  const rosterTimer = useRef(null);
+  const scheduleRosterFetch = useCallback((id) => {
+    if (rosterTimer.current) return;
+    rosterTimer.current = setTimeout(() => {
+      rosterTimer.current = null;
+      fetchRoster(id).then(setRoster).catch(() => {});
+    }, 300);
+  }, []);
+  useEffect(() => () => clearTimeout(rosterTimer.current), []);
+
   useEffect(() => {
     if (!roomId || !supabase) return undefined;
 
@@ -140,9 +154,21 @@ export default function useBattleRoom(pin, userId) {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'battle_rooms', filter: `id=eq.${roomId}` },
         (payload) => { if (payload.new?.id) setRoom(payload.new); })
+      /**
+       * Coalesced, not one-for-one.
+       *
+       * Every durable checkpoint is an UPDATE on this table, and every player
+       * writes one. Refetching the whole roster per event is quadratic in room
+       * size: at 8 players it was 8 events a second producing 64 queries, which
+       * was survivable; at 30 it is 900, which is not. The room's capacity is
+       * the thing that changed, so this is the line that had to change with it.
+       *
+       * A roster is a snapshot — coalescing a burst into one read loses nothing
+       * except the reads.
+       */
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'battle_players', filter: `room_id=eq.${roomId}` },
-        () => { fetchRoster(roomId).then(setRoster).catch(() => {}); })
+        () => scheduleRosterFetch(roomId))
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'battle_results', filter: `room_id=eq.${roomId}` },
         () => {
@@ -190,6 +216,49 @@ export default function useBattleRoom(pin, userId) {
     return () => clearTimeout(t);
   }, [status, room?.starts_at, roomId, offset]);
 
+  /* ── active -> finished: the settle watchdog ───────────────────────────
+     The room's own deadline is the authority for when a match is over, and
+     `battle_sweep` is the server deciding against it. But nothing on the server
+     runs on a schedule, so somebody has to ask — and the case that most needs
+     asking is precisely the one where the player who would have triggered it
+     has closed their tab.
+
+     Every client in an active room therefore asks, on a slow interval, from the
+     moment the deadline is in sight. Asking is idempotent and membership-gated;
+     the server settles once, and everyone else's ask is a no-op that returns
+     the settled room. That is what turns "waiting for the others" from a
+     terminal state into a transient one.
+
+     The interval is deliberately unhurried. This is a safety net for a case
+     measured in seconds of staleness, not a transport — the durable path still
+     carries the news the instant it exists. */
+  useEffect(() => {
+    if (!roomId || (status !== 'active' && status !== 'countdown')) return undefined;
+
+    let cancelled = false;
+    const ask = () => {
+      if (cancelled) return;
+      sweepBattle(roomId)
+        .then((r) => { if (!cancelled && r) setRoom(r); })
+        .catch(() => { /* not a member yet, or offline — the next tick retries */ });
+    };
+
+    /* Fire once as the deadline lands, then keep checking: a client that joined
+       late, or whose clock disagrees, still converges. */
+    const deadlineIn = room?.deadline_at
+      ? Math.max(0, Date.parse(room.deadline_at) - offset - Date.now())
+      : null;
+    const first = deadlineIn == null ? 4000 : deadlineIn + 400;
+    const kick = setTimeout(ask, first);
+    const id = setInterval(ask, 4000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(kick);
+      clearInterval(id);
+    };
+  }, [roomId, status, room?.deadline_at, offset]);
+
   /* ── publishing ────────────────────────────────────────────────────── */
 
   const lastTick = useRef({ at: 0, progress: -1 });
@@ -235,12 +304,26 @@ export default function useBattleRoom(pin, userId) {
     });
   }, [userId]);
 
-  /** Durable checkpoint, so a reload mid-race has a floor to resume from. */
+  /**
+   * Durable checkpoint, so a reload mid-race has a floor to resume from — and,
+   * since the settle path now forfeits a silent player with whatever their last
+   * checkpoint held, so a dropped player still appears on the leaderboard with
+   * roughly the right numbers instead of a zero.
+   *
+   * The interval scales with the room. Every checkpoint is a write that every
+   * other client hears about, so a fixed 5s cadence that was fine for 8 players
+   * is 6 writes a second at 30. Spacing them by roughly `players × 600ms` keeps
+   * the aggregate write rate flat as the room grows, at the cost of a coarser
+   * resume floor in big rooms — which is the right trade, because a big room is
+   * exactly where the write storm would cost everyone their frame rate.
+   */
   const checkpoint = useRef(0);
+  const rosterSize = roster.length || 1;
   const publishCheckpoint = useCallback((live) => {
     if (!supabase || !userId || !roomId) return;
     const now = Date.now();
-    if (now - checkpoint.current < CHECKPOINT_MS) return;
+    const interval = Math.max(CHECKPOINT_MS, rosterSize * 600);
+    if (now - checkpoint.current < interval) return;
     checkpoint.current = now;
     supabase.from('battle_players').update({
       progress_chars: Math.round(live.progressChars ?? 0),
@@ -248,7 +331,7 @@ export default function useBattleRoom(pin, userId) {
       accuracy: Number(live.accuracy ?? 100),
       mistakes: Math.round(live.mistakes ?? 0),
     }).eq('room_id', roomId).eq('user_id', userId).then(() => {}, () => {});
-  }, [roomId, userId]);
+  }, [roomId, userId, rosterSize]);
 
   /** Race-track subscription. Deliberately outside React state — see the note
    *  at the top of this file. */
@@ -265,6 +348,11 @@ export default function useBattleRoom(pin, userId) {
 
   const phase = useMemo(() => {
     if (!room) return 'loading';
+    // Checked before every other status: a removed room is a moderation
+    // outcome that the player is owed an explanation for, and folding it into
+    // the generic 'closed' state would show them "this Battlefield has
+    // expired" — an explanation that is both wrong and unanswerable.
+    if (room.status === 'removed') return 'removed';
     if (room.status === 'countdown') {
       const left = msUntil(room.starts_at, offset);
       return left != null && left <= 0 ? 'racing' : 'countdown';

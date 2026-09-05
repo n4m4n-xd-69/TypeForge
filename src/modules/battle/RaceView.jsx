@@ -23,7 +23,7 @@ import { buildSessionPayload } from '../../lib/modes/sessionContract.js';
 export default function RaceView({ battle }) {
   const {
     room, roster, passage, me, startsAtMs, publishTick, publishDone,
-    publishCheckpoint, subscribeTicks, connected, phase, refresh,
+    publishCheckpoint, subscribeTicks, connected, offset, refresh,
   } = battle;
   const { toast } = useToast();
   const { recordSession } = useStore();
@@ -119,18 +119,46 @@ export default function RaceView({ battle }) {
     publishCheckpoint(live);
   }, [live, engine.status, publishTick, publishCheckpoint]);
 
-  /* The deadline is the server's. If it passes with the run unfinished, submit
-     what there is rather than leaving the room hanging on one player. */
+  /**
+   * The deadline is the server's. If it passes with the run unfinished, submit
+   * what there is rather than leaving the room hanging on one player.
+   *
+   * Two things were wrong here and both mattered.
+   *
+   * The dependency was `engine`, which is a fresh object on every render of the
+   * hook — so this effect tore down and rebuilt its timer on *every keystroke*,
+   * hundreds of times a race. `finish` is a stable callback and is the only
+   * thing actually used, so depending on it is both correct and quiet.
+   *
+   * And `Date.parse(deadline_at) - Date.now()` compared a server timestamp
+   * against the client's wall clock while `offset`, measured for exactly this
+   * purpose, sat unused two files away. A player whose clock ran two minutes
+   * fast was timed out two minutes early — with no error, just a run that ended
+   * for no visible reason.
+   */
+  const { finish } = engine;
   useEffect(() => {
-    if (!room?.deadline_at || submitted.current) return undefined;
-    const left = Date.parse(room.deadline_at) - Date.now();
-    if (left <= 0) { engine.finish('time'); return undefined; }
-    const t = setTimeout(() => engine.finish('time'), left);
+    if (!room?.deadline_at) return undefined;
+    const left = Date.parse(room.deadline_at) - offset - Date.now();
+    if (left <= 0) { finish('time'); return undefined; }
+    const t = setTimeout(() => finish('time'), left);
     return () => clearTimeout(t);
-  }, [room?.deadline_at, engine]);
+  }, [room?.deadline_at, offset, finish]);
 
   const waiting = !target;
   const racing = countdown === 0 && !waiting;
+
+  /* How long until the room settles itself, for the finished-and-waiting line.
+     Ticks once a second and only while it is actually on screen. */
+  const [settleInSec, setSettleInSec] = useState(0);
+  useEffect(() => {
+    if (engine.status !== 'done' || !room?.deadline_at) return undefined;
+    const compute = () =>
+      setSettleInSec(Math.ceil((Date.parse(room.deadline_at) - offset - Date.now()) / 1000));
+    compute();
+    const id = setInterval(compute, 1000);
+    return () => clearInterval(id);
+  }, [engine.status, room?.deadline_at, offset]);
 
   return (
     <div className="space-y-2">
@@ -186,10 +214,19 @@ export default function RaceView({ battle }) {
             </div>
           ) : null}
 
+          {/* "Waiting for the others" used to be a dead end: if one rival had
+              closed their tab, the room never settled and this line stayed on
+              screen forever with nothing behind it. The server now settles on
+              the deadline and useBattleRoom keeps asking it to look, so the
+              wait is bounded — and saying how long is left is the difference
+              between waiting and being stuck. */}
           {engine.status === 'done' && !submitting ? (
             <div className="border-t border-line px-3 py-1.5 text-xs">
               <span className="flex items-center gap-1 font-bold text-good">
                 <Flag size={13} aria-hidden /> Finished — waiting for the others
+                <span className="font-mono font-normal text-ink-3">
+                  · results in {mmss(Math.max(0, settleInSec))}
+                </span>
               </span>
             </div>
           ) : null}

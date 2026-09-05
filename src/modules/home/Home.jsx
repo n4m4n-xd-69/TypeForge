@@ -12,6 +12,9 @@ import { Sparkline, WeeklyBars } from '../../components/charts/Charts.jsx';
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import Onboarding from './Onboarding.jsx';
 import { useStats, useStore } from '../../lib/store.jsx';
+import { useAuth } from '../../lib/auth.jsx';
+import { needsIdentity } from '../../lib/identity.js';
+import { DEVELOPMENT_NOTICE, isLaneOpen } from '../arena/lanes.js';
 import { coachInsight } from '../../lib/ai.js';
 import { ACHIEVEMENTS, TIER_STYLES, dayKey, levelTitle } from '../../lib/gamification.js';
 import { LANGUAGES } from '../../lib/content.js';
@@ -20,8 +23,30 @@ import { cx, greeting, humanDuration, longDate, relativeTime, seeded } from '../
 export default function Home() {
   const navigate = useNavigate();
   const { state } = useStore();
+  const { user } = useAuth();
   const stats = useStats();
-  const [onboardingOpen, setOnboardingOpen] = useState(!state.profile.onboarded);
+
+  /**
+   * The wizard opens only when there is genuinely something to ask.
+   *
+   * The test used to be `!profile.onboarded`, which records that *this browser*
+   * has seen the wizard — a different question from whether we know who this
+   * is. A Google user on a second device had a name, a photo and a synced
+   * history, and was still shown a form whose first question was their name.
+   *
+   * `needsIdentity` asks the question that actually matters. Someone with a
+   * name — set by hand, supplied by Google, or generated for a guest — is never
+   * asked for one again, on any device.
+   */
+  const [onboardingOpen, setOnboardingOpen] = useState(
+    () => !state.profile.onboarded && needsIdentity(state.profile, user),
+  );
+
+  /* An OAuth redirect resolves after mount, so the identity can arrive a beat
+     after the wizard opened. Close it rather than making them dismiss it. */
+  useEffect(() => {
+    if (onboardingOpen && !needsIdentity(state.profile, user)) setOnboardingOpen(false);
+  }, [onboardingOpen, state.profile, user]);
 
   const week = useMemo(() => {
     const out = [];
@@ -71,13 +96,14 @@ export default function Home() {
           stat={`${LANGUAGES.length} languages`}
         />
         <ActionCard
-          to="/shadow"
+          to={isLaneOpen('shadow') ? '/shadow' : null}
           eyebrow="Combat 1v1"
           title="Shadow Battle"
           blurb="Real-time martial arts word combat with 60fps stickman duels, parries, and Overdrive finishers."
           icon={Swords}
           accent="from-[#f43f5e]/35"
-          stat="PvP & AI Bots"
+          stat={isLaneOpen('shadow') ? 'PvP & AI Bots' : DEVELOPMENT_NOTICE.label}
+          disabled={!isLaneOpen('shadow')}
         />
       </section>
 
@@ -370,9 +396,18 @@ function Hero({ name, stats, onStart, onCode }) {
 
 /* ── Cards ─────────────────────────────────────────────────────────────── */
 
-function ActionCard({ to, eyebrow, title, blurb, icon: Icon, accent, stat }) {
+function ActionCard({ to, eyebrow, title, blurb, icon: Icon, accent, stat, disabled = false }) {
+  /* A card for a mode that is not open yet stays on the page and stops being a
+     link. Rendering a <Link> to nowhere would keep the hover affordance, the
+     pointer cursor and the keyboard stop — every signal that says "this goes
+     somewhere" — for a destination that does not exist yet. */
+  const Wrapper = disabled ? 'div' : Link;
+  const wrapperProps = disabled
+    ? { className: 'group block cursor-default opacity-70', 'aria-disabled': 'true' }
+    : { to, className: 'group block' };
+
   return (
-    <Link to={to} className="group block">
+    <Wrapper {...wrapperProps}>
       <Card interactive className="relative h-full overflow-hidden p-2.5 sm:p-3">
         <div
           className={cx(
@@ -389,20 +424,22 @@ function ActionCard({ to, eyebrow, title, blurb, icon: Icon, accent, stat }) {
             <p className="eyebrow">{eyebrow}</p>
             <h2 className="mt-px flex items-center gap-0.5 text-xl font-bold">
               {title}
-              <ArrowRight
-                size={17}
-                className="translate-x-0 opacity-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:opacity-100"
-                aria-hidden
-              />
+              {disabled ? null : (
+                <ArrowRight
+                  size={17}
+                  className="translate-x-0 opacity-0 transition-all duration-300 group-hover:translate-x-0.5 group-hover:opacity-100"
+                  aria-hidden
+                />
+              )}
             </h2>
             <p className="mt-0.5 text-sm leading-relaxed text-ink-3">{blurb}</p>
-            <Chip tone="brand" className="mt-1.5">
+            <Chip tone={disabled ? 'warn' : 'brand'} className="mt-1.5">
               {stat}
             </Chip>
           </div>
         </div>
       </Card>
-    </Link>
+    </Wrapper>
   );
 }
 
