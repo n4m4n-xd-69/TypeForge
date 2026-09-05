@@ -23,3 +23,4 @@ database.md
 # The migrations in supabase/migrations/ ARE tracked; only this is not.
 supabase/.temp/
 .vercel
+.worktrees/
