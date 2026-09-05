@@ -19,8 +19,17 @@ describe('validateImage', () => {
   });
 
   it('rejects a file over the byte limit, naming the actual size', () => {
-    const message = validateImage(file('image/png', 2_000_000), { maxBytes: 1_000_000, accepted: opts.accepted });
-    expect(message).toMatch(/2\.0 MB/);
+    const message = validateImage(file('image/png', 2 * 1024 * 1024), { maxBytes: 1 * 1024 * 1024, accepted: ['image/png'] });
+    expect(message).toMatch(/2 MB/);   // whole-number MB: no decimal
+    expect(message).toMatch(/limit is 1 MB/);
+  });
+
+  it('formats fractional MB in size and limit', () => {
+    const bytes = 3 * 1024 * 1024;
+    const maxBytes = 1.5 * 1024 * 1024;
+    const message = validateImage(file('image/png', bytes), { maxBytes, accepted: ['image/png'] });
+    expect(message).toMatch(/3 MB/);
+    expect(message).toMatch(/limit is 1\.5 MB/);
   });
 
   it('accepts a file exactly at the byte limit', () => {

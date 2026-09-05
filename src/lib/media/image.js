@@ -9,6 +9,12 @@
 
 export class ImageError extends Error {}
 
+/** Format bytes as MB, omitting decimal for whole numbers. */
+function formatMb(bytes) {
+  const mb = bytes / 1024 / 1024;
+  return Number.isInteger(mb) ? String(mb) : mb.toFixed(1);
+}
+
 /** Human-facing validation, run before any work is done. */
 export function validateImage(file, { maxBytes, accepted }) {
   if (!file) return 'Choose an image first.';
@@ -16,9 +22,7 @@ export function validateImage(file, { maxBytes, accepted }) {
     return 'That file type is not supported. Use a PNG, JPEG, WebP or GIF.';
   }
   if (file.size > maxBytes) {
-    const limitMb = (maxBytes / 1024 / 1024).toFixed(1);
-    const fileMb = Math.ceil((file.size / 1024 / 1024) * 10) / 10;
-    return `That image is ${fileMb.toFixed(1)} MB. The limit is ${limitMb} MB.`;
+    return `That image is ${formatMb(file.size)} MB. The limit is ${formatMb(maxBytes)} MB.`;
   }
   return null;
 }
@@ -50,7 +54,7 @@ export async function downscaleImage(file, { maxEdge }) {
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.85));
     if (!blob || blob.size >= file.size) return file;
-    return new File([blob], 'image.webp', { type: 'image/webp' });
+    return new File([blob], 'photo.webp', { type: 'image/webp' });
   } catch {
     return file;
   }

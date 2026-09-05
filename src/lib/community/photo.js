@@ -10,15 +10,7 @@ export class PhotoError extends ImageError {}
 
 /** Human-facing validation, run before any work is done. */
 export function validatePhoto(file) {
-  if (!file) return 'Choose an image first.';
-  if (!ACCEPTED.includes(file.type)) {
-    return 'That file type is not supported. Use a PNG, JPEG, WebP or GIF.';
-  }
-  if (file.size > MAX_BYTES) {
-    const fileMb = (file.size / 1024 / 1024).toFixed(1);
-    return `That image is ${fileMb} MB. The limit is 2 MB.`;
-  }
-  return null;
+  return validateImage(file, { maxBytes: MAX_BYTES, accepted: ACCEPTED });
 }
 
 /** Downscales to at most MAX_EDGE on the long side. See `lib/media/image.js`. */
