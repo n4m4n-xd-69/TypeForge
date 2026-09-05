@@ -9,6 +9,7 @@ import { useChatChannel } from '../../../lib/chat/useChatChannel.js';
 import ChannelSidebar from './ChannelSidebar.jsx';
 import MessageList from './MessageList.jsx';
 import Composer from './Composer.jsx';
+import IntroModal from '../IntroModal.jsx';
 
 /**
  * The full-screen chat takeover — same escape `ShadowArena.jsx` already uses
@@ -61,6 +62,7 @@ function ActiveChannel({ channel, channels, onExit }) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg text-ink">
+      <IntroModal />
       <div className="flex shrink-0 items-center gap-1.5 border-b border-line px-2 py-1.5">
         <button
           onClick={onExit}

@@ -24,7 +24,7 @@ import {
  * before the bytes exist would leave a broken image on every surface that shows
  * this person if the upload then failed.
  */
-export default function CommunityProfileCard() {
+export default function CommunityProfileCard({ onSaved = () => {} }) {
   const { user } = useAuth();
   const { state, updateProfile } = useStore();
   const { toast } = useToast();
@@ -72,6 +72,7 @@ export default function CommunityProfileCard() {
       await saveCommunityProfile(user.id, { ...fields, photoUrl });
       setSaved(true);
       toast('Profile saved', { tone: 'success' });
+      onSaved();
     } catch (err) {
       toast(err.message ?? 'Could not save that.', { tone: 'error' });
     } finally {

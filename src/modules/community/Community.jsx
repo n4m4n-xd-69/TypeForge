@@ -15,6 +15,7 @@ import {
 } from '../../lib/community/api.js';
 import { relativeTime } from '../../lib/format.js';
 import CommunityProfileCard from './CommunityProfileCard.jsx';
+import IntroModal from './IntroModal.jsx';
 
 /**
  * Community.
@@ -181,6 +182,7 @@ export default function Community() {
       </div>
 
       <MemberSheet userId={openMember} onClose={() => setOpenMember(null)} />
+      <IntroModal />
     </Shell>
   );
 }
