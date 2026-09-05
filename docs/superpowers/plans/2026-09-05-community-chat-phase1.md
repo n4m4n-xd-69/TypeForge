@@ -1711,17 +1711,40 @@ git commit -m "feat(community): first-visit profile prompt"
 ### Task 10: `chat-ai-reply` Edge Function
 
 **Files:**
+- Create: `supabase/migrations/0030_chat_ai_reply_idempotency.sql`
 - Create: `supabase/functions/chat-ai-reply/index.ts`
 - Modify: `supabase/config.toml` (register the function)
 
 **Interfaces:**
-- Consumes: `complete` (`_shared/runner.ts`), `LANES` (`_shared/lanes.ts`), `withIdentity`/`violates`/`IDENTITY_LINE` (`_shared/identity.ts`), `callerFrom`/`CORS_HEADERS` (`_shared/auth.ts`), `createForgeDb`/`serviceClient` (`_shared/db.supabase.ts`), `NULL_DB` (`_shared/db.ts`), `aiEnabled` (`_shared/env.ts`), `primeSecrets` (`_shared/secrets.ts`).
-- Produces: `POST /functions/v1/chat-ai-reply` — request `{ messageId: string }`, response `{ ok: true }` or `{ error: string, code: string }`.
+- Consumes: `complete` (`_shared/runner.ts`), `LANES` (`_shared/lanes.ts`), `withIdentity`/`violates`/`IDENTITY_LINE` (`_shared/identity.ts`), `callerFrom`/`CORS_HEADERS` (`_shared/auth.ts`), `checkLocal`/`record` (`_shared/ratelimit.ts`), `createForgeDb`/`serviceClient` (`_shared/db.supabase.ts`), `NULL_DB` (`_shared/db.ts`), `aiEnabled` (`_shared/env.ts`), `primeSecrets` (`_shared/secrets.ts`).
+- Produces: `POST /functions/v1/chat-ai-reply` — request `{ messageId: string }`, response `{ ok: true }` or `{ error: string, code: string }`. Also produces `chat_channel_messages.ai_reply_to` (nullable, self-referencing FK).
 - Consumed by: Task 11 (`Composer.jsx`'s `onAiCommand` handler calls this).
 
 No test file: `db.supabase.ts`'s own header comment states it plainly — *"Deno-only... nothing here is unit tested; it is covered by the live checks in scripts/forge-verify.mjs."* This function is the same shape (Deno-only `npm:` specifier for the Supabase client via `serviceClient()`), so it inherits that same boundary rather than inventing a mocking setup this codebase doesn't otherwise use.
 
-- [ ] **Step 1: Register the function**
+- [ ] **Step 1: Write the idempotency migration**
+
+The bespoke 5-per-10-minute rate limit below counts how many `/ai`-prefixed messages the caller has *sent*, not how many times this endpoint has been *invoked* — without a way to mark a message as already-answered, a client can replay the same `messageId` against this endpoint an unbounded number of times: every check still passes, and every call reaches Forge at real cost. A self-referencing column closes this: a reply insert records which message triggered it, and the function checks for one before doing any work.
+
+```sql
+-- supabase/migrations/0030_chat_ai_reply_idempotency.sql
+-- Prevents /ai reply replay: without this, POSTing the same messageId to
+-- chat-ai-reply repeatedly re-passes every check in the function (ownership,
+-- the /ai regex match, the rate-limit count) and calls Forge again each
+-- time, at real cost — the rate-limit count tracks messages the caller has
+-- SENT, not how many times this endpoint has been INVOKED, so it does
+-- nothing to stop a replay against one already-answered message.
+
+alter table public.chat_channel_messages
+  add column if not exists ai_reply_to uuid references public.chat_channel_messages(id) on delete set null;
+
+create index if not exists chat_channel_messages_ai_reply_to_idx
+  on public.chat_channel_messages (ai_reply_to) where ai_reply_to is not null;
+```
+
+Run: `npm run check:migrations` — expect `✓ 30 migration files pass structural checks`.
+
+- [ ] **Step 2: Register the function**
 
 In `supabase/config.toml`, alongside the existing `[functions.forge-chat]` block:
 
@@ -1730,7 +1753,7 @@ In `supabase/config.toml`, alongside the existing `[functions.forge-chat]` block
 verify_jwt = true
 ```
 
-- [ ] **Step 2: Write the function**
+- [ ] **Step 3: Write the function**
 
 ```ts
 // supabase/functions/chat-ai-reply/index.ts
@@ -1741,16 +1764,25 @@ verify_jwt = true
  * posted through chat_send_message before this was ever called — see
  * Composer.jsx), and the reply reaches every subscriber through the same
  * postgres_changes path any other chat message does. This function's whole
- * job is: verify, rate-limit, ask Forge, write the answer under the reserved
- * bot profile.
+ * job is: verify, de-duplicate, rate-limit (both this feature's own window
+ * and the app's shared per-caller ceiling), ask Forge, write the answer
+ * under the reserved bot profile.
  *
  * BOT_USER_ID must match migration 0029's seed and src/lib/chat/constants.js
  * exactly — three runtimes, one fixed UUID, no shared file between them.
+ *
+ * Error responses never carry a raw provider/model name or Forge's own
+ * message text — `ForgeUnavailable.message` can contain exactly that (see
+ * runner.ts's callOnce), which is precisely what identity.ts exists to keep
+ * off any surface a reader can see. LABELS below is the same curated,
+ * reason-keyed lookup forge-chat/index.ts already uses for its own
+ * client-facing errors — reused here rather than re-invented.
  */
 import { complete, ForgeUnavailable } from '../_shared/runner.ts';
 import { LANES } from '../_shared/lanes.ts';
 import { withIdentity, violates, IDENTITY_LINE } from '../_shared/identity.ts';
 import { callerFrom, CORS_HEADERS } from '../_shared/auth.ts';
+import { checkLocal, record as recordRequest } from '../_shared/ratelimit.ts';
 import { createForgeDb, serviceClient } from '../_shared/db.supabase.ts';
 import { NULL_DB } from '../_shared/db.ts';
 import { aiEnabled } from '../_shared/env.ts';
@@ -1759,6 +1791,17 @@ import { primeSecrets } from '../_shared/secrets.ts';
 const BOT_USER_ID = '00000000-0000-0000-0000-0000000000a1';
 const AI_RATE_LIMIT = 5;
 const AI_RATE_WINDOW_MIN = 10;
+
+/** Reason -> the copy a client can show. Never a raw provider/model name. */
+const LABELS: Record<string, string> = {
+  'rate-limit': 'Limit reached',
+  auth: 'Key rejected',
+  network: 'Unreachable',
+  timeout: 'Timed out',
+  'no-key': 'No API key',
+  'bad-response': 'Unreadable reply',
+  'bad-request': 'Request rejected',
+};
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -1806,22 +1849,44 @@ Deno.serve(async (req: Request) => {
   }
   const question = match[1].trim();
 
+  // A message can only ever be answered once. Without this, replaying the
+  // same messageId re-passes every check below (including the rate limit,
+  // which only counts messages SENT, not endpoint calls made) and calls
+  // Forge again each time, at real cost, unbounded.
+  const { count: alreadyAnswered, error: repliedErr } = await sb
+    .from('chat_channel_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('ai_reply_to', body.messageId);
+  if (repliedErr) return json({ error: 'could not check reply status' }, 500);
+  if ((alreadyAnswered ?? 0) > 0) return json({ ok: true }); // already answered — not an error, just a no-op
+
   // This feature's own limit — tighter than general chat because each call
   // costs real provider spend. Counted off the invoking messages themselves,
-  // no new table: every /ai use is already a row here.
+  // no new table: every /ai use is already a row here. Fails closed: a
+  // query error is treated as rate-limited, not silently allowed through.
   const windowStart = new Date(Date.now() - AI_RATE_WINDOW_MIN * 60_000).toISOString();
-  const { count } = await sb
+  const { count, error: countErr } = await sb
     .from('chat_channel_messages')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', caller.userId)
     .ilike('body', '/ai %')
     .gte('created_at', windowStart);
-  if ((count ?? 0) > AI_RATE_LIMIT) {
+  if (countErr || (count ?? 0) > AI_RATE_LIMIT) {
     return json({ error: 'rate limited', code: 'CH002' }, 429);
   }
 
+  // The app's own shared, per-caller ceiling — the same one every other
+  // Forge-calling surface (forge-chat included) goes through, with a daily
+  // cap (ratelimit.ts's LIMITS.user.perDay) this feature's own 10-minute
+  // window has no equivalent of. Defense in depth: closes the door on
+  // sustained abuse across many distinct /ai messages, not just replay of
+  // one.
+  const verdict = checkLocal(caller.userId, caller.isAnonymous);
+  if (!verdict.allowed) return json({ error: 'rate limited', code: 'CH002' }, 429);
+
   const db = createForgeDb() ?? NULL_DB;
   await primeSecrets(() => db.loadSecrets());
+  recordRequest(db, caller.userId, LANES.instant.id);
 
   let text: string;
   try {
@@ -1846,7 +1911,8 @@ Deno.serve(async (req: Request) => {
     text = violates(result.text) ? IDENTITY_LINE : result.text;
   } catch (err) {
     const e = err as ForgeUnavailable;
-    return json({ error: e.message ?? 'The AI is unavailable right now.', code: e.reason ?? 'network' }, 502);
+    const reason = e?.reason ?? 'network';
+    return json({ error: LABELS[reason] ?? 'Unreachable', code: reason }, 502);
   }
 
   const { error: insertErr } = await sb.from('chat_channel_messages').insert({
@@ -1855,6 +1921,7 @@ Deno.serve(async (req: Request) => {
     body: text,
     display_name: 'TypeForge AI',
     is_bot: true,
+    ai_reply_to: body.messageId,
   });
   if (insertErr) return json({ error: 'could not post the reply' }, 500);
 
@@ -1862,7 +1929,7 @@ Deno.serve(async (req: Request) => {
 });
 ```
 
-- [ ] **Step 3: Deploy and smoke-test**
+- [ ] **Step 4: Deploy and smoke-test**
 
 This is an Edge Function; there's no local unit test for it (see the task header). Verify it the way this project already verifies Forge functions:
 
@@ -1870,10 +1937,10 @@ Run: `npm run forge:check` (the existing `deno check` script already globs `supa
 
 Deploying and a live end-to-end call are a deliberate separate step the user takes when ready, same stance as every migration in this plan.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/functions/chat-ai-reply/index.ts supabase/config.toml
+git add supabase/migrations/0030_chat_ai_reply_idempotency.sql supabase/functions/chat-ai-reply/index.ts supabase/config.toml
 git commit -m "feat(community): chat-ai-reply Edge Function for /ai"
 ```
 
@@ -2013,7 +2080,7 @@ export const adminUnmuteChatUser = (userId, channelId) =>
 `admin_recent_chat_channel_messages` is a new read RPC this task needs — `chat_channel_messages` has no client-facing select-for-admin path beyond the member-facing read policy (which doesn't include `deleted_at is not null` rows admins need to review). Add it to migration 0029 retroactively is wrong once that migration is committed; instead, create a follow-up migration:
 
 ```sql
--- supabase/migrations/0030_chat_admin_read.sql
+-- supabase/migrations/0031_chat_admin_read.sql
 create or replace function public.admin_recent_chat_channel_messages(p_limit int default 100)
 returns setof public.chat_channel_messages
 language plpgsql security definer set search_path = '' as $$
@@ -2123,7 +2190,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/modules/admin/views/ChatModeration.jsx src/modules/admin/console/AdminShell.jsx src/modules/admin/api/console.js supabase/migrations/0030_chat_admin_read.sql
+git add src/modules/admin/views/ChatModeration.jsx src/modules/admin/console/AdminShell.jsx src/modules/admin/api/console.js supabase/migrations/0031_chat_admin_read.sql
 git commit -m "feat(admin): chat moderation panel"
 ```
 
