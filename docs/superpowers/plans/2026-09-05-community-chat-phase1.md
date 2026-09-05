@@ -219,8 +219,8 @@ existing test coverage are unchanged."
 - Create: `supabase/migrations/0029_community_chat.sql`
 
 **Interfaces:**
-- Produces (tables): `chat_channels(id, slug, name, description, sort_order, created_at)`, `chat_messages(id, channel_id, user_id, body, image_url, display_name, avatar, photo_url, is_bot, created_at, deleted_at)`, `chat_mutes(id, user_id, channel_id, reason, muted_by, muted_until, created_at)`.
-- Produces (RPCs): `chat_send_message(p_channel uuid, p_body text, p_image_url text) returns chat_messages`, `chat_delete_message(p_id uuid) returns void`, `admin_mute_chat_user(p_user uuid, p_channel uuid, p_minutes int, p_reason text) returns chat_mutes`, `admin_unmute_chat_user(p_user uuid, p_channel uuid) returns void`.
+- Produces (tables): `chat_channels(id, slug, name, description, sort_order, created_at)`, `chat_channel_messages(id, channel_id, user_id, body, image_url, display_name, avatar, photo_url, is_bot, created_at, deleted_at)`, `chat_mutes(id, user_id, channel_id, reason, muted_by, muted_until, created_at)`.
+- Produces (RPCs): `chat_send_message(p_channel uuid, p_body text, p_image_url text) returns chat_channel_messages`, `chat_delete_message(p_id uuid) returns void`, `admin_mute_chat_user(p_user uuid, p_channel uuid, p_minutes int, p_reason text) returns chat_mutes`, `admin_unmute_chat_user(p_user uuid, p_channel uuid) returns void`.
 - Produces (column): `profiles.community_intro_seen boolean default false`.
 - Produces (storage): bucket `chat-images`, public-read, 5 MB cap, `image/{png,jpeg,webp,gif}`.
 - Produces (constant, must match Task 3 and Task 10 exactly): bot profile id `00000000-0000-0000-0000-0000000000a1`.
@@ -239,7 +239,7 @@ There is no live-DB test harness in this repo (no test file exists for `battle/a
 -- Follows community_posts' exact shape (0025): a table with soft-delete,
 -- SECURITY DEFINER RPCs that own every write, and admin_can('content.moderate')
 -- as the one moderation gate this whole app already uses. The one deliberate
--- departure: there is no client-facing insert policy on chat_messages at all.
+-- departure: there is no client-facing insert policy on chat_channel_messages at all.
 -- community_posts has one that duplicates the RPC's "active account" check as
 -- defense in depth (see its own comment), but that duplication doesn't cover
 -- the RPC's rate limit or mute check — a client could insert directly via
@@ -272,7 +272,7 @@ on conflict (slug) do nothing;
 
 /* ══ 2. messages ═════════════════════════════════════════════════════════ */
 
-create table if not exists public.chat_messages (
+create table if not exists public.chat_channel_messages (
   id           uuid primary key default gen_random_uuid(),
   channel_id   uuid not null references public.chat_channels on delete cascade,
   user_id      uuid not null references auth.users on delete cascade,
@@ -289,20 +289,20 @@ create table if not exists public.chat_messages (
   created_at   timestamptz not null default now(),
   deleted_at   timestamptz,
 
-  constraint chat_messages_content_check check (body is not null or image_url is not null)
+  constraint chat_channel_messages_content_check check (body is not null or image_url is not null)
 );
 
-create index if not exists chat_messages_channel_feed_idx
-  on public.chat_messages (channel_id, created_at desc) where deleted_at is null;
+create index if not exists chat_channel_messages_channel_feed_idx
+  on public.chat_channel_messages (channel_id, created_at desc) where deleted_at is null;
 
-alter table public.chat_messages enable row level security;
+alter table public.chat_channel_messages enable row level security;
 
-drop policy if exists chat_messages_read on public.chat_messages;
-create policy chat_messages_read on public.chat_messages
+drop policy if exists chat_channel_messages_read on public.chat_channel_messages;
+create policy chat_channel_messages_read on public.chat_channel_messages
   for select to authenticated using (deleted_at is null);
 
-drop policy if exists chat_messages_delete on public.chat_messages;
-create policy chat_messages_delete on public.chat_messages
+drop policy if exists chat_channel_messages_delete on public.chat_channel_messages;
+create policy chat_channel_messages_delete on public.chat_channel_messages
   for update to authenticated
   using (user_id = auth.uid() or public.admin_can('content.moderate'))
   with check (user_id = auth.uid() or public.admin_can('content.moderate'));
@@ -342,7 +342,7 @@ alter table public.profiles
   add column if not exists community_intro_seen boolean not null default false;
 
 /* ══ 5. the reserved "TypeForge AI" bot identity ════════════════════════ */
--- A fixed-UUID row so /ai replies are ordinary chat_messages authored by a
+-- A fixed-UUID row so /ai replies are ordinary chat_channel_messages authored by a
 -- real profile, not a special case the client has to know about. See this
 -- plan's "flagged for verification" note above the task list — this insert
 -- is the standard minimal-columns pattern for seeding a Supabase service
@@ -375,10 +375,10 @@ create or replace function public.chat_send_message(
   p_channel   uuid,
   p_body      text default null,
   p_image_url text default null
-) returns public.chat_messages
+) returns public.chat_channel_messages
 language plpgsql security definer set search_path = '' as $$
 declare
-  msg    public.chat_messages;
+  msg    public.chat_channel_messages;
   uid    uuid := auth.uid();
   prof   record;
   recent int;
@@ -414,14 +414,14 @@ begin
 
   -- Rate limit in the database, same reasoning community_post's own comment
   -- gives: it cannot be skipped by not using the UI.
-  select count(*) into recent from public.chat_messages
+  select count(*) into recent from public.chat_channel_messages
    where user_id = uid and created_at > now() - interval '1 minute';
   if recent >= 20 then
     raise exception 'Slow down a moment — twenty messages a minute is the limit'
       using errcode = 'CH001';
   end if;
 
-  insert into public.chat_messages (
+  insert into public.chat_channel_messages (
     channel_id, user_id, body, image_url, display_name, avatar, photo_url
   ) values (
     p_channel, uid, nullif(btrim(p_body), ''), p_image_url,
@@ -437,7 +437,7 @@ grant  execute on function public.chat_send_message(uuid, text, text) to authent
 create or replace function public.chat_delete_message(p_id uuid) returns void
 language plpgsql security definer set search_path = '' as $$
 begin
-  update public.chat_messages
+  update public.chat_channel_messages
      set deleted_at = now()
    where id = p_id
      and deleted_at is null
@@ -550,9 +550,9 @@ begin
   if not exists (
     select 1 from pg_publication_tables
      where pubname = 'supabase_realtime' and schemaname = 'public'
-       and tablename = 'chat_messages'
+       and tablename = 'chat_channel_messages'
   ) then
-    alter publication supabase_realtime add table public.chat_messages;
+    alter publication supabase_realtime add table public.chat_channel_messages;
   end if;
 exception
   when undefined_object then
@@ -574,7 +574,7 @@ git commit -m "feat(community): chat data model, RPCs and image storage (Phase 1
 Channels, messages, chat-scoped mutes, a profiles.community_intro_seen
 flag, a reserved TypeForge AI bot identity, and the chat-images bucket.
 Every write is a SECURITY DEFINER RPC; no client-facing insert policy on
-chat_messages at all (stronger than community_posts' own precedent — see
+chat_channel_messages at all (stronger than community_posts' own precedent — see
 the migration's header comment)."
 ```
 
@@ -588,7 +588,7 @@ the migration's header comment)."
 - Create: `src/lib/chat/api.test.js`
 
 **Interfaces:**
-- Consumes: RPCs from Task 2 (`chat_send_message`, `chat_delete_message`), table `chat_messages`, `chat_channels`.
+- Consumes: RPCs from Task 2 (`chat_send_message`, `chat_delete_message`), table `chat_channel_messages`, `chat_channels`.
 - Produces: `BOT_USER_ID`, `BOT_DISPLAY_NAME`, `AI_COMMAND` (constants.js); `CHAT_ERROR_COPY`, `chatErrorMessage(error)`, `fetchChannels()`, `fetchMessages(channelId, { before, limit })`, `subscribeToChannel(channelId, onInsert)`, `sendMessage(channelId, body, imageUrl)`, `deleteMessage(id)` (api.js).
 - Consumed by: Task 4 (`useChatChannel.js`), Task 7 (`Composer.jsx`), Task 12 (admin panel imports `CHAT_ERROR_COPY`'s shape for its own error handling, though it calls different RPCs).
 
@@ -705,7 +705,7 @@ export async function fetchChannels() {
 export async function fetchMessages(channelId, { before = null, limit = PAGE } = {}) {
   if (!supabase || !channelId) return [];
   let q = supabase
-    .from('chat_messages')
+    .from('chat_channel_messages')
     .select('*')
     .eq('channel_id', channelId)
     .order('created_at', { ascending: false })
@@ -746,7 +746,7 @@ export function subscribeToChannel(channelId, onInsert) {
   const channel = supabase
     .channel(`chat:${channelId}`)
     .on('postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `channel_id=eq.${channelId}` },
+      { event: 'INSERT', schema: 'public', table: 'chat_channel_messages', filter: `channel_id=eq.${channelId}` },
       (payload) => onInsert(payload.new))
     .subscribe();
   return () => {
@@ -1731,7 +1731,7 @@ Deno.serve(async (req: Request) => {
   // in this channel, and really starts with /ai — never trust the client to
   // supply the question text directly.
   const { data: source, error: sourceErr } = await sb
-    .from('chat_messages')
+    .from('chat_channel_messages')
     .select('id, channel_id, user_id, body')
     .eq('id', body.messageId)
     .maybeSingle();
@@ -1750,7 +1750,7 @@ Deno.serve(async (req: Request) => {
   // no new table: every /ai use is already a row here.
   const windowStart = new Date(Date.now() - AI_RATE_WINDOW_MIN * 60_000).toISOString();
   const { count } = await sb
-    .from('chat_messages')
+    .from('chat_channel_messages')
     .select('id', { count: 'exact', head: true })
     .eq('user_id', caller.userId)
     .ilike('body', '/ai %')
@@ -1788,7 +1788,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: e.message ?? 'The AI is unavailable right now.', code: e.reason ?? 'network' }, 502);
   }
 
-  const { error: insertErr } = await sb.from('chat_messages').insert({
+  const { error: insertErr } = await sb.from('chat_channel_messages').insert({
     channel_id: source.channel_id,
     user_id: BOT_USER_ID,
     body: text,
@@ -1938,7 +1938,7 @@ In `src/modules/admin/api/console.js`, following the file's existing `rpc`/`soft
 
 ```js
 export const fetchRecentChatMessages = (limit = 100) =>
-  softRpc('admin_recent_chat_messages', { p_limit: limit }, []);
+  softRpc('admin_recent_chat_channel_messages', { p_limit: limit }, []);
 
 export const adminDeleteChatMessage = (id) => rpc('chat_delete_message', { p_id: id });
 
@@ -1949,23 +1949,23 @@ export const adminUnmuteChatUser = (userId, channelId) =>
   rpc('admin_unmute_chat_user', { p_user: userId, p_channel: channelId });
 ```
 
-`admin_recent_chat_messages` is a new read RPC this task needs — `chat_messages` has no client-facing select-for-admin path beyond the member-facing read policy (which doesn't include `deleted_at is not null` rows admins need to review). Add it to migration 0029 retroactively is wrong once that migration is committed; instead, create a follow-up migration:
+`admin_recent_chat_channel_messages` is a new read RPC this task needs — `chat_channel_messages` has no client-facing select-for-admin path beyond the member-facing read policy (which doesn't include `deleted_at is not null` rows admins need to review). Add it to migration 0029 retroactively is wrong once that migration is committed; instead, create a follow-up migration:
 
 ```sql
 -- supabase/migrations/0030_chat_admin_read.sql
-create or replace function public.admin_recent_chat_messages(p_limit int default 100)
-returns setof public.chat_messages
+create or replace function public.admin_recent_chat_channel_messages(p_limit int default 100)
+returns setof public.chat_channel_messages
 language plpgsql security definer set search_path = '' as $$
 begin
   perform public.admin_require('content.moderate');
   return query
-    select * from public.chat_messages
+    select * from public.chat_channel_messages
      order by created_at desc
      limit least(p_limit, 200);
 end; $$;
 
-revoke execute on function public.admin_recent_chat_messages(int) from public, anon;
-grant  execute on function public.admin_recent_chat_messages(int) to authenticated;
+revoke execute on function public.admin_recent_chat_channel_messages(int) from public, anon;
+grant  execute on function public.admin_recent_chat_channel_messages(int) to authenticated;
 ```
 
 Run: `npm run check:migrations` — expect `✓ 30 migration files pass structural checks`.
@@ -2092,7 +2092,7 @@ git commit -m "feat(admin): chat moderation panel"
 **Adjustments made from the spec while grounding it in real code** (each is a strict simplification or correction, not new scope):
 - Dropped the spec's "pagination cursor logic" test promise — once `fetchMessages` was actually written, there was no separable pure logic left to test (it's a `.lt()` call in a query builder chain), and this codebase has no precedent for mocking the Supabase client. `mergeIncoming`/`mergeOlderPage` in Task 4 cover the actual client-side logic that exists.
 - `IntroModal` reuses `CommunityProfileCard` directly (rendering the component, not copying its form) rather than a second form implementation — a stronger reuse than the spec described, found once the actual component was read.
-- `chat_messages` gets no client-facing insert policy at all (stronger than `community_posts`' own precedent, which has one that doesn't fully cover its RPC's rate limit) — noted as a deliberate, justified departure in Task 2 and the Global Constraints, not silently done.
+- `chat_channel_messages` gets no client-facing insert policy at all (stronger than `community_posts`' own precedent, which has one that doesn't fully cover its RPC's rate limit) — noted as a deliberate, justified departure in Task 2 and the Global Constraints, not silently done.
 
 **Placeholder scan:** none found — every step above contains complete, real code (SQL, JS, TSX) or an exact command, not a description of what to write.
 
