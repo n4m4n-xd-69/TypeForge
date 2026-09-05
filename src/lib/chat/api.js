@@ -31,7 +31,7 @@ function decorate(error) {
   return err;
 }
 
-const PAGE = 50;
+export const PAGE = 50;
 
 export async function fetchChannels() {
   if (!supabase) return [];

@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  deleteMessage as deleteMessageApi, fetchMessages, sendMessage as sendMessageApi, subscribeToChannel,
+  deleteMessage as deleteMessageApi, fetchMessages, PAGE, sendMessage as sendMessageApi, subscribeToChannel,
 } from './api.js';
-
-const PAGE = 50;
 
 /** A live INSERT, appended if its id isn't already present (see api.test.js's "own message" case). */
 export function mergeIncoming(messages, incoming) {
@@ -32,15 +30,39 @@ export function useChatChannel(channelId) {
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
+  // Reentrancy/staleness guards live in refs, not state — a `useCallback`
+  // closure only sees state as of the render that created it, so two
+  // synchronous calls to the same `loadMore` reference (a double-click, or
+  // an IntersectionObserver firing twice in one tick) would both read
+  // `loadingMore === false` and both fire. Same reasoning `useBattleRoom.js`
+  // already applies to its own reentrancy guards.
+  const loadingMoreRef = useRef(false);
+  const exhaustedRef = useRef(false);
+  // The channel this hook is *currently* showing, read at async-resolution
+  // time so a slow `send`/`deleteMessage` from a channel the user has since
+  // left doesn't splice its result into whatever channel is now on screen.
+  const activeChannelRef = useRef(channelId);
+
   useEffect(() => {
-    if (!channelId) return undefined;
+    activeChannelRef.current = channelId;
+  }, [channelId]);
+
+  useEffect(() => {
+    if (!channelId) {
+      setLoading(false);
+      return undefined;
+    }
     let cancelled = false;
     setLoading(true);
+    setMessages([]);
     setExhausted(false);
+    exhaustedRef.current = false;
     fetchMessages(channelId).then((rows) => {
       if (cancelled) return;
       setMessages(rows);
-      setExhausted(rows.length < PAGE);
+      const done = rows.length < PAGE;
+      setExhausted(done);
+      exhaustedRef.current = done;
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -55,26 +77,35 @@ export function useChatChannel(channelId) {
 
   const loadMore = useCallback(async () => {
     const current = messagesRef.current;
-    if (!current.length || loadingMore || exhausted) return;
+    if (!current.length || loadingMoreRef.current || exhaustedRef.current) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const older = await fetchMessages(channelId, { before: current[0].created_at });
       setMessages((prev) => mergeOlderPage(prev, older));
-      if (older.length < PAGE) setExhausted(true);
+      if (older.length < PAGE) {
+        exhaustedRef.current = true;
+        setExhausted(true);
+      }
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [channelId, loadingMore, exhausted]);
+  }, [channelId]);
 
   const send = useCallback((body, imageUrl) => sendMessageApi(channelId, body, imageUrl)
     .then((row) => {
-      if (row) setMessages((prev) => mergeIncoming(prev, row));
+      if (row && activeChannelRef.current === channelId) {
+        setMessages((prev) => mergeIncoming(prev, row));
+      }
       return row;
     }), [channelId]);
 
   const remove = useCallback((id) => deleteMessageApi(id).then(() => {
-    setMessages((prev) => prev.filter((m) => m.id !== id));
-  }), []);
+    if (activeChannelRef.current === channelId) {
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+    }
+  }), [channelId]);
 
   return { messages, loading, loadingMore, exhausted, loadMore, send, deleteMessage: remove };
 }
