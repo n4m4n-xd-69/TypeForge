@@ -164,7 +164,15 @@ Deno.serve(async (req: Request) => {
     is_bot: true,
     ai_reply_to: body.messageId,
   });
-  if (insertErr) return json({ error: 'could not post the reply' }, 500);
+  if (insertErr) {
+    // 23505 = unique_violation on chat_channel_messages_ai_reply_to_idx: a
+    // concurrent request for this same messageId won the race and already
+    // inserted its reply between this request's idempotency check above and
+    // this insert. Not a real failure — the same benign no-op the earlier,
+    // sequential check already returns for a replay.
+    if (insertErr.code === '23505') return json({ ok: true });
+    return json({ error: 'could not post the reply' }, 500);
+  }
 
   return json({ ok: true });
 });

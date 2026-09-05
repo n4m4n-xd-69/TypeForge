@@ -8,5 +8,5 @@
 alter table public.chat_channel_messages
   add column if not exists ai_reply_to uuid references public.chat_channel_messages(id) on delete set null;
 
-create index if not exists chat_channel_messages_ai_reply_to_idx
+create unique index if not exists chat_channel_messages_ai_reply_to_idx
   on public.chat_channel_messages (ai_reply_to) where ai_reply_to is not null;
