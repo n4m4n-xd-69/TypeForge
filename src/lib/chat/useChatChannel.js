@@ -57,6 +57,7 @@ export function useChatChannel(channelId) {
     setMessages([]);
     setExhausted(false);
     exhaustedRef.current = false;
+    loadingMoreRef.current = false;
     fetchMessages(channelId).then((rows) => {
       if (cancelled) return;
       setMessages(rows);
@@ -82,14 +83,17 @@ export function useChatChannel(channelId) {
     setLoadingMore(true);
     try {
       const older = await fetchMessages(channelId, { before: current[0].created_at });
+      if (activeChannelRef.current !== channelId) return;
       setMessages((prev) => mergeOlderPage(prev, older));
       if (older.length < PAGE) {
         exhaustedRef.current = true;
         setExhausted(true);
       }
     } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
+      if (activeChannelRef.current === channelId) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
     }
   }, [channelId]);
 
