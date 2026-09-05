@@ -1111,16 +1111,39 @@ export default function MessageList({
 }) {
   const bottomRef = useRef(null);
   const scrollerRef = useRef(null);
-  const prevLength = useRef(0);
+  const lastIdRef = useRef(null);
+  const prevScrollHeightRef = useRef(null);
 
-  /* Auto-scroll to the newest message, but only when the list actually grew
-     at the bottom — loading an older page must not yank the view down. */
+  /* Auto-scroll to the newest message, but only when the *last* message
+     actually changed. Comparing array length can't tell "a new message
+     arrived at the bottom" from "an older page was prepended at the top" —
+     both grow the array by the same amount. Comparing the tail id can:
+     prepending never changes what the last element is. */
   useEffect(() => {
-    if (messages.length > prevLength.current) {
+    const lastId = messages.length ? messages[messages.length - 1].id : null;
+    if (lastId !== null && lastId !== lastIdRef.current) {
       bottomRef.current?.scrollIntoView({ block: 'end' });
     }
-    prevLength.current = messages.length;
-  }, [messages.length]);
+    lastIdRef.current = lastId;
+  }, [messages]);
+
+  /* Loading an older page prepends content above whatever the user is
+     currently reading. A scroll container's scrollTop is a fixed pixel
+     offset from the top, not anchored to content, so without this the
+     newly prepended messages push the reader's place down the page.
+     Capturing the scroll height right before the fetch and restoring the
+     same offset after the DOM updates keeps their position pixel-stable. */
+  const handleLoadMore = () => {
+    if (scrollerRef.current) prevScrollHeightRef.current = scrollerRef.current.scrollHeight;
+    onLoadMore();
+  };
+
+  useEffect(() => {
+    if (prevScrollHeightRef.current == null || !scrollerRef.current) return;
+    const delta = scrollerRef.current.scrollHeight - prevScrollHeightRef.current;
+    scrollerRef.current.scrollTop += delta;
+    prevScrollHeightRef.current = null;
+  }, [messages]);
 
   if (loading) {
     return (
@@ -1137,7 +1160,7 @@ export default function MessageList({
       ) : (
         <button
           type="button"
-          onClick={onLoadMore}
+          onClick={handleLoadMore}
           disabled={loadingMore}
           className="mx-auto block text-2xs text-ink-3 underline hover:text-ink-2"
         >
