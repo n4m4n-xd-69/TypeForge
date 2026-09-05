@@ -393,6 +393,15 @@ function Shell({ children }) {
           Share a Battlefield code and someone will take it. Paste an invite link and it turns into a
           button anyone can press.
         </p>
+        <div className="mt-1.5 flex gap-1">
+          <span className="rounded-md bg-subtle px-2 py-1 text-xs font-bold text-ink">Feed</span>
+          <Link
+            to="/community/chat"
+            className="rounded-md px-2 py-1 text-xs font-bold text-ink-3 hover:bg-subtle/60 hover:text-ink-2"
+          >
+            Live Chat
+          </Link>
+        </div>
       </header>
       {children}
     </div>

@@ -22,6 +22,7 @@ const BattleRoom = lazy(() => import('./modules/battle/BattleRoom.jsx'));
 const ShadowHub = lazy(() => import('./modules/shadow/ShadowHub.jsx'));
 const ShadowRoom = lazy(() => import('./modules/shadow/ShadowRoom.jsx'));
 const Community = lazy(() => import('./modules/community/Community.jsx'));
+const ChatShell = lazy(() => import('./modules/community/chat/ChatShell.jsx'));
 const Profile = lazy(() => import('./modules/profile/Profile.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
 const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
@@ -81,6 +82,8 @@ export default function App() {
           <Route path="/shadow" element={isLaneOpen('shadow') ? <ShadowHub /> : <UnderDevelopment />} />
           <Route path="/shadow/:pin" element={isLaneOpen('shadow') ? <ShadowRoom /> : <UnderDevelopment />} />
           <Route path="/community" element={<Community />} />
+          <Route path="/community/chat" element={<ChatShell />} />
+          <Route path="/community/chat/:channelSlug" element={<ChatShell />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
           {/* Reached from the account menu rather than the nav: the mobile
