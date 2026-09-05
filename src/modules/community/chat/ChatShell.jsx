@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Users, X } from 'lucide-react';
 import { EmptyState } from '../../../components/ui/Primitives.jsx';
+import { useToast } from '../../../components/ui/Toast.jsx';
 import { useAuth } from '../../../lib/auth.jsx';
+import { supabase } from '../../../lib/supabase.js';
 import { fetchChannels } from '../../../lib/chat/api.js';
 import { useChatChannel } from '../../../lib/chat/useChatChannel.js';
 import ChannelSidebar from './ChannelSidebar.jsx';
@@ -55,10 +57,22 @@ export default function ChatShell() {
 
 function ActiveChannel({ channel, channels, onExit }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const {
     messages, loading, loadingMore, exhausted, loadMore, send, deleteMessage,
   } = useChatChannel(channel.id);
   const [pendingAi, setPendingAi] = useState(null);
+
+  useEffect(() => {
+    if (!pendingAi) return;
+    const messageId = pendingAi;
+    setPendingAi(null);
+    supabase.functions.invoke('chat-ai-reply', { body: { messageId } }).then(({ error }) => {
+      if (error) toast('The AI could not answer that.', { tone: 'error' });
+      // A success needs no handling here — the reply arrives through the
+      // same postgres_changes subscription useChatChannel already holds.
+    });
+  }, [pendingAi, toast]);
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-bg text-ink">
