@@ -58,6 +58,7 @@ export function useChatChannel(channelId) {
     setExhausted(false);
     exhaustedRef.current = false;
     loadingMoreRef.current = false;
+    setLoadingMore(false);
     fetchMessages(channelId).then((rows) => {
       if (cancelled) return;
       setMessages(rows);
