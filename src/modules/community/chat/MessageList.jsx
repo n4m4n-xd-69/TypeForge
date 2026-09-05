@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+// src/modules/community/chat/MessageList.jsx
+import { useLayoutEffect, useRef } from 'react';
 import { Bot, Loader2, Trash2 } from 'lucide-react';
 import { IconButton } from '../../../components/ui/Button.jsx';
 import { Chip } from '../../../components/ui/Primitives.jsx';
@@ -10,38 +11,51 @@ export default function MessageList({
 }) {
   const bottomRef = useRef(null);
   const scrollerRef = useRef(null);
-  const lastIdRef = useRef(null);
+  const prevFirstIdRef = useRef(null);
+  const prevLastIdRef = useRef(null);
   const prevScrollHeightRef = useRef(null);
 
-  /* Auto-scroll to the newest message, but only when the *last* message
-     actually changed. Comparing array length can't tell "a new message
-     arrived at the bottom" from "an older page was prepended at the top" —
-     both grow the array by the same amount. Comparing the tail id can:
-     prepending never changes what the last element is. */
-  useEffect(() => {
+  /*
+   * Classifies every `messages` change from the data itself, rather than a
+   * flag armed by whichever handler triggered it. A load-more click, a
+   * live realtime insert, and the user's own send/delete can all update
+   * `messages` while another one of them is still in flight — a
+   * manually-armed "this is the update I'm waiting for" ref gets stolen by
+   * whichever change lands first. Comparing this render's first/last
+   * message id against the previous render's has no such race: it only
+   * ever looks at the data that's actually here right now.
+   *
+   *   - first id changed, last id unchanged -> older messages were
+   *     prepended (pagination). Keep the reader's visual position by
+   *     shifting scrollTop by exactly how much taller the content got.
+   *   - last id changed -> a message arrived at the tail (a live append,
+   *     or this is the channel's first load). Jump to the bottom.
+   *
+   * useLayoutEffect, not useEffect: this has to run before the browser
+   * paints, or the prepended content flashes into view for one frame
+   * before scrollTop catches up.
+   */
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    const firstId = messages.length ? messages[0].id : null;
     const lastId = messages.length ? messages[messages.length - 1].id : null;
-    if (lastId !== null && lastId !== lastIdRef.current) {
-      bottomRef.current?.scrollIntoView({ block: 'end' });
+
+    if (el) {
+      const prependedAtTop = firstId !== null
+        && prevFirstIdRef.current !== null
+        && firstId !== prevFirstIdRef.current
+        && lastId === prevLastIdRef.current;
+
+      if (prependedAtTop && prevScrollHeightRef.current !== null) {
+        el.scrollTop += el.scrollHeight - prevScrollHeightRef.current;
+      } else if (lastId !== null && lastId !== prevLastIdRef.current) {
+        bottomRef.current?.scrollIntoView({ block: 'end' });
+      }
     }
-    lastIdRef.current = lastId;
-  }, [messages]);
 
-  /* Loading an older page prepends content above whatever the user is
-     currently reading. A scroll container's scrollTop is a fixed pixel
-     offset from the top, not anchored to content, so without this the
-     newly prepended messages push the reader's place down the page.
-     Capturing the scroll height right before the fetch and restoring the
-     same offset after the DOM updates keeps their position pixel-stable. */
-  const handleLoadMore = () => {
-    if (scrollerRef.current) prevScrollHeightRef.current = scrollerRef.current.scrollHeight;
-    onLoadMore();
-  };
-
-  useEffect(() => {
-    if (prevScrollHeightRef.current == null || !scrollerRef.current) return;
-    const delta = scrollerRef.current.scrollHeight - prevScrollHeightRef.current;
-    scrollerRef.current.scrollTop += delta;
-    prevScrollHeightRef.current = null;
+    prevFirstIdRef.current = firstId;
+    prevLastIdRef.current = lastId;
+    prevScrollHeightRef.current = el ? el.scrollHeight : null;
   }, [messages]);
 
   if (loading) {
@@ -59,7 +73,7 @@ export default function MessageList({
       ) : (
         <button
           type="button"
-          onClick={handleLoadMore}
+          onClick={onLoadMore}
           disabled={loadingMore}
           className="mx-auto block text-2xs text-ink-3 underline hover:text-ink-2"
         >
