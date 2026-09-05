@@ -17,6 +17,7 @@ const PerformanceView = lazy(() => import('../views/PerformanceView.jsx'));
 const ArenaView = lazy(() => import('../views/ArenaView.jsx'));
 const AiControlView = lazy(() => import('../views/AiControlView.jsx'));
 const ContentView = lazy(() => import('../views/ContentView.jsx'));
+const ChatModeration = lazy(() => import('../views/ChatModeration.jsx'));
 const ReportsView = lazy(() => import('../views/ReportsView.jsx'));
 const SettingsView = lazy(() => import('../views/SettingsView.jsx'));
 
@@ -27,6 +28,7 @@ const VIEWS = {
   arena: ArenaView,
   ai: AiControlView,
   content: ContentView,
+  chatModeration: ChatModeration,
   reports: ReportsView,
   settings: SettingsView,
 };

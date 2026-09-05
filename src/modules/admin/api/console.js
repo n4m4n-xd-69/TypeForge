@@ -381,6 +381,25 @@ export async function fetchGenerationBody(id) {
 export const moderateGeneration = (id, action, reason) =>
   rpc('admin_moderate_generation', { p_id: id, p_action: action, p_reason: reason });
 
+/* ── chat moderation ──────────────────────────────────────────────────── */
+
+/**
+ * `chat_channel_messages` has no client-facing select-for-admin path beyond
+ * the member-facing read policy (deleted_at is null) — admins reviewing a
+ * removal need the deleted rows too, hence a dedicated RPC (0031) rather than
+ * a direct table read.
+ */
+export const fetchRecentChatMessages = (limit = 100) =>
+  softRpc('admin_recent_chat_channel_messages', { p_limit: limit }, []);
+
+export const adminDeleteChatMessage = (id) => rpc('chat_delete_message', { p_id: id });
+
+export const adminMuteChatUser = (userId, channelId, minutes, reason) =>
+  rpc('admin_mute_chat_user', { p_user: userId, p_channel: channelId, p_minutes: minutes, p_reason: reason });
+
+export const adminUnmuteChatUser = (userId, channelId) =>
+  rpc('admin_unmute_chat_user', { p_user: userId, p_channel: channelId });
+
 /* ── configuration ────────────────────────────────────────────────────── */
 
 export async function fetchConfig() {
