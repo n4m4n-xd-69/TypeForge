@@ -1,29 +1,12 @@
 import { supabase } from '../supabase.js';
-
-/**
- * Profile photo upload.
- *
- * Three things happen before a byte leaves the browser, and each exists because
- * the alternative is a failure the user cannot act on:
- *
- *   1. **Type and size are checked here as well as in the bucket.** The bucket
- *      rejects an oversized file with a 413 and a message about MIME types.
- *      Checking first turns that into "that image is 6 MB; the limit is 2 MB",
- *      which is a sentence someone can do something about.
- *   2. **The image is downscaled.** A phone photo is 4000px and several
- *      megabytes to render a 38px avatar. Resizing to 512px costs a moment on
- *      one device and saves the download on every device that ever sees it.
- *   3. **The path is namespaced by user id.** The storage policy requires the
- *      first path segment to equal `auth.uid()`, so this is not a convention —
- *      a path built any other way is refused by Postgres.
- */
+import { ImageError, validateImage, downscaleImage } from '../media/image.js';
 
 export const MAX_BYTES = 2 * 1024 * 1024; // 2 MB, matching the bucket's own limit
 export const MAX_EDGE = 512;              // px, the largest this is ever displayed at
 export const ACCEPTED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 export const ACCEPT_ATTR = ACCEPTED.join(',');
 
-export class PhotoError extends Error {}
+export class PhotoError extends ImageError {}
 
 /** Human-facing validation, run before any work is done. */
 export function validatePhoto(file) {
@@ -32,44 +15,15 @@ export function validatePhoto(file) {
     return 'That file type is not supported. Use a PNG, JPEG, WebP or GIF.';
   }
   if (file.size > MAX_BYTES) {
-    return `That image is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 2 MB.`;
+    const fileMb = (file.size / 1024 / 1024).toFixed(1);
+    return `That image is ${fileMb} MB. The limit is 2 MB.`;
   }
   return null;
 }
 
-/**
- * Downscales to at most MAX_EDGE on the long side, preserving aspect ratio.
- *
- * Falls back to the original file on any failure rather than blocking the
- * upload: a resize is an optimisation, and refusing to save someone's photo
- * because a canvas call failed would be trading their goal for ours. An
- * animated GIF is passed through untouched — drawing one to a canvas would
- * silently keep only the first frame.
- */
-export async function downscale(file) {
-  if (typeof document === 'undefined' || file.type === 'image/gif') return file;
-
-  try {
-    const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1) {
-      bitmap.close?.();
-      return file;
-    }
-
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    bitmap.close?.();
-
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.85));
-    if (!blob || blob.size >= file.size) return file;
-    return new File([blob], 'photo.webp', { type: 'image/webp' });
-  } catch {
-    return file;
-  }
+/** Downscales to at most MAX_EDGE on the long side. See `lib/media/image.js`. */
+export function downscale(file) {
+  return downscaleImage(file, { maxEdge: MAX_EDGE });
 }
 
 /**
