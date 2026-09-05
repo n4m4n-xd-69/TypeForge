@@ -65,6 +65,9 @@ verify_enabled = false
 [functions.forge-chat]
 verify_jwt = true
 
+[functions.chat-ai-reply]
+verify_jwt = true
+
 [functions.forge-generate]
 verify_jwt = true
 
