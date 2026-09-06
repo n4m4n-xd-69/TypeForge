@@ -400,6 +400,30 @@ export const adminMuteChatUser = (userId, channelId, minutes, reason) =>
 export const adminUnmuteChatUser = (userId, channelId) =>
   rpc('admin_unmute_chat_user', { p_user: userId, p_channel: channelId });
 
+/**
+ * Mutes that are still in force, soonest expiry last.
+ *
+ * Read straight off the table rather than through an RPC: `chat_mutes`
+ * already carries an admin-only select policy (migration 0029), so this is
+ * the narrowest path — a definer function would move the authorisation
+ * somewhere less obvious without changing what it permits. Matches
+ * `fetchUserStatuses`' shape in this same file: degrade to an empty list
+ * rather than blanking the panel.
+ */
+export async function fetchActiveChatMutes() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('chat_mutes')
+    .select('id, user_id, channel_id, reason, muted_until, created_at')
+    .gt('muted_until', new Date().toISOString())
+    .order('muted_until', { ascending: false });
+  if (error) {
+    if (import.meta.env.DEV) console.warn('[console] chat_mutes read failed', error);
+    return [];
+  }
+  return data ?? [];
+}
+
 /* ── configuration ────────────────────────────────────────────────────── */
 
 export async function fetchConfig() {

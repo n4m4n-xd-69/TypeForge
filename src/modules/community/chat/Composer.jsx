@@ -9,6 +9,7 @@ import { validateImage, downscaleImage } from '../../../lib/media/image.js';
 import { chatErrorMessage } from '../../../lib/chat/api.js';
 import { AI_COMMAND } from '../../../lib/chat/constants.js';
 import SlashCommandHint from './SlashCommandHint.jsx';
+import { matchCommands } from './commands.js';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_EDGE = 1600;
@@ -34,7 +35,14 @@ export default function Composer({ onSend, onAiCommand }) {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pickedImage, setPickedImage] = useState(null);
+  const [hintDismissed, setHintDismissed] = useState(false);
   const fileInput = useRef(null);
+
+  /* Escape hides the hint without clearing what's typed; any further typing
+     brings it back. `matchCommands` naturally closes it once a command is
+     complete ("/ai " no longer prefix-matches "/ai"), so accepting a command
+     needs no separate dismissal. */
+  const hintMatches = hintDismissed ? [] : matchCommands(body);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -78,8 +86,8 @@ export default function Composer({ onSend, onAiCommand }) {
   return (
     <form onSubmit={submit} className="relative shrink-0 border-t border-line bg-bg p-2">
       <SlashCommandHint
-        input={body}
-        onPick={(command) => setBody(`${command} `)}
+        matches={hintMatches}
+        onPick={(command) => { setBody(`${command} `); setHintDismissed(false); }}
       />
 
       {pickedImage ? (
@@ -102,12 +110,20 @@ export default function Composer({ onSend, onAiCommand }) {
 
         <textarea
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => { setBody(e.target.value); setHintDismissed(false); }}
           rows={1}
           maxLength={2000}
           placeholder="Message… (/ for commands)"
           className="max-h-32 flex-1 resize-none rounded-md border border-line bg-subtle/50 px-1.5 py-1 text-sm outline-none focus:border-brand"
           onKeyDown={(e) => {
+            if (hintMatches.length > 0) {
+              if (e.key === 'Escape') { e.preventDefault(); setHintDismissed(true); return; }
+              if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+                e.preventDefault();
+                setBody(`${hintMatches[0].command} `);
+                return;
+              }
+            }
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(e); }
           }}
         />
