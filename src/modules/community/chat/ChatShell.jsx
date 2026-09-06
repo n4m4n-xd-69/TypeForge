@@ -1,8 +1,9 @@
 // src/modules/community/chat/ChatShell.jsx
 import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
-import { Loader2, Users, X } from 'lucide-react';
+import { ArrowLeft, Loader2, MessagesSquare, Users, X } from 'lucide-react';
 import { EmptyState } from '../../../components/ui/Primitives.jsx';
+import Button from '../../../components/ui/Button.jsx';
 import { useToast } from '../../../components/ui/Toast.jsx';
 import { useAuth } from '../../../lib/auth.jsx';
 import { supabase } from '../../../lib/supabase.js';
@@ -22,7 +23,7 @@ import IntroModal from '../IntroModal.jsx';
 export default function ChatShell() {
   const navigate = useNavigate();
   const { channelSlug } = useParams();
-  const { user, cloudEnabled } = useAuth();
+  const { user, cloudEnabled, openAuthModal } = useAuth();
   const [channels, setChannels] = useState(null);
 
   useEffect(() => {
@@ -30,29 +31,81 @@ export default function ChatShell() {
     fetchChannels().then(setChannels);
   }, [cloudEnabled]);
 
-  if (!cloudEnabled || !user) {
+  if (!cloudEnabled) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-bg">
-        <EmptyState icon={Users} title="Join the Community" description="Sign in to chat." />
-      </div>
+      <ChatOverlay>
+        <EmptyState
+          icon={Users}
+          title="Chat needs the cloud"
+          description="This build has no Supabase keys configured, so there is nobody to talk to."
+        />
+      </ChatOverlay>
+    );
+  }
+
+  if (!user) {
+    return (
+      <ChatOverlay>
+        <EmptyState
+          icon={Users}
+          title="Join the Community"
+          description="Sign in to chat. A name is enough — no email needed."
+          action={(
+            <Button variant="primary" onClick={() => openAuthModal('sign-up')}>
+              Get started
+            </Button>
+          )}
+        />
+      </ChatOverlay>
     );
   }
 
   if (channels === null) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center bg-bg">
+      <ChatOverlay>
         <Loader2 size={20} className="animate-spin text-ink-3" aria-hidden />
-      </div>
+      </ChatOverlay>
     );
   }
 
-  if (channels.length === 0) return null;
+  /* An empty list is not nothing to say. `fetchChannels` degrades to [] for
+     both "no channels seeded" and "the read failed" (migration 0029 not
+     applied yet, say), and rendering null for either left a blank white
+     screen with no way back — this overlay covers the nav rail, so there was
+     no exit but the browser's back button. */
+  if (channels.length === 0) {
+    return (
+      <ChatOverlay>
+        <EmptyState
+          icon={MessagesSquare}
+          title="Chat isn't ready yet"
+          description="No channels are set up on this project. If you're the operator, the chat migrations may not have been applied."
+        />
+      </ChatOverlay>
+    );
+  }
 
   const active = channels.find((c) => c.slug === channelSlug) ?? channels[0];
   if (!channelSlug) return <Navigate to={`/community/chat/${active.slug}`} replace />;
   if (active.slug !== channelSlug) return <Navigate to={`/community/chat/${active.slug}`} replace />;
 
   return <ActiveChannel channel={active} channels={channels} onExit={() => navigate('/community')} />;
+}
+
+/**
+ * Every full-screen state that is not a live channel needs its own way out:
+ * this overlay sits above the nav rail, so without a link here the only exit
+ * is the browser's back button.
+ */
+function ChatOverlay({ children }) {
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-2 bg-bg p-3">
+      {children}
+      <Button as={Link} to="/community" size="sm" variant="ghost" icon={ArrowLeft}>
+        Back to Community
+      </Button>
+    </div>
+  );
 }
 
 function ActiveChannel({ channel, channels, onExit }) {
