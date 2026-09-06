@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import Arena from './Arena.jsx';
-import { ARENA_COMPARISON, ARENA_LANES, REQUIRED_LANE_FIELDS, getLane } from './lanes.js';
+import {
+  ARENA_COMPARISON, ARENA_LANES, DEVELOPMENT_NOTICE, LANE_STATUS, REQUIRED_LANE_FIELDS,
+  getLane, isLaneOpen,
+} from './lanes.js';
 import { MODE_REGISTRY, getMode } from '../../lib/modes/registry.js';
 import { deriveModePaletteEntries, deriveNavGroups } from '../../lib/modes/derive.js';
 
@@ -161,5 +164,57 @@ describe('gate wiring', () => {
     expect(items.length).toBeLessThanOrEqual(6);
     // The mobile tab bar renders `{item.label}` at text-[10px] with flex-1.
     for (const item of items) expect(item.label.length).toBeLessThanOrEqual(8);
+  });
+});
+
+/**
+ * Lane readiness.
+ *
+ * A mode that is not finished must not present working controls, and — the
+ * part that is easy to get wrong — it must be closed on *every* surface at
+ * once. The gate card, the hotkey, the route and the command palette all read
+ * `status` through `isLaneOpen`, so these tests pin the single source rather
+ * than four copies of the same decision.
+ */
+describe('lane readiness', () => {
+  it('gives every lane an explicit status', () => {
+    for (const lane of ARENA_LANES) {
+      expect(Object.values(LANE_STATUS), `${lane.id} has an unknown status`).toContain(lane.status);
+    }
+  });
+
+  it('reports Battlefield as open', () => {
+    expect(isLaneOpen('battlefield')).toBe(true);
+  });
+
+  it('reports Shadow Battle as under development', () => {
+    // Flipping this lane to `live` in lanes.js is the whole release step, and
+    // updating this line is how you say you meant to.
+    expect(getLane('shadow').status).toBe(LANE_STATUS.DEVELOPMENT);
+    expect(isLaneOpen('shadow')).toBe(false);
+  });
+
+  it('treats an unknown lane as open rather than throwing', () => {
+    // `isLaneOpen` guards routes. Throwing here would turn a typo into a blank
+    // page, which is a worse failure than rendering the route.
+    expect(isLaneOpen('nonexistent')).toBe(true);
+  });
+
+  it('carries the copy the closed state needs', () => {
+    expect(DEVELOPMENT_NOTICE.label).toBe('Under Development');
+    expect(DEVELOPMENT_NOTICE.blurb.trim().length).toBeGreaterThan(20);
+  });
+});
+
+describe('Battlefield capacity is stated consistently', () => {
+  it('advertises thirty players wherever the number appears', () => {
+    // The schema ceiling is 30 (migration 0023). Copy that still says eight is
+    // not a cosmetic mismatch — it is the gate telling people they cannot do
+    // something the product now supports.
+    const lane = getLane('battlefield');
+    expect(lane.eyebrow).toContain('30');
+    expect(lane.beats.join(' ')).toMatch(/thirty/i);
+    const players = ARENA_COMPARISON.find((r) => r.label === 'Players');
+    expect(players.battlefield).toContain('30');
   });
 });

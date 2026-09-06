@@ -35,11 +35,43 @@ export const QUOTES = [
   { text: 'Deleted code is debugged code. There is nothing so permanent as a temporary fix, and nothing so temporary as the last line you were sure about.', author: 'Jeff Sickel', length: 'long' },
   { text: 'It is not that I am so smart, it is just that I stay with problems longer.', author: 'Albert Einstein', length: 'medium' },
   { text: 'The best way to predict the future is to invent it.', author: 'Alan Kay', length: 'short' },
+  { text: 'Simplicity is the soul of efficiency.', author: 'Austin Freeman', length: 'short' },
+  { text: 'Make it work, make it right, make it fast.', author: 'Kent Beck', length: 'short' },
+  { text: 'Controlling complexity is the essence of computer programming.', author: 'Brian Kernighan', length: 'short' },
+  { text: 'The competent programmer is fully aware of the limited size of his own skull.', author: 'Edsger W. Dijkstra', length: 'medium' },
+  { text: 'A language that does not affect the way you think about programming is not worth knowing.', author: 'Alan Perlis', length: 'medium' },
+  { text: 'Debugging is twice as hard as writing the code in the first place, so if you write the code as cleverly as possible you are not smart enough to debug it.', author: 'Brian Kernighan', length: 'long' },
+  { text: 'There are only two hard things in computer science: cache invalidation and naming things.', author: 'Phil Karlton', length: 'medium' },
+  { text: 'Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.', author: 'Antoine de Saint-Exupery', length: 'long' },
+  { text: 'Give me six hours to chop down a tree and I will spend the first four sharpening the axe.', author: 'Abraham Lincoln', length: 'medium' },
+  { text: 'It always seems impossible until it is done.', author: 'Nelson Mandela', length: 'short' },
+  { text: 'The only way to go fast is to go well. Every time you yield to the temptation to trade quality for speed, you slow down.', author: 'Robert C. Martin', length: 'long' },
+  { text: 'Programs are meant to be read by humans and only incidentally for computers to execute, so write them for the reader you will be in six months.', author: 'Donald Knuth', length: 'long' },
 ];
 
-export function randomQuote(length = 'any') {
-  const pool = length === 'any' ? QUOTES : QUOTES.filter((q) => q.length === length);
-  return (pool.length ? pool : QUOTES)[Math.floor(Math.random() * (pool.length || QUOTES.length))];
+export const QUOTE_LENGTHS = ['any', 'short', 'medium', 'long'];
+
+/**
+ * One quote, honouring the requested length and avoiding the last one served.
+ *
+ * The repeat guard is the point. Quote mode is the one practice mode where the
+ * text is the content rather than a random sample of it, so drawing the same
+ * quote twice in a row does not read as chance — it reads as the mode being
+ * broken. With a pool this size an unguarded uniform draw repeats roughly one
+ * session in twelve, which is often enough to notice.
+ *
+ * `avoid` is passed by the caller rather than held in module state so the
+ * function stays pure and testable; Practice keeps the last quote in a ref.
+ * When the filtered pool holds only the avoided quote, the avoidance is
+ * dropped rather than the request — serving the wrong length would be a bigger
+ * surprise than serving a repeat.
+ */
+export function randomQuote(length = 'any', avoid = null, rng = Math.random) {
+  const byLength = length === 'any' ? QUOTES : QUOTES.filter((q) => q.length === length);
+  const pool = byLength.length ? byLength : QUOTES;
+  const fresh = pool.filter((q) => q.text !== avoid);
+  const from = fresh.length ? fresh : pool;
+  return from[Math.floor(rng() * from.length)];
 }
 
 /* ── Zen / prose passages ──────────────────────────────────────────────── */

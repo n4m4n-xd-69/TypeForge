@@ -160,6 +160,25 @@ export const setUserRole = (userId, role, tier, note) =>
 
 export const fetchLiveMatches = () => softRpc('admin_live_matches', {}, []);
 export const fetchMatchDetail = (roomId) => softRpc('admin_match_detail', { p_room: roomId }, null);
+
+/**
+ * Closes a live Battlefield.
+ *
+ * A write, so it throws — `admin_require('content.moderate')` raises 42501 and
+ * an operator without the tier gets a real error rather than a button that
+ * appeared to work. The reason is not optional and the database enforces that:
+ * every player in the room is about to be shown this text, and "removed by an
+ * administrator" with no explanation is the state this whole feature exists to
+ * avoid.
+ */
+export const removeBattleRoom = (roomId, reason) =>
+  rpc('admin_remove_battle_room', { p_room: roomId, p_reason: reason });
+
+export const fetchAppeals = (openOnly = false) =>
+  softRpc('admin_list_appeals', { p_open_only: openOnly }, []);
+
+export const replyToAppeal = (appealId, reply) =>
+  rpc('admin_reply_to_appeal', { p_appeal: appealId, p_reply: reply });
 export const fetchAnomalies = (from, to) =>
   softRpc('admin_anomalies', { p_from: iso(from), p_to: iso(to) }, []);
 
@@ -361,6 +380,49 @@ export async function fetchGenerationBody(id) {
 
 export const moderateGeneration = (id, action, reason) =>
   rpc('admin_moderate_generation', { p_id: id, p_action: action, p_reason: reason });
+
+/* ── chat moderation ──────────────────────────────────────────────────── */
+
+/**
+ * `chat_channel_messages` has no client-facing select-for-admin path beyond
+ * the member-facing read policy (deleted_at is null) — admins reviewing a
+ * removal need the deleted rows too, hence a dedicated RPC (0031) rather than
+ * a direct table read.
+ */
+export const fetchRecentChatMessages = (limit = 100) =>
+  softRpc('admin_recent_chat_channel_messages', { p_limit: limit }, []);
+
+export const adminDeleteChatMessage = (id) => rpc('chat_delete_message', { p_id: id });
+
+export const adminMuteChatUser = (userId, channelId, minutes, reason) =>
+  rpc('admin_mute_chat_user', { p_user: userId, p_channel: channelId, p_minutes: minutes, p_reason: reason });
+
+export const adminUnmuteChatUser = (userId, channelId) =>
+  rpc('admin_unmute_chat_user', { p_user: userId, p_channel: channelId });
+
+/**
+ * Mutes that are still in force, soonest expiry last.
+ *
+ * Read straight off the table rather than through an RPC: `chat_mutes`
+ * already carries an admin-only select policy (migration 0029), so this is
+ * the narrowest path — a definer function would move the authorisation
+ * somewhere less obvious without changing what it permits. Matches
+ * `fetchUserStatuses`' shape in this same file: degrade to an empty list
+ * rather than blanking the panel.
+ */
+export async function fetchActiveChatMutes() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from('chat_mutes')
+    .select('id, user_id, channel_id, reason, muted_until, created_at')
+    .gt('muted_until', new Date().toISOString())
+    .order('muted_until', { ascending: false });
+  if (error) {
+    if (import.meta.env.DEV) console.warn('[console] chat_mutes read failed', error);
+    return [];
+  }
+  return data ?? [];
+}
 
 /* ── configuration ────────────────────────────────────────────────────── */
 

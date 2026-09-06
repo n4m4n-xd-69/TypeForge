@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Swords } from 'lucide-react';
+import { ArrowRight, Swords, Wrench } from 'lucide-react';
 import Button from '../../components/ui/Button.jsx';
-import { Card } from '../../components/ui/Primitives.jsx';
+import { Card, Chip } from '../../components/ui/Primitives.jsx';
 import { Reveal } from '../../components/ui/Motion.jsx';
 import { cx } from '../../lib/format.js';
-import { ARENA_COMPARISON, ARENA_LANES } from './lanes.js';
+import { ARENA_COMPARISON, ARENA_LANES, DEVELOPMENT_NOTICE, LANE_STATUS } from './lanes.js';
 
 /**
  * The Arena gate.
@@ -80,6 +80,9 @@ export default function Arena() {
 
       const lane = ARENA_LANES.find((l) => l.hotkey.toLowerCase() === e.key?.toLowerCase());
       if (!lane) return;
+      // A shortcut is a faster route to the same place, never a way around a
+      // closed door.
+      if (lane.status === LANE_STATUS.DEVELOPMENT) return;
       e.preventDefault();
       navigate(lane.to);
     };
@@ -129,6 +132,7 @@ export default function Arena() {
 function Lane({ lane }) {
   const t = TONES[lane.tone];
   const Icon = lane.icon;
+  const open = lane.status !== LANE_STATUS.DEVELOPMENT;
 
   return (
     <Card
@@ -148,6 +152,11 @@ function Lane({ lane }) {
           <p className="eyebrow">{lane.eyebrow}</p>
           <h2 className="font-display text-xl font-bold tracking-[-0.02em]">{lane.title}</h2>
         </div>
+        {/* Stated where the mode is named, not buried by the button. Someone
+            scanning the gate should learn this before they read the pitch. */}
+        {open ? null : (
+          <Chip tone="warn" className="ml-auto shrink-0">{DEVELOPMENT_NOTICE.label}</Chip>
+        )}
       </div>
 
       <p className="mt-2 text-base font-semibold text-ink-2">{lane.tagline}</p>
@@ -166,23 +175,39 @@ function Lane({ lane }) {
 
       <div className="flex-1" aria-hidden />
 
-      <Button
-        as={Link}
-        to={lane.to}
-        variant="primary"
-        size="lg"
-        iconRight={ArrowRight}
-        className="mt-3 w-full"
-      >
-        {lane.cta}
-      </Button>
+      {/* A control that cannot do anything must not look like one that can.
+          The disabled button keeps the card's shape — so the two lanes still
+          read as a pair — while being unreachable by mouse and by keyboard. */}
+      {open ? (
+        <>
+          <Button
+            as={Link}
+            to={lane.to}
+            variant="primary"
+            size="lg"
+            iconRight={ArrowRight}
+            className="mt-3 w-full"
+          >
+            {lane.cta}
+          </Button>
 
-      <p className="mt-1 text-center text-2xs text-ink-3">
-        or press{' '}
-        <kbd className={cx('rounded-xs border bg-surface px-0.5 font-mono font-bold', t.kbd)}>
-          {lane.hotkey}
-        </kbd>
-      </p>
+          <p className="mt-1 text-center text-2xs text-ink-3">
+            or press{' '}
+            <kbd className={cx('rounded-xs border bg-surface px-0.5 font-mono font-bold', t.kbd)}>
+              {lane.hotkey}
+            </kbd>
+          </p>
+        </>
+      ) : (
+        <>
+          <Button variant="secondary" size="lg" className="mt-3 w-full" disabled icon={Wrench}>
+            {DEVELOPMENT_NOTICE.label}
+          </Button>
+          <p className="mt-1 text-center text-2xs leading-relaxed text-ink-3">
+            {DEVELOPMENT_NOTICE.blurb}
+          </p>
+        </>
+      )}
     </Card>
   );
 }

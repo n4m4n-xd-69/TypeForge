@@ -24,6 +24,11 @@ export default function Drilldown({
   title,
   subtitle,
   eyebrow,
+  /* Optional node shown left of the title — an avatar, a status glyph. The
+     sheet's header is the one place an operator confirms they opened the row
+     they meant to, and on a roster where most names are auto-generated, a face
+     does that faster than re-reading the name. */
+  media,
   tabs,
   activeTab,
   onTabChange,
@@ -107,7 +112,8 @@ export default function Drilldown({
             transition={reduce ? { duration: 0.15 } : { type: 'spring', stiffness: 380, damping: 38 }}
           >
             <header className="flex items-start justify-between gap-2 border-b border-line px-2.5 py-2">
-              <div className="min-w-0">
+              {media ? <div className="shrink-0 pt-0.5">{media}</div> : null}
+              <div className="min-w-0 flex-1">
                 {eyebrow ? (
                   <p className="mb-px font-mono text-[10px] uppercase tracking-[0.12em] text-ink-3">{eyebrow}</p>
                 ) : null}

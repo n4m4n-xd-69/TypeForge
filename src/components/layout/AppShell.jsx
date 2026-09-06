@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ChevronRight, Command, Flame, Home, LineChart, Trophy,
+  ChevronRight, Command, Flame, Home, LineChart, Trophy, Users,
 } from 'lucide-react';
 import { cx } from '../../lib/format.js';
 import { useStats, useStore } from '../../lib/store.jsx';
@@ -40,6 +40,10 @@ import { deriveNavGroups } from '../../lib/modes/derive.js';
 export const NAV_GROUPS = deriveNavGroups(MODE_REGISTRY, {
   Train: [{ to: '/', label: 'Home', icon: Home, end: true, lead: true }],
   Compete: [
+    /* Community trails the registry-derived Arena entry and leads the two
+       progress screens: it is a place you go to find someone to race, which
+       sits closer to competing than to reviewing how you did. */
+    { to: '/community', label: 'Community', icon: Users },
     { to: '/dashboard', label: 'Progress', icon: LineChart },
     /* Rewards stays until Progress absorbs it. Dropping it now to hit a
        five-item target would leave a live route reachable only from the

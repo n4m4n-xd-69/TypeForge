@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Braces, Home, LineChart, MessageSquare, Moon, Search, Sun, Swords, Trophy,
+  Braces, Home, LineChart, MessageSquare, Moon, Search, Sun, Swords, Trophy, Users,
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { cx } from '../../lib/format.js';
@@ -11,6 +11,7 @@ import { LANGUAGES } from '../../lib/content.js';
 import { MODE_REGISTRY } from '../../lib/modes/registry.js';
 import { deriveModePaletteEntries } from '../../lib/modes/derive.js';
 import { getCommands, subscribeCommands } from '../../lib/paletteRegistry.js';
+import { isLaneOpen } from '../../modules/arena/lanes.js';
 
 const MODE_PALETTE_ENTRIES = deriveModePaletteEntries(MODE_REGISTRY);
 
@@ -34,12 +35,18 @@ export default function CommandPalette({ open, onClose }) {
       ...MODE_PALETTE_ENTRIES.filter((e) => e.group === 'Navigate').map((e) => ({
         id: e.id, label: e.label, icon: e.icon, group: 'Navigate', run: () => navigate(e.route),
       })),
-      { id: 'shadow', label: 'Shadow Battle — 1v1 Combat', icon: Swords, group: 'Navigate', run: () => navigate('/shadow') },
+      // Dropped entirely while the mode is closed rather than listed and
+      // refused. A palette is a list of things you can do; an entry that lands
+      // on "under development" is a dead command with a working keystroke.
+      ...(isLaneOpen('shadow')
+        ? [{ id: 'shadow', label: 'Shadow Battle — 1v1 Combat', icon: Swords, group: 'Navigate', run: () => navigate('/shadow') }]
+        : []),
       // The registry-derived entry above now opens the /arena gate, so both
       // sides of that fork also get a direct command. The gate is a discovery
       // surface, not a toll booth — anyone who already knows which mode they
       // want should never have to pass through it.
-      { id: 'battlefield', label: 'Battlefield — 8-player race', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
+      { id: 'battlefield', label: 'Battlefield — 30-player race', icon: Swords, group: 'Navigate', run: () => navigate('/battle') },
+      { id: 'community', label: 'Community — feed and room codes', icon: Users, group: 'Navigate', run: () => navigate('/community') },
       // Chat gave up its nav slot to Battlefield. The floating coach reaches the
       // same model from every route, but the full page owns the thread history
       // in `chat_messages`, so it needs a way in that is not the FAB.

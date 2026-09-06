@@ -20,7 +20,25 @@ import { Flame, Swords } from 'lucide-react';
  */
 export const REQUIRED_LANE_FIELDS = [
   'id', 'to', 'eyebrow', 'title', 'tagline', 'intro', 'beats', 'cta', 'tone', 'icon', 'hotkey',
+  'status',
 ];
+
+/**
+ * Whether a lane is finished.
+ *
+ * `development` is a real state, not a hidden one. A mode that is half-built
+ * must not present working controls — that is the difference between "not
+ * ready yet" and "broken" — but removing it from the gate entirely would be
+ * its own kind of lie, since it is announced everywhere else in the product.
+ * The lane still renders, still explains itself, and simply does not open.
+ */
+export const LANE_STATUS = Object.freeze({ LIVE: 'live', DEVELOPMENT: 'development' });
+
+/** Copy for a lane that is not open yet, kept beside the state it describes. */
+export const DEVELOPMENT_NOTICE = Object.freeze({
+  label: 'Under Development',
+  blurb: "We're working on this mode. It will be available soon.",
+});
 
 /**
  * Order is render order: Battlefield left, Shadow Battle right.
@@ -40,7 +58,7 @@ export const ARENA_LANES = Object.freeze([
   Object.freeze({
     id: 'battlefield',
     to: '/battle',
-    eyebrow: 'Up to 8 fighters',
+    eyebrow: 'Up to 30 fighters',
     title: 'Battlefield',
     tagline: 'One passage. One clock. Everybody types.',
     intro:
@@ -48,7 +66,7 @@ export const ARENA_LANES = Object.freeze([
       + 'people race the same text at once. No handicaps, no head start — the cleanest '
       + 'run takes it.',
     beats: Object.freeze([
-      'Two to eight players in one room',
+      'Two to thirty players in one room',
       'Start time owned by the server, not your laptop',
       'Fewest mistakes wins, then speed',
     ]),
@@ -56,6 +74,7 @@ export const ARENA_LANES = Object.freeze([
     tone: 'brand',
     icon: Swords,
     hotkey: 'B',
+    status: LANE_STATUS.LIVE,
   }),
   Object.freeze({
     id: 'shadow',
@@ -76,6 +95,7 @@ export const ARENA_LANES = Object.freeze([
     tone: 'accent',
     icon: Flame,
     hotkey: 'S',
+    status: LANE_STATUS.DEVELOPMENT,
   }),
 ]);
 
@@ -87,7 +107,7 @@ export const ARENA_LANES = Object.freeze([
  * of plain fact do the job that marketing copy cannot.
  */
 export const ARENA_COMPARISON = Object.freeze([
-  Object.freeze({ label: 'Players', battlefield: '2 – 8', shadow: '1 v 1' }),
+  Object.freeze({ label: 'Players', battlefield: '2 – 30', shadow: '1 v 1' }),
   Object.freeze({ label: 'Win condition', battlefield: 'Cleanest run', shadow: 'Last one standing' }),
   Object.freeze({ label: 'Plays offline', battlefield: 'No — needs the cloud', shadow: 'Yes — Trial vs. bots' }),
 ]);
@@ -95,4 +115,15 @@ export const ARENA_COMPARISON = Object.freeze([
 /** Lookup by id. Returns undefined for anything unknown, like `getMode`. */
 export function getLane(id) {
   return ARENA_LANES.find((lane) => lane.id === id);
+}
+
+/**
+ * Whether a lane may be entered.
+ *
+ * One predicate, read by the gate, the route and the ⌘K palette alike, so a
+ * mode cannot be closed on one surface and open on another. Flipping a lane's
+ * `status` to `live` is the entire release step.
+ */
+export function isLaneOpen(id) {
+  return getLane(id)?.status !== LANE_STATUS.DEVELOPMENT;
 }

@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, Radio, Swords, Timer, Trophy, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle, Maximize2, MessageSquare, Radio, Send, ShieldAlert, Swords, Timer, Trophy, Users,
+} from 'lucide-react';
 import { cx, mmss, relativeTime } from '../../../lib/format.js';
 import { Chip, ProgressBar } from '../../../components/ui/Primitives.jsx';
+import Button from '../../../components/ui/Button.jsx';
+import { useToast } from '../../../components/ui/Toast.jsx';
 import {
-  ConsoleTable, Drilldown, Field, FieldGrid, MetricRack, MetricTile,
+  ConfirmAction, ConsoleTable, Drilldown, Field, FieldGrid, MetricRack, MetricTile,
   Panel, StateBlock, ViewHeader, useConsole, useConsoleQuery, usePolling,
 } from '../kit/index.js';
 import {
-  fetchAnomalies, fetchKpis, fetchLiveMatches, fetchMatchDetail,
-  fetchRecentMatches, subscribeToTables,
+  fetchAnomalies, fetchAppeals, fetchKpis, fetchLiveMatches, fetchMatchDetail,
+  fetchRecentMatches, removeBattleRoom, replyToAppeal, subscribeToTables,
 } from '../api/console.js';
+import RoomMonitor from './RoomMonitor.jsx';
 
 /**
  * Battle arena.
@@ -48,8 +53,12 @@ const SIGNAL_LABELS = {
 };
 
 export default function ArenaView() {
-  const { range, nonce } = useConsole();
+  const { range, nonce, can } = useConsole();
+  const { toast } = useToast();
   const [openRoom, setOpenRoom] = useState(null);
+  const [monitorRoom, setMonitorRoom] = useState(null);
+  const [removing, setRemoving] = useState(null);
+  const canModerate = can('content.moderate');
 
   const live = useConsoleQuery(() => fetchLiveMatches(), [nonce]);
   const kpis = useConsoleQuery(
@@ -57,12 +66,32 @@ export default function ArenaView() {
     [range.from.getTime(), range.to.getTime(), nonce],
   );
   const recent = useConsoleQuery(() => fetchRecentMatches({ limit: 150 }), [nonce]);
+  const appeals = useConsoleQuery(() => fetchAppeals(false), [nonce]);
   const anomalies = useConsoleQuery(
     () => fetchAnomalies(range.from, range.to),
     [range.from.getTime(), range.to.getTime(), nonce],
   );
 
   usePolling(live.reload, 5_000);
+
+  /**
+   * Removing a room, once the operator has confirmed it.
+   *
+   * Reloads the board *and* the appeals list, because a removal is very often
+   * immediately followed by a question from someone who was in it — and an
+   * operator who has to press refresh to find that out will not find it out.
+   */
+  const confirmRemove = useCallback(async (reason) => {
+    if (!removing) return;
+    // Deliberately not caught: ConfirmAction keeps a thrown error inside the
+    // dialog with the reason still filled in, which is a better failure than
+    // closing and firing a toast the operator has to piece back together.
+    await removeBattleRoom(removing.room_id, reason);
+    toast(`Battlefield ${removing.pin} removed`, { tone: 'success' });
+    setMonitorRoom(null);
+    live.reload();
+    appeals.reload();
+  }, [removing, toast, live, appeals]);
 
   /* `subscribeToTables` always returns an unsubscribe function, including when
      Supabase is unconfigured, so this cleanup needs no guard. */
@@ -130,7 +159,14 @@ export default function ArenaView() {
         >
           <ul className="grid gap-1.5 md:grid-cols-2 xl:grid-cols-3">
             {sorted.map((room) => (
-              <RoomCard key={room.room_id} room={room} onOpen={() => setOpenRoom(room.room_id)} />
+                <RoomCard
+                key={room.room_id}
+                room={room}
+                canModerate={canModerate}
+                onOpen={() => setOpenRoom(room.room_id)}
+                onMonitor={() => setMonitorRoom(room.room_id)}
+                onRemove={() => setRemoving(room)}
+              />
             ))}
           </ul>
         </StateBlock>
@@ -245,22 +281,159 @@ export default function ArenaView() {
         </StateBlock>
       </Panel>
 
+      {/* ── removal appeals ──────────────────────────────────────────── */}
+      {canModerate ? (
+        <Panel
+          title="Removal appeals"
+          hint="Questions from players whose room was removed, newest first"
+          source="admin_list_appeals"
+          refreshing={appeals.isRefreshing}
+        >
+          <StateBlock
+            status={appeals.status}
+            error={appeals.error}
+            empty={(appeals.data ?? []).length === 0}
+            emptyIcon={MessageSquare}
+            emptyTitle="No appeals"
+            emptyDescription="A player who asks about a removed room appears here."
+            onRetry={appeals.reload}
+          >
+            <ul className="space-y-1.5">
+              {(appeals.data ?? []).map((a) => (
+                <AppealCard key={a.id} appeal={a} onReplied={appeals.reload} />
+              ))}
+            </ul>
+          </StateBlock>
+        </Panel>
+      ) : null}
+
       <MatchSheet roomId={openRoom} onClose={() => setOpenRoom(null)} />
+
+      {monitorRoom ? (
+        <RoomMonitor
+          roomId={monitorRoom}
+          canModerate={canModerate}
+          onClose={() => setMonitorRoom(null)}
+          onRemove={(room) => setRemoving(room)}
+        />
+      ) : null}
+
+      {/* The reason is required, not optional: every player in the room is
+          about to be shown this text, and `admin_remove_battle_room` refuses a
+          blank one, so asking for it here is the only way the action can
+          succeed. */}
+      <ConfirmAction
+        open={Boolean(removing)}
+        onClose={() => setRemoving(null)}
+        onConfirm={confirmRemove}
+        tone="danger"
+        title="Remove this Battlefield room?"
+        confirmLabel="Remove room"
+        requireReason
+        reasonLabel="Reason shown to the players"
+        description={
+          removing
+            ? `Room ${removing.pin} has ${removing.players} player${removing.players === 1 ? '' : 's'} in it. `
+              + 'They will be shown this reason and can reply to ask about it. '
+              + 'Results from a match already under way are settled and kept.'
+            : ''
+        }
+      />
     </div>
+  );
+}
+
+/* ── appeals ───────────────────────────────────────────────────────────── */
+
+/**
+ * One player's question about one removed room, and the reply to it.
+ *
+ * The removal reason is repeated on the card on purpose. An operator reading
+ * this a day later has no memory of why that room went, and answering "why was
+ * my room removed?" without the answer in front of you is how a moderation
+ * queue produces a wrong reply.
+ */
+function AppealCard({ appeal, onReplied }) {
+  const { toast } = useToast();
+  const [reply, setReply] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const send = async (event) => {
+    event.preventDefault();
+    const text = reply.trim();
+    if (!text) return;
+    setSending(true);
+    try {
+      await replyToAppeal(appeal.id, text);
+      setReply('');
+      toast('Reply sent', { tone: 'success' });
+      onReplied();
+    } catch (err) {
+      toast(err.message ?? 'Could not send that reply.', { tone: 'error' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <li className="rounded-md border border-line bg-surface p-2">
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="font-mono text-sm font-bold tracking-[0.1em]">{appeal.pin}</span>
+        <span className="text-sm font-semibold">{appeal.display_name || 'anon'}</span>
+        <Chip tone={appeal.admin_reply ? 'good' : 'warn'}>
+          {appeal.admin_reply ? 'answered' : 'open'}
+        </Chip>
+        <span className="ml-auto text-2xs text-ink-3">{relativeTime(appeal.created_at)}</span>
+      </div>
+
+      <p className="mt-1 text-2xs text-ink-3">
+        Removed because: <span className="text-ink-2">{appeal.removed_reason || '—'}</span>
+      </p>
+
+      <p className="mt-1 whitespace-pre-wrap rounded-md border border-line bg-subtle/50 px-1.5 py-1 text-sm leading-relaxed">
+        {appeal.message}
+      </p>
+
+      {appeal.admin_reply ? (
+        <div className="mt-1 rounded-md border border-brand/40 bg-brand-wash/50 px-1.5 py-1">
+          <p className="eyebrow text-brand">Replied · {relativeTime(appeal.replied_at)}</p>
+          <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed">{appeal.admin_reply}</p>
+        </div>
+      ) : (
+        <form className="mt-1 flex items-start gap-1" onSubmit={send}>
+          <label htmlFor={`reply-${appeal.id}`} className="sr-only">Reply to this appeal</label>
+          <textarea
+            id={`reply-${appeal.id}`}
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            rows={2}
+            maxLength={2000}
+            placeholder="Explain what happened…"
+            className="flex-1 resize-y rounded-md border border-line bg-subtle/50 px-1.5 py-1 text-sm outline-none focus:border-brand"
+          />
+          <Button type="submit" size="sm" variant="primary" icon={Send} disabled={sending || !reply.trim()}>
+            {sending ? 'Sending…' : 'Reply'}
+          </Button>
+        </form>
+      )}
+    </li>
   );
 }
 
 /* ── live board ────────────────────────────────────────────────────────── */
 
-function RoomCard({ room, onOpen }) {
+function RoomCard({ room, onOpen, onMonitor, onRemove, canModerate }) {
   const roster = Array.isArray(room.roster) ? room.roster : [];
   const isBattle = room.game === 'battle';
 
   return (
-    <li>
+    <li className="rounded-md border border-line bg-surface transition-colors duration-fast hover:border-line-strong">
+      {/* The card opens the drilldown; the actions below are separate controls.
+          Nesting them inside the button would make every click ambiguous and
+          is invalid HTML besides. */}
       <button
         onClick={onOpen}
-        className="flex w-full flex-col gap-1 rounded-md border border-line bg-surface p-1.5 text-left transition-colors duration-fast hover:border-line-strong hover:bg-raised/50 focus-visible:outline-none focus-visible:shadow-focus"
+        className="flex w-full flex-col gap-1 rounded-t-md p-1.5 text-left hover:bg-raised/50 focus-visible:outline-none focus-visible:shadow-focus"
       >
         <span className="flex items-center gap-1">
           <Chip tone={isBattle ? 'accent' : 'brand'}>{room.game}</Chip>
@@ -307,6 +480,22 @@ function RoomCard({ room, onOpen }) {
           </div>
         )}
       </button>
+
+      {isBattle ? (
+        <div className="flex items-center gap-1 border-t border-line px-1.5 py-1">
+          <Button size="sm" variant="ghost" icon={Maximize2} onClick={onMonitor}>
+            Monitor
+          </Button>
+          {/* Shown only to a tier that carries the scope. The RPC enforces it
+              regardless — this just avoids offering an action that will be
+              refused. */}
+          {canModerate ? (
+            <Button size="sm" variant="ghost" icon={ShieldAlert} className="ml-auto text-bad" onClick={onRemove}>
+              Remove
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </li>
   );
 }

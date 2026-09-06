@@ -71,7 +71,15 @@ export default function SessionSummary({ open, result, award, freshAchievements 
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             <Metric label="WPM" value={Math.round(result.wpm)} accent />
             <Metric label="Accuracy" value={Math.round(result.accuracy)} suffix="%" />
-            <Metric label="Consistency" value={Math.round(result.consistency)} suffix="%" />
+            {/* A run too short to yield three per-second samples has no
+                consistency to report. Showing a rounded null as "0%" read as
+                "you were maximally erratic", which is a worse claim than
+                saying nothing. */}
+            {Number.isFinite(result.consistency) ? (
+              <Metric label="Consistency" value={Math.round(result.consistency)} suffix="%" />
+            ) : (
+              <Metric label="Consistency" value={null} placeholder="—" />
+            )}
             <Metric label="Raw" value={Math.round(result.rawWpm)} />
           </div>
         </div>
@@ -152,12 +160,11 @@ export default function SessionSummary({ open, result, award, freshAchievements 
   );
 }
 
-function Metric({ label, value, suffix = '', accent = false }) {
+function Metric({ label, value, suffix = '', accent = false, placeholder = null }) {
   return (
     <div className="rounded-md border border-line px-1.5 py-1">
       <p className={cx('font-mono text-2xl font-medium leading-none tnum', accent && 'text-brand')}>
-        <Counter value={value} />
-        {suffix}
+        {placeholder ? <span className="text-ink-3">{placeholder}</span> : <><Counter value={value} />{suffix}</>}
       </p>
       <p className="mt-0.5 text-2xs font-bold uppercase tracking-[0.09em] text-ink-3">{label}</p>
     </div>

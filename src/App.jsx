@@ -1,8 +1,11 @@
 import { Suspense, lazy } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes } from 'react-router-dom';
+import { Swords, Wrench } from 'lucide-react';
 import AppShell from './components/layout/AppShell.jsx';
+import Button from './components/ui/Button.jsx';
 import { Card, Skeleton } from './components/ui/Primitives.jsx';
 import { useStore } from './lib/store.jsx';
+import { DEVELOPMENT_NOTICE, getLane, isLaneOpen } from './modules/arena/lanes.js';
 
 /* Route-level code splitting: the charts and Prism grammars only load when the
    surface that needs them is opened. */
@@ -18,6 +21,8 @@ const Battle = lazy(() => import('./modules/battle/Battle.jsx'));
 const BattleRoom = lazy(() => import('./modules/battle/BattleRoom.jsx'));
 const ShadowHub = lazy(() => import('./modules/shadow/ShadowHub.jsx'));
 const ShadowRoom = lazy(() => import('./modules/shadow/ShadowRoom.jsx'));
+const Community = lazy(() => import('./modules/community/Community.jsx'));
+const ChatShell = lazy(() => import('./modules/community/chat/ChatShell.jsx'));
 const Profile = lazy(() => import('./modules/profile/Profile.jsx'));
 const About = lazy(() => import('./modules/about/About.jsx'));
 const AdminPanel = lazy(() => import('./modules/admin/AdminPanel.jsx'));
@@ -68,8 +73,17 @@ export default function App() {
               create-or-join hub. */}
           <Route path="/battle" element={<Battle />} />
           <Route path="/battle/:pin" element={<BattleRoom />} />
-          <Route path="/shadow" element={<ShadowHub />} />
-          <Route path="/shadow/:pin" element={<ShadowRoom />} />
+          {/* Gated on the lane's own `status`, so the gate card, the ⌘K
+              palette and the URL cannot disagree about whether the mode is
+              open. Deep-linking past a disabled button is the obvious way in,
+              and a half-built mode reached that way is exactly the "broken
+              feature" state this is meant to prevent. Flipping the lane to
+              `live` in lanes.js opens all three at once. */}
+          <Route path="/shadow" element={isLaneOpen('shadow') ? <ShadowHub /> : <UnderDevelopment />} />
+          <Route path="/shadow/:pin" element={isLaneOpen('shadow') ? <ShadowRoom /> : <UnderDevelopment />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/community/chat" element={<ChatShell />} />
+          <Route path="/community/chat/:channelSlug" element={<ChatShell />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/about" element={<About />} />
           {/* Reached from the account menu rather than the nav: the mobile
@@ -81,6 +95,37 @@ export default function App() {
         </Routes>
       </Suspense>
     </AppShell>
+  );
+}
+
+/**
+ * The screen a mode that is not finished shows instead of itself.
+ *
+ * Deliberately a real page rather than a redirect: someone who followed a
+ * shared link to this mode deserves to be told what happened to it, and
+ * bouncing them to the home screen with no explanation reads as a bug.
+ */
+function UnderDevelopment() {
+  const lane = getLane('shadow');
+  return (
+    <div className="mx-auto max-w-[520px] py-6">
+      <Card className="p-4 text-center">
+        <span className="mx-auto grid h-[44px] w-[44px] place-items-center rounded-[14px] bg-warn/15 text-warn">
+          <Wrench size={22} strokeWidth={2.2} aria-hidden />
+        </span>
+        <h1 className="mt-2 font-display text-2xl font-bold">{lane?.title ?? 'Shadow Battle'}</h1>
+        <p className="mt-0.5 text-sm font-bold uppercase tracking-[0.1em] text-warn">
+          {DEVELOPMENT_NOTICE.label}
+        </p>
+        <p className="mx-auto mt-1.5 max-w-[42ch] text-sm leading-relaxed text-ink-3">
+          {DEVELOPMENT_NOTICE.blurb}
+        </p>
+        <div className="mt-3 flex flex-wrap justify-center gap-1">
+          <Button as={Link} to="/battle" variant="primary" icon={Swords}>Play Battlefield instead</Button>
+          <Button as={Link} to="/practice" variant="ghost">Back to practice</Button>
+        </div>
+      </Card>
+    </div>
   );
 }
 

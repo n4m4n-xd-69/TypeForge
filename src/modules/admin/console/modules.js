@@ -1,5 +1,5 @@
 import {
-  Activity, Boxes, Gauge, LayoutDashboard, Library, Settings2, Swords, Users,
+  Activity, Boxes, Gauge, LayoutDashboard, Library, MessageSquare, Settings2, Swords, Users,
 } from 'lucide-react';
 
 /**
@@ -70,6 +70,15 @@ export const CONSOLE_MODULES = [
     scope: 'content.read',
     description: 'The generated library, search and moderation',
     keywords: ['generations', 'library', 'passages', 'moderation', 'flagged'],
+  },
+  {
+    path: 'chat',
+    id: 'chatModeration',
+    label: 'Chat',
+    icon: MessageSquare,
+    scope: 'content.moderate',
+    description: 'Recent community chat messages, removal and mutes',
+    keywords: ['chat', 'moderation', 'messages', 'mute', 'community'],
   },
   {
     path: 'reports',

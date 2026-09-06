@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Check, Copy, Crown, DoorOpen, Loader2, Play, Users, X } from 'lucide-react';
 import Button, { IconButton } from '../../components/ui/Button.jsx';
@@ -10,10 +10,12 @@ import { useCopyToClipboard } from '../../lib/useCopyToClipboard.js';
 import { useAuth } from '../../lib/auth.jsx';
 import { useStore } from '../../lib/store.jsx';
 import { signInAnonymously } from '../../lib/supabase.js';
+import { toPresetValue } from '../../lib/avatars.js';
 import useBattleRoom from '../../lib/battle/useBattleRoom.js';
 import { abortBattle, joinBattle, kickPlayer, leaveBattle, startBattle } from '../../lib/battle/api.js';
 import RaceView from './RaceView.jsx';
 import ResultsView from './ResultsView.jsx';
+import RoomRemoved from './RoomRemoved.jsx';
 import { cx } from '../../lib/format.js';
 
 /**
@@ -85,6 +87,11 @@ export default function BattleRoom() {
 
   if (!room) return <Frame><EmptyState icon={Loader2} title="Loading…" /></Frame>;
 
+  /* Its own screen, not an error state — see RoomRemoved for why. Placed above
+     the generic closed branch so a removed room can never fall through to
+     "expired", which would be the wrong reason and offer no way to ask. */
+  if (phase === 'removed') return <RoomRemoved roomId={room.id} pin={room.pin} />;
+
   if (phase === 'closed') {
     return (
       <Frame>
@@ -117,48 +124,165 @@ export default function BattleRoom() {
 
 /* ── Invitation ────────────────────────────────────────────────────────── */
 
+/**
+ * The invite gate.
+ *
+ * An invite link already establishes everything about the context — which room,
+ * which passage, which mode — so the only thing this screen may ask about is
+ * the person. Two paths, and which one you get is decided by whether we
+ * genuinely do not know your name:
+ *
+ *   Returning visitor  →  nothing at all. A stored name is enough to mint the
+ *                         guest session and join, so the link resolves straight
+ *                         into the room.
+ *   Genuinely new      →  one screen: name and a face. Then the room.
+ *
+ * What is deliberately absent is the rest of onboarding. Someone arriving on a
+ * Battlefield link has already said what they want to do by clicking it, and
+ * asking them to pick a daily practice goal and a preferred discipline first is
+ * a form standing between two people and a race.
+ */
 function Invite({ pin }) {
   const { toast } = useToast();
-  const { state } = useStore();
+  const { state, updateProfile } = useStore();
   const { openAuthModal } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
 
-  const enter = async () => {
+  const known = (state.profile.name ?? '').trim();
+  const [name, setName] = useState(known);
+  const [avatar, setAvatar] = useState(state.profile.avatar ?? null);
+
+  const enter = useCallback(async (displayName, chosenAvatar) => {
+    const trimmed = (displayName ?? '').trim();
+    if (!trimmed) return;
     setBusy(true);
+    setError(null);
     try {
-      const guest = await signInAnonymously(state.profile.name || 'Player');
-      if (!guest) { openAuthModal('sign-up'); return; }
+      updateProfile({ name: trimmed, avatar: chosenAvatar ?? null, onboarded: true });
+      const guest = await signInAnonymously(trimmed);
+      if (!guest) {
+        // Anonymous sign-in is switched off for the project. Nothing this screen
+        // can do about that, so hand over to the real sign-up rather than
+        // failing silently on a button that looks like it should work.
+        openAuthModal('sign-up');
+        return;
+      }
       await joinBattle(pin);
       // useBattleRoom keys on the user id, so the room loads as soon as the
       // session lands — no navigation needed.
     } catch (err) {
+      setError(err.message ?? 'Could not join.');
       toast(err.message ?? 'Could not join.', { tone: 'error' });
     } finally {
       setBusy(false);
     }
-  };
+  }, [pin, toast, updateProfile, openAuthModal]);
+
+  /* A returning visitor is not asked anything — the link is the whole
+     interaction. Guarded so a re-render cannot fire a second join. */
+  const auto = useRef(false);
+  useEffect(() => {
+    if (auto.current || !known) return;
+    auto.current = true;
+    enter(known, state.profile.avatar ?? null);
+  }, [known, enter, state.profile.avatar]);
+
+  if (known && !error) {
+    return (
+      <Frame>
+        <Card className="mx-auto max-w-[440px] p-3 text-center">
+          <Loader2 size={20} className="mx-auto animate-spin text-brand" aria-hidden />
+          <p className="mt-1.5 text-sm font-bold">Joining Battlefield {pin?.toUpperCase()}…</p>
+          <p className="mt-0.5 text-xs text-ink-3">Entering as {known}</p>
+        </Card>
+      </Frame>
+    );
+  }
 
   return (
     <Frame>
-      <Card className="mx-auto max-w-[440px] p-3 text-center">
-        <span className="mx-auto grid h-[40px] w-[40px] place-items-center rounded-[13px] bg-brand-wash text-brand">
-          <Users size={20} strokeWidth={2.2} aria-hidden />
-        </span>
-        <h1 className="mt-1.5 text-xl font-bold">You have been invited</h1>
-        <p className="mt-0.5 text-sm text-ink-3">
-          Battlefield <span className="font-mono font-bold tracking-[0.12em] text-ink">{pin?.toUpperCase()}</span>
-        </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-          A name is enough — no email needed. Your progress saves straight away and you can attach an
-          account later.
-        </p>
-        <Button variant="primary" className="mt-2.5 w-full" icon={busy ? Loader2 : Users} onClick={enter} disabled={busy}>
-          {busy ? 'Joining…' : 'Enter the Battlefield'}
-        </Button>
+      <Card className="mx-auto max-w-[440px] p-3">
+        <div className="text-center">
+          <span className="mx-auto grid h-[40px] w-[40px] place-items-center rounded-[13px] bg-brand-wash text-brand">
+            <Users size={20} strokeWidth={2.2} aria-hidden />
+          </span>
+          <h1 className="mt-1.5 text-xl font-bold">You have been invited</h1>
+          <p className="mt-0.5 text-sm text-ink-3">
+            Battlefield <span className="font-mono font-bold tracking-[0.12em] text-ink">{pin?.toUpperCase()}</span>
+          </p>
+        </div>
+
+        <form
+          className="mt-2.5"
+          onSubmit={(e) => { e.preventDefault(); enter(name, avatar); }}
+        >
+          <label htmlFor="invite-name" className="text-sm font-bold">Pick a name</label>
+          <input
+            id="invite-name"
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={24}
+            placeholder="Your name"
+            className="mt-1 h-[44px] w-full rounded-md border border-line bg-subtle/50 px-1.5 text-base outline-none focus:border-brand"
+          />
+
+          <p className="mt-2 text-sm font-bold">And a face</p>
+          <AvatarPicker value={avatar} onChange={setAvatar} name={name} />
+
+          {error ? (
+            <p className="mt-1.5 rounded-md border border-bad/40 bg-bad/10 px-1.5 py-1 text-xs text-bad" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <Button
+            type="submit"
+            variant="primary"
+            className="mt-2.5 w-full"
+            icon={busy ? Loader2 : Users}
+            disabled={busy || !name.trim()}
+          >
+            {busy ? 'Joining…' : 'Enter the Battlefield'}
+          </Button>
+          <p className="mt-1 text-center text-2xs text-ink-3">
+            No email needed. You can attach an account later and keep everything.
+          </p>
+        </form>
       </Card>
     </Frame>
   );
 }
+
+/** A short row of preset faces — enough to feel chosen, not enough to browse. */
+function AvatarPicker({ value, onChange, name }) {
+  const choices = useMemo(() => INVITE_AVATARS.map(toPresetValue), []);
+  return (
+    <div className="mt-1 flex flex-wrap gap-1" role="radiogroup" aria-label="Choose an avatar">
+      {choices.map((preset) => (
+        <button
+          key={preset}
+          type="button"
+          role="radio"
+          aria-checked={value === preset}
+          aria-label={preset.replace('preset:', '')}
+          onClick={() => onChange(preset)}
+          className={cx(
+            'rounded-full p-px transition-colors',
+            value === preset ? 'ring-2 ring-brand ring-offset-2 ring-offset-surface' : 'opacity-70 hover:opacity-100',
+          )}
+        >
+          <Avatar value={preset} name={name} size={38} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* A deliberate handful rather than all twenty-four: this is a gate on the way
+   into a race, and the full picker lives on the profile screen. */
+const INVITE_AVATARS = ['cat', 'fox', 'panda', 'bunny', 'frog', 'dog', 'bear', 'kitten'];
 
 /* ── Lobby ─────────────────────────────────────────────────────────────── */
 

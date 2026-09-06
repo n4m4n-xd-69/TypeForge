@@ -19,7 +19,7 @@ import useTypingEngine from '../../components/typing/useTypingEngine.js';
 import MissionStrip from '../../components/gamify/MissionStrip.jsx';
 import { HAND_GUIDE_LIMIT, useStore, useStats } from '../../lib/store.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
-import { DIFFICULTIES, DRILLS, randomQuote, randomWords } from '../../lib/content.js';
+import { DIFFICULTIES, DRILLS, QUOTE_LENGTHS, randomQuote, randomWords } from '../../lib/content.js';
 import { aiConfigured, generatePassage } from '../../lib/ai.js';
 import { cx, mmss, relativeTime } from '../../lib/format.js';
 import { getMode, MODE_REGISTRY } from '../../lib/modes/registry.js';
@@ -31,6 +31,17 @@ const MODE_OPTIONS = deriveModeSegmentedOptions(MODE_REGISTRY, 'practice');
 const DURATIONS = [15, 30, 60, 120];
 const WORD_COUNTS = [10, 25, 50, 100];
 const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d.id, label: d.name }));
+
+/* Quote length was in the data from the start and exposed nowhere, so every
+   session drew from the whole pool regardless of how long you wanted to type.
+   The labels say roughly what each one costs in words, because "short" on its
+   own does not tell you whether that means one line or five. */
+const QUOTE_LENGTH_OPTIONS = [
+  { value: 'any', label: 'Any' },
+  { value: 'short', label: 'Short' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'long', label: 'Long' },
+];
 
 export default function Practice() {
   const [params, setParams] = useSearchParams();
@@ -44,6 +55,7 @@ export default function Practice() {
   const [duration, setDuration] = useState(60);
   const [wordCount, setWordCount] = useState(25);
   const [drillId, setDrillId] = useState(DRILLS[0].id);
+  const [quoteLength, setQuoteLength] = useState('any');
   const [customText, setCustomText] = useState('');
   const [customOpen, setCustomOpen] = useState(false);
   const [seed, setSeed] = useState(0);
@@ -85,6 +97,9 @@ export default function Practice() {
    * re-running without itself triggering another run.
    */
   const recentPassages = useRef([]);
+  /* The last quote served, so the next draw can avoid it. See the `quote`
+     branch below for why this is a ref and not state. */
+  const lastQuote = useRef(null);
 
   useEffect(() => {
     if (!settings.aiText || mode === 'custom' || mode === 'drill') {
@@ -124,7 +139,11 @@ export default function Practice() {
       case 'words':
         return { text: randomWords(wordCount, difficulty), meta: `${wordCount} words · ${difficulty}` };
       case 'quote': {
-        const q = randomQuote('any');
+        // `lastQuote` is a ref rather than state on purpose: it must not
+        // re-trigger this memo, or asking for a new quote would immediately
+        // compute a second one and discard the first.
+        const q = randomQuote(quoteLength, lastQuote.current);
+        lastQuote.current = q.text;
         return { text: q.text, meta: `— ${q.author}` };
       }
       case 'drill': {
@@ -143,7 +162,7 @@ export default function Practice() {
         return { text: randomWords(Math.max(60, duration * 2), difficulty), meta: `${duration} second sprint · ${difficulty}` };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, difficulty, duration, wordCount, drillId, customText, seed]);
+  }, [mode, difficulty, duration, wordCount, drillId, quoteLength, customText, seed]);
 
   /* AI text wins once it lands; the bundled passage covers the gap. */
   const exercise = aiText ?? bundled;
@@ -260,6 +279,8 @@ export default function Practice() {
       setWordCount={setWordCount}
       drillId={drillId}
       setDrillId={setDrillId}
+      quoteLength={quoteLength}
+      setQuoteLength={setQuoteLength}
       settings={settings}
       setSetting={setSetting}
       onCustom={() => setCustomOpen(true)}
@@ -554,7 +575,8 @@ export default function Practice() {
 
 function Controls({
   mode, setMode, difficulty, setDifficulty, duration, setDuration, wordCount, setWordCount,
-  drillId, setDrillId, settings, setSetting, onCustom, onSettings, onRetry, focus, onToggleFocus,
+  drillId, setDrillId, quoteLength, setQuoteLength,
+  settings, setSetting, onCustom, onSettings, onRetry, focus, onToggleFocus,
   onNext, onRegenerate, aiLoading, aiRegenerable,
 }) {
   return (
@@ -579,6 +601,15 @@ function Controls({
           options={WORD_COUNTS.map((d) => ({ value: d, label: String(d) }))}
           value={wordCount}
           onChange={setWordCount}
+        />
+      ) : null}
+      {mode === 'quote' ? (
+        <Segmented
+          size="sm"
+          label="Quote length"
+          options={QUOTE_LENGTH_OPTIONS}
+          value={quoteLength}
+          onChange={setQuoteLength}
         />
       ) : null}
       {mode === 'drill' ? (
