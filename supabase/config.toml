@@ -1,5 +1,55 @@
 project_id = "kavfjyvsvgvcjiuwwfbw"
 
+# ── Auth ─────────────────────────────────────────────────────────────────────
+#
+# `site_url` is where Supabase sends a user when the client passes no
+# `redirectTo`, AND the fallback when the requested `redirectTo` is not in the
+# allow-list below. `signInWithGoogle` in src/lib/supabase.js passes
+# `window.location.origin`, so every origin the app is served from has to be
+# listed here or the user lands back on `site_url` instead.
+#
+# The `/**` suffix is a wildcard over paths on that origin.
+
+[auth]
+enabled = true
+site_url = "https://typeforge-xi.vercel.app"
+additional_redirect_urls = [
+  "https://typeforge-xi.vercel.app/**",
+  "https://typeforge-just-bin.vercel.app/**",
+  "https://typeforge-git-main-just-bin.vercel.app/**",
+  "http://localhost:5173/**",
+  "http://localhost:3000/**",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_manual_linking = false
+enable_signup = true
+# Guest play depends on this; see migration 0018_separate_guest_accounts.sql.
+enable_anonymous_sign_ins = true
+minimum_password_length = 6
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+
+
 # ── Forge AI Edge Functions ──────────────────────────────────────────────────
 #
 # `verify_jwt = true` means the platform validates the caller's token against
